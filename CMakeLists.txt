@@ -27,6 +27,10 @@ target_link_libraries(resilience PUBLIC kokkos)
 find_package(VeloC REQUIRED)
 target_link_libraries(resilience PRIVATE veloc::veloc)
 
+# MPI requirement
+find_package(MPI REQUIRED)
+target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
+
 # Export targets for in-tree linking
 export(TARGETS resilience
        NAMESPACE Kokkos::
