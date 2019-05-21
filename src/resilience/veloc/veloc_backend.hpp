@@ -8,28 +8,25 @@
 
 namespace KokkosResilience
 {
-  namespace Impl
+  class VeloCCheckpointBackend
   {
-    class VeloCCheckpointBackend
-    {
-    public:
-    
-      VeloCCheckpointBackend( int mpi_comm, const std::string &veloc_config);
-      ~VeloCCheckpointBackend();
-    
-      void checkpoint( const std::string &label, int version,
-                       const std::vector< std::unique_ptr< ViewHolderBase > > &views );
-    
-      bool restart_available( const std::string &label, int version );
-    
-      void restart( const std::string &label, int version,
-                    const std::vector< std::unique_ptr< ViewHolderBase > > &views );
+  public:
   
-    private:
-    
-      int m_mpi_comm;
-    };
-  }
+    VeloCCheckpointBackend( int mpi_comm, const std::string &veloc_config);
+    ~VeloCCheckpointBackend();
+  
+    void checkpoint( const std::string &label, int version,
+                     const std::vector< std::unique_ptr< ViewHolderBase > > &views );
+  
+    bool restart_available( const std::string &label, int version );
+  
+    void restart( const std::string &label, int version,
+                  const std::vector< std::unique_ptr< ViewHolderBase > > &views );
+
+  private:
+  
+    int m_mpi_comm;
+  };
 }
 
 #endif  // INC_RESILIENCE_VELOC_BACKEND_HPP

@@ -12,7 +12,7 @@ add_subdirectory(src)
 target_compile_features(resilience PUBLIC cxx_std_14)
 
 target_include_directories(resilience PUBLIC
-                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                            $<INSTALL_INTERFACE:include>
                            )
 
