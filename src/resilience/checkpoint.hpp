@@ -10,8 +10,23 @@
 
 namespace KokkosResilience
 {
-  template< typename F, typename CheckpointBackend >
-  void checkpoint( const std::string &label, int iteration, F &&fun, CheckpointBackend &check )
+  namespace filter
+  {
+    struct default_filter
+    {
+      bool operator()( int ) const
+      { return true; }
+    };
+    
+    template< int Freq >
+    struct nth_iteration_filter
+    {
+      bool operator()( int i ) const { return !( i % Freq ); }
+    };
+  }
+  
+  template< typename F, typename CheckpointBackend, typename FilterFunc = filter::default_filter >
+  void checkpoint( const std::string &label, int iteration, F &&fun, CheckpointBackend &check, FilterFunc &&filter = filter::default_filter{} )
   {
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
     using fun_type = typename std::remove_reference< F >::type;
@@ -35,7 +50,9 @@ namespace KokkosResilience
     } else {
       // Execute functor and checkpoint
       fun();
-      check.checkpoint( label, iteration, views );
+  
+      if ( filter( iteration ) )
+        check.checkpoint( label, iteration, views );
     }
 #else
     fun();
