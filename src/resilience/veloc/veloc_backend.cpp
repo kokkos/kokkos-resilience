@@ -43,7 +43,7 @@ namespace
   
   void
   VeloCCheckpointBackend::checkpoint( const std::string &label, int version,
-                                      const std::vector< std::unique_ptr< ViewHolderBase > > &views )
+                                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait() );
@@ -64,9 +64,8 @@ namespace
       
       for ( auto &&v : views )
       {
-        char *bytes = nullptr;
-        std::size_t len = 0;
-        v->get_contiguous_extent( bytes, len );
+        char *bytes = static_cast< char * >( v->data() );
+        std::size_t len = v->span();
         
         vfile.write( bytes, len );
       }
@@ -87,7 +86,7 @@ namespace
   }
   
   void VeloCCheckpointBackend::restart( const std::string &label, int version,
-                                        const std::vector< std::unique_ptr< ViewHolderBase>> &views )
+                                        const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ) );
     
@@ -104,9 +103,8 @@ namespace
       
       for ( auto &&v : views )
       {
-        char *bytes = nullptr;
-        std::size_t len = 0;
-        v->get_contiguous_extent( bytes, len );
+        char *bytes = static_cast< char * >( v->data() );
+        std::size_t len = v->span();
         
         vfile.read( bytes, len );
       }

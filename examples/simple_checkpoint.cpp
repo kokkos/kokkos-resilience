@@ -16,10 +16,6 @@ main( int argc, char **argv )
     int  dim0 = 5, dim1 = 5;
     auto view = Kokkos::View< double ** >( "test_view", dim0, dim1 );
     
-    auto hview = Kokkos::create_mirror_view( view );
-    
-    Kokkos::deep_copy( view, hview );
-    
     KokkosResilience::checkpoint( "test_checkpoint", 0, [view, dim0, dim1]() {
       Kokkos::parallel_for( dim0, KOKKOS_LAMBDA( int i ) {
         for ( int j = 0; j < dim1; ++j )

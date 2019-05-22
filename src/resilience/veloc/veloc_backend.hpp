@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <resilience/util/view_holder.hpp>
+#include <Kokkos_ViewHooks.hpp>
 
 namespace KokkosResilience
 {
@@ -16,12 +16,12 @@ namespace KokkosResilience
     ~VeloCCheckpointBackend();
   
     void checkpoint( const std::string &label, int version,
-                     const std::vector< std::unique_ptr< ViewHolderBase > > &views );
+                     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
   
     bool restart_available( const std::string &label, int version );
   
     void restart( const std::string &label, int version,
-                  const std::vector< std::unique_ptr< ViewHolderBase > > &views );
+                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
 
   private:
   
