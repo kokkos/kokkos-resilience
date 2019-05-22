@@ -50,6 +50,8 @@ set_target_properties(veloc::veloc PROPERTIES
                       INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX"
                       )
 
+set(VeloC_DIR ${_veloc_root})
+
 mark_as_advanced(
   _veloc_library
   _veloc_include_dir

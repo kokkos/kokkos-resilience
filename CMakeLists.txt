@@ -64,6 +64,9 @@ install(EXPORT resilienceTargets
 
 install(DIRECTORY include/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
+# Need to install/export VeloC find module for downstream dependencies
+configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
+
 # Add subdirectories for examples and tests if they are enabled
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
 option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
