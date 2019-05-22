@@ -18,9 +18,11 @@ namespace KokkosResilience
     
     // Copy the functor, since if it has any views we can turn on view tracking
     std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > views;
+    
+    // Don't do anything with const views since they can never be checkpointed in this context
     Kokkos::ViewHooks::set( [&views]( Kokkos::ViewHolderBase &view ) {
       views.emplace_back( view.clone() );
-    } );
+    }, []( Kokkos::ConstViewHolderBase & ) {} );
     
     fun_type f = fun;
     
