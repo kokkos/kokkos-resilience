@@ -260,7 +260,7 @@ namespace KokkosResilience
     {
     public:
       
-      TimingTrace( Id id )
+      explicit TimingTrace( Id id )
         : Trace< Id >( std::move( id ) ), m_timer( true ), m_duration{}
       {
       }
