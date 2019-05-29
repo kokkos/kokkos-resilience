@@ -40,7 +40,9 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
     std::ostringstream oss;
     oss << "checkpoint_" << label;
-    Util::begin_trace< Util::TimingTrace< std::string > >( oss.str(), iteration );
+    auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( oss.str(), iteration );
+    
+    auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "overhead" );
 #endif
     
     using fun_type = typename std::remove_reference< F >::type;
@@ -56,20 +58,44 @@ namespace KokkosResilience
     fun_type f = fun;
     
     Kokkos::ViewHooks::clear();
+
+#ifdef KR_ENABLE_TRACING
+    overhead_trace.end();
+#endif
     
     if ( ctx.backend().restart_available( label, iteration ) )
     {
       // Load views with data
+#ifdef KR_ENABLE_TRACING
+      auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "restart" );
+#endif
       ctx.backend().restart( label, iteration, views );
     } else {
       // Execute functor and checkpoint
+#ifdef KR_ENABLE_TRACING
+      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "function" );
+#endif
       fun();
+#ifdef KR_ENABLE_TRACING
+      function_trace.end();
+#endif
   
       if ( filter( iteration ) )
+      {
+#ifdef KR_ENABLE_TRACING
+        auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "write" );
+#endif
         ctx.backend().checkpoint( label, iteration, views );
+      }
     }
 #else
+#ifdef KR_ENABLE_TRACING
+      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "function" );
+#endif
     fun();
+#ifdef KR_ENABLE_TRACING
+      function_trace.end();
+#endif
 #endif
   }
 }
