@@ -11,6 +11,8 @@
 #include <iterator>
 #include <fstream>
 
+#include <mpi.h>
+
 #include <pico/picojson.h>
 
 #include "timer.hpp"
@@ -19,6 +21,24 @@ namespace KokkosResilience
 {
   namespace Util
   {
+    namespace detail
+    {
+      inline picojson::value make_json_value( int _val )
+      {
+        return picojson::value( static_cast< double >( _val ));
+      }
+  
+      inline picojson::value make_json_value( double _val )
+      {
+        return picojson::value( _val );
+      }
+  
+      inline picojson::value make_json_value( const std::string &_val )
+      {
+        return picojson::value( _val );
+      }
+    }
+    
     class TraceBase
     {
     public:
@@ -58,7 +78,24 @@ namespace KokkosResilience
       
       virtual std::string get_typestring() const = 0;
   
-      virtual picojson::object get_json_object() const = 0;
+      virtual picojson::object get_json_object() const
+      {
+        picojson::object obj;
+  
+        obj["type"] = picojson::value( get_typestring() );
+        
+        auto children = picojson::array{};
+        children.reserve( m_children.size() );
+        
+        for ( auto &&c : m_children )
+        {
+          children.emplace_back( picojson::value( c->get_json_object() ) );
+        }
+        
+        obj["subtraces"] = picojson::value( children );
+        
+        return obj;
+      }
   
       virtual void end() = 0;
   
@@ -72,21 +109,6 @@ namespace KokkosResilience
     
     namespace detail
     {
-      inline picojson::value make_json_value( int _val )
-      {
-        return picojson::value( static_cast< double >( _val ) );
-      }
-  
-      inline picojson::value make_json_value( double _val )
-      {
-        return picojson::value( _val );
-      }
-  
-      inline picojson::value make_json_value( const std::string &_val )
-      {
-        return picojson::value( _val );
-      }
-      
       class TraceStack
       {
       public:
@@ -99,10 +121,16 @@ namespace KokkosResilience
         
         ~TraceStack()
         {
+          int rank = -1;
+          // TODO: should use same comm as rest of library
+          MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+          
           std::ostringstream fname;
-          fname << "trace" << ".json";
+          fname << "trace" << rank << ".json";
           
           std::ofstream out( fname.str() );
+          
+          std::cout << "writing trace to " << fname.str() << '\n';
           
           write( out );
         }
@@ -189,10 +217,9 @@ namespace KokkosResilience
       
       picojson::object get_json_object() const override
       {
-        picojson::object obj;
+        auto obj = TraceBase::get_json_object();
         
         obj["name"] = detail::make_json_value( m_id );
-        obj["type"] = picojson::value( get_typestring() );
         
         auto starttm = std::chrono::system_clock::to_time_t( m_start_time );
         std::ostringstream start_str;
@@ -230,9 +257,12 @@ namespace KokkosResilience
       
       void end()
       {
-        m_trace->mark_done();
-        detail::TraceStack::instance.try_pop( m_trace );
-        m_trace = nullptr;
+        if ( m_trace )
+        {
+          m_trace->mark_done();
+          detail::TraceStack::instance.try_pop( m_trace );
+          m_trace = nullptr;
+        }
       }
       
       ~TraceHandle()
@@ -256,35 +286,12 @@ namespace KokkosResilience
     }
     
     template< typename Id >
-    class IterationTrace : public Trace< Id >
+    class TimingTrace : public Trace< Id >
     {
     public:
       
-      IterationTrace( Id id, int iteration )
-        : Trace< Id >( std::move( id ) ), m_iteration( iteration )
-      {}
-  
-      picojson::object get_json_object() const override
-      {
-        auto ret = Trace< Id >::get_json_object();
-        
-        ret["iteration"] = detail::make_json_value( m_iteration );
-    
-        return ret;
-      }
-      
-    private:
-      
-      int m_iteration;
-    };
-    
-    template< typename Id >
-    class TimingTrace : public IterationTrace< Id >
-    {
-    public:
-      
-      TimingTrace( Id id, int iteration )
-        : IterationTrace< Id >( std::move( id ), iteration ), m_timer( true ), m_duration{}
+      explicit TimingTrace( Id id )
+        : Trace< Id >( std::move( id ) ), m_timer( true ), m_duration{}
       {
       }
       
@@ -297,7 +304,7 @@ namespace KokkosResilience
   
       picojson::object get_json_object() const override
       {
-        auto ret = IterationTrace< Id >::get_json_object();
+        auto ret = Trace< Id >::get_json_object();
   
         auto time_seconds = std::chrono::duration< double >( m_duration );
         ret["time"] = detail::make_json_value( time_seconds.count() );
@@ -314,6 +321,30 @@ namespace KokkosResilience
       
       Timer m_timer;
       Timer::duration_type m_duration;
+    };
+  
+  
+    template< typename Id >
+    class IterTimingTrace : public TimingTrace< Id >
+    {
+    public:
+  
+      IterTimingTrace( Id id, int iteration )
+        : TimingTrace< Id >( std::move( id ) ), m_iteration( iteration )
+      {}
+  
+      picojson::object get_json_object() const override
+      {
+        auto ret = TimingTrace< Id >::get_json_object();
+    
+        ret["iteration"] = detail::make_json_value( m_iteration );
+    
+        return ret;
+      }
+
+    private:
+  
+      int m_iteration;
     };
   }
 }
