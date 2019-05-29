@@ -6,7 +6,6 @@ namespace KokkosResilience
   {
     namespace detail
     {
-      thread_local TraceStack TraceStack::instance;
     }
   }
 }

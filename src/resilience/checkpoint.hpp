@@ -40,9 +40,9 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
     std::ostringstream oss;
     oss << "checkpoint_" << label;
-    auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( oss.str(), iteration );
+    auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( ctx, oss.str(), iteration );
     
-    auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "overhead" );
+    auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "overhead" );
 #endif
     
     using fun_type = typename std::remove_reference< F >::type;
@@ -67,13 +67,13 @@ namespace KokkosResilience
     {
       // Load views with data
 #ifdef KR_ENABLE_TRACING
-      auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "restart" );
+      auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
 #endif
       ctx.backend().restart( label, iteration, views );
     } else {
       // Execute functor and checkpoint
 #ifdef KR_ENABLE_TRACING
-      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "function" );
+      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
 #endif
       fun();
 #ifdef KR_ENABLE_TRACING
@@ -83,7 +83,7 @@ namespace KokkosResilience
       if ( filter( iteration ) )
       {
 #ifdef KR_ENABLE_TRACING
-        auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "write" );
+        auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "write" );
 #endif
         ctx.backend().checkpoint( label, iteration, views );
       }

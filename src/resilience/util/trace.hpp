@@ -37,14 +37,16 @@ namespace KokkosResilience
       {
         return picojson::value( _val );
       }
+      
+      class TraceStack;
     }
     
     class TraceBase
     {
     public:
   
-      TraceBase()
-        : m_done( false ), m_parent( nullptr )
+      explicit TraceBase( detail::TraceStack *trace )
+        : m_done( false ), m_parent( nullptr ), m_trace_stack( trace )
       {}
     
       void mark_done()
@@ -98,6 +100,8 @@ namespace KokkosResilience
       }
   
       virtual void end() = 0;
+      
+      detail::TraceStack *trace_stack() const noexcept { return m_trace_stack; }
   
     private:
     
@@ -105,6 +109,8 @@ namespace KokkosResilience
       
       TraceBase *m_parent;
       std::vector< std::unique_ptr< TraceBase > > m_children;
+      
+      detail::TraceStack *m_trace_stack;
     };
     
     namespace detail
@@ -113,32 +119,17 @@ namespace KokkosResilience
       {
       public:
         
-        static thread_local TraceStack instance;
-        
         TraceStack()
           : m_current( nullptr )
         {}
         
-        ~TraceStack()
-        {
-          int rank = -1;
-          // TODO: should use same comm as rest of library
-          MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-          
-          std::ostringstream fname;
-          fname << "trace" << rank << ".json";
-          
-          std::ofstream out( fname.str() );
-          
-          std::cout << "writing trace to " << fname.str() << '\n';
-          
-          write( out );
-        }
+        ~TraceStack() = default;
         
         TraceStack( const TraceStack & ) = delete;
-        
+        TraceStack( TraceStack && ) = default;
         
         TraceStack &operator=( const TraceStack & ) = delete;
+        TraceStack &operator=( TraceStack && ) = default;
     
         void push( std::unique_ptr< TraceBase > &&tr )
         {
@@ -207,8 +198,8 @@ namespace KokkosResilience
       
       using id_type = Id;
       
-      Trace( id_type id )
-        : m_id( std::move( id ) )
+      Trace( detail::TraceStack *trace, id_type id )
+        : TraceBase( trace ), m_id( std::move( id ) )
       {
         m_start_time = std::chrono::system_clock::now();
       }
@@ -260,7 +251,7 @@ namespace KokkosResilience
         if ( m_trace )
         {
           m_trace->mark_done();
-          detail::TraceStack::instance.try_pop( m_trace );
+          m_trace->trace_stack()->try_pop( m_trace );
           m_trace = nullptr;
         }
       }
@@ -275,12 +266,12 @@ namespace KokkosResilience
       Trace< Id > *m_trace;
     };
     
-    template< typename TraceType, typename... Args >
-    auto begin_trace( Args &&... args )
+    template< typename TraceType, typename Context, typename... Args >
+    auto begin_trace( Context &ctx, Args &&... args )
     {
-      auto tr = std::make_unique< TraceType >( std::forward< Args >( args )... );
+      auto tr = std::make_unique< TraceType >( &ctx.trace(), std::forward< Args >( args )... );
       auto ret = TraceHandle< typename TraceType::id_type >{ tr.get() };
-      detail::TraceStack::instance.push( std::move( tr ) );
+      ctx.trace().push( std::move( tr ) );
       
       return ret;
     }
@@ -290,8 +281,8 @@ namespace KokkosResilience
     {
     public:
       
-      explicit TimingTrace( Id id )
-        : Trace< Id >( std::move( id ) ), m_timer( true ), m_duration{}
+      explicit TimingTrace( detail::TraceStack *trace, Id id )
+        : Trace< Id >( trace, std::move( id ) ), m_timer( true ), m_duration{}
       {
       }
       
@@ -329,8 +320,8 @@ namespace KokkosResilience
     {
     public:
   
-      IterTimingTrace( Id id, int iteration )
-        : TimingTrace< Id >( std::move( id ) ), m_iteration( iteration )
+      IterTimingTrace( detail::TraceStack *trace, Id id, int iteration )
+        : TimingTrace< Id >( trace, std::move( id ) ), m_iteration( iteration )
       {}
   
       picojson::object get_json_object() const override
