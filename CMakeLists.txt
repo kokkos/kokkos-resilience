@@ -31,6 +31,12 @@ target_link_libraries(resilience PRIVATE veloc::veloc)
 find_package(MPI REQUIRED)
 target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 
+# Library options
+option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
+if (KR_ENABLE_TRACING)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
+endif()
+
 # Export targets for in-tree linking
 export(TARGETS resilience
        NAMESPACE Kokkos::

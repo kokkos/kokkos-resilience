@@ -8,6 +8,12 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
 
+// Tracing support
+#ifdef KR_ENABLE_TRACING
+#include "util/trace.hpp"
+#include <sstream>
+#endif
+
 namespace KokkosResilience
 {
   namespace filter
@@ -29,6 +35,14 @@ namespace KokkosResilience
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter = filter::default_filter{} )
   {
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
+    
+    // Trace if enabled
+#ifdef KR_ENABLE_TRACING
+    std::ostringstream oss;
+    oss << "checkpoint_" << label;
+    Util::begin_trace< Util::TimingTrace< std::string > >( oss.str() );
+#endif
+    
     using fun_type = typename std::remove_reference< F >::type;
     
     // Copy the functor, since if it has any views we can turn on view tracking
