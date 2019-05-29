@@ -25,8 +25,8 @@ namespace KokkosResilience
     };
   }
   
-  template< typename F, typename CheckpointBackend, typename FilterFunc = filter::default_filter >
-  void checkpoint( const std::string &label, int iteration, F &&fun, CheckpointBackend &check, FilterFunc &&filter = filter::default_filter{} )
+  template< typename Context, typename F, typename FilterFunc = filter::default_filter >
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter = filter::default_filter{} )
   {
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
     using fun_type = typename std::remove_reference< F >::type;
@@ -43,16 +43,16 @@ namespace KokkosResilience
     
     Kokkos::ViewHooks::clear();
     
-    if ( check.restart_available( label, iteration ) )
+    if ( ctx.backend().restart_available( label, iteration ) )
     {
       // Load views with data
-      check.restart( label, iteration, views );
+      ctx.backend().restart( label, iteration, views );
     } else {
       // Execute functor and checkpoint
       fun();
   
       if ( filter( iteration ) )
-        check.checkpoint( label, iteration, views );
+        ctx.backend().checkpoint( label, iteration, views );
     }
 #else
     fun();
