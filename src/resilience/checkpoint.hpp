@@ -40,7 +40,7 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
     std::ostringstream oss;
     oss << "checkpoint_" << label;
-    Util::begin_trace< Util::TimingTrace< std::string > >( oss.str() );
+    Util::begin_trace< Util::TimingTrace< std::string > >( oss.str(), iteration );
 #endif
     
     using fun_type = typename std::remove_reference< F >::type;

@@ -256,12 +256,35 @@ namespace KokkosResilience
     }
     
     template< typename Id >
-    class TimingTrace : public Trace< Id >
+    class IterationTrace : public Trace< Id >
     {
     public:
       
-      explicit TimingTrace( Id id )
-        : Trace< Id >( std::move( id ) ), m_timer( true ), m_duration{}
+      IterationTrace( Id id, int iteration )
+        : Trace< Id >( std::move( id ) ), m_iteration( iteration )
+      {}
+  
+      picojson::object get_json_object() const override
+      {
+        auto ret = Trace< Id >::get_json_object();
+        
+        ret["iteration"] = detail::make_json_value( m_iteration );
+    
+        return ret;
+      }
+      
+    private:
+      
+      int m_iteration;
+    };
+    
+    template< typename Id >
+    class TimingTrace : public IterationTrace< Id >
+    {
+    public:
+      
+      TimingTrace( Id id, int iteration )
+        : IterationTrace< Id >( std::move( id ), iteration ), m_timer( true ), m_duration{}
       {
       }
       
@@ -274,7 +297,7 @@ namespace KokkosResilience
   
       picojson::object get_json_object() const override
       {
-        auto ret = Trace< Id >::get_json_object();
+        auto ret = IterationTrace< Id >::get_json_object();
   
         auto time_seconds = std::chrono::duration< double >( m_duration );
         ret["time"] = detail::make_json_value( time_seconds.count() );
