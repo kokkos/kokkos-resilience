@@ -71,6 +71,8 @@ configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
 option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
 
+add_subdirectory(tpl)
+
 if (KR_ENABLE_TESTS)
   add_subdirectory(tests)
 endif()
