@@ -77,6 +77,7 @@ namespace KokkosResilience
 #endif
       fun();
 #ifdef KR_ENABLE_TRACING
+      Kokkos::fence();  // Get accurate measurements for function_trace end
       function_trace.end();
 #endif
   
