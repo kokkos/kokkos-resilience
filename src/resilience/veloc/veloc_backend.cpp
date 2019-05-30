@@ -30,7 +30,7 @@ namespace
   }
 }
   
-  VeloCCheckpointBackend::VeloCCheckpointBackend( int mpi_comm, const std::string &veloc_config )
+  VeloCCheckpointBackend::VeloCCheckpointBackend( MPI_Comm mpi_comm, const std::string &veloc_config )
     : m_mpi_comm( mpi_comm )
   {
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str()));

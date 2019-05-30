@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <Kokkos_ViewHooks.hpp>
+#include <mpi.h>
 
 namespace KokkosResilience
 {
@@ -12,7 +13,7 @@ namespace KokkosResilience
   {
   public:
   
-    VeloCCheckpointBackend( int mpi_comm, const std::string &veloc_config);
+    VeloCCheckpointBackend( MPI_Comm mpi_comm, const std::string &veloc_config);
     ~VeloCCheckpointBackend();
   
     void checkpoint( const std::string &label, int version,
