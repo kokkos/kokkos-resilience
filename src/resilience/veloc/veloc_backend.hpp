@@ -26,7 +26,7 @@ namespace KokkosResilience
 
   private:
   
-    int m_mpi_comm;
+    MPI_Comm m_mpi_comm;
   };
 }
 
