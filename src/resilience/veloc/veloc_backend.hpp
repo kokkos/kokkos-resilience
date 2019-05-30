@@ -9,11 +9,14 @@
 
 namespace KokkosResilience
 {
+  template< typename Backend >
+  class Context;
+  
   class VeloCCheckpointBackend
   {
   public:
   
-    VeloCCheckpointBackend( MPI_Comm mpi_comm, const std::string &veloc_config);
+    VeloCCheckpointBackend( Context< VeloCCheckpointBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
     ~VeloCCheckpointBackend();
   
     void checkpoint( const std::string &label, int version,
@@ -27,6 +30,7 @@ namespace KokkosResilience
   private:
   
     MPI_Comm m_mpi_comm;
+    Context< VeloCCheckpointBackend > *m_context;
   };
 }
 

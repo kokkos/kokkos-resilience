@@ -84,7 +84,7 @@ namespace KokkosResilience
       if ( filter( iteration ) )
       {
 #ifdef KR_ENABLE_TRACING
-        auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "write" );
+        auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
 #endif
         ctx.backend().checkpoint( label, iteration, views );
       }

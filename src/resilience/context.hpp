@@ -26,7 +26,7 @@ namespace KokkosResilience
   public:
     
     explicit Context( MPI_Comm comm, const std::string &config )
-      : m_backend( comm, config ), m_comm( comm )
+      : m_backend( *this, comm, config ), m_comm( comm )
     {
     
     }
