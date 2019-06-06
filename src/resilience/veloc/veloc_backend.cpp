@@ -4,6 +4,9 @@
 #include <fstream>
 #include <veloc.h>
 
+#include "../context.hpp"
+#include "../util/trace.hpp"
+
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
 
 namespace KokkosResilience
@@ -30,8 +33,8 @@ namespace
   }
 }
   
-  VeloCCheckpointBackend::VeloCCheckpointBackend( int mpi_comm, const std::string &veloc_config )
-    : m_mpi_comm( mpi_comm )
+  VeloCCheckpointBackend::VeloCCheckpointBackend( Context< VeloCCheckpointBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config )
+    : m_mpi_comm( mpi_comm ), m_context( &ctx )
   {
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str()));
   }
@@ -61,7 +64,8 @@ namespace
       
       std::string fname( veloc_file_name );
       std::ofstream vfile( fname, std::ios::binary );
-      
+  
+      auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "write" );
       for ( auto &&v : views )
       {
         char *bytes = static_cast< char * >( v->data() );
@@ -69,6 +73,7 @@ namespace
         
         vfile.write( bytes, len );
       }
+      write_trace.end();
     } catch ( ... ) {
       status = false;
     }
@@ -100,7 +105,8 @@ namespace
       
       std::string fname( veloc_file_name );
       std::ifstream vfile( fname, std::ios::binary );
-      
+  
+      auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "read" );
       for ( auto &&v : views )
       {
         char *bytes = static_cast< char * >( v->data() );
@@ -108,6 +114,7 @@ namespace
         
         vfile.read( bytes, len );
       }
+      read_trace.end();
     } catch ( ... ) {
       status = false;
     }

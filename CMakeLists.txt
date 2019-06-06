@@ -31,6 +31,12 @@ target_link_libraries(resilience PRIVATE veloc::veloc)
 find_package(MPI REQUIRED)
 target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 
+# Library options
+option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
+if (KR_ENABLE_TRACING)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
+endif()
+
 # Export targets for in-tree linking
 export(TARGETS resilience
        NAMESPACE Kokkos::
@@ -70,6 +76,8 @@ configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
 # Add subdirectories for examples and tests if they are enabled
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
 option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
+
+add_subdirectory(tpl)
 
 if (KR_ENABLE_TESTS)
   add_subdirectory(tests)

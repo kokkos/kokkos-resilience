@@ -8,6 +8,12 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
 
+// Tracing support
+#ifdef KR_ENABLE_TRACING
+#include "util/trace.hpp"
+#include <sstream>
+#endif
+
 namespace KokkosResilience
 {
   namespace filter
@@ -29,6 +35,16 @@ namespace KokkosResilience
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter = filter::default_filter{} )
   {
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
+    
+    // Trace if enabled
+#ifdef KR_ENABLE_TRACING
+    std::ostringstream oss;
+    oss << "checkpoint_" << label;
+    auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( ctx, oss.str(), iteration );
+    
+    auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "overhead" );
+#endif
+    
     using fun_type = typename std::remove_reference< F >::type;
     
     // Copy the functor, since if it has any views we can turn on view tracking
@@ -42,20 +58,45 @@ namespace KokkosResilience
     fun_type f = fun;
     
     Kokkos::ViewHooks::clear();
+
+#ifdef KR_ENABLE_TRACING
+    overhead_trace.end();
+#endif
     
     if ( ctx.backend().restart_available( label, iteration ) )
     {
       // Load views with data
+#ifdef KR_ENABLE_TRACING
+      auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
+#endif
       ctx.backend().restart( label, iteration, views );
     } else {
       // Execute functor and checkpoint
+#ifdef KR_ENABLE_TRACING
+      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
+#endif
       fun();
+#ifdef KR_ENABLE_TRACING
+      Kokkos::fence();  // Get accurate measurements for function_trace end
+      function_trace.end();
+#endif
   
       if ( filter( iteration ) )
+      {
+#ifdef KR_ENABLE_TRACING
+        auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
+#endif
         ctx.backend().checkpoint( label, iteration, views );
+      }
     }
 #else
+#ifdef KR_ENABLE_TRACING
+      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "function" );
+#endif
     fun();
+#ifdef KR_ENABLE_TRACING
+      function_trace.end();
+#endif
 #endif
   }
 }

@@ -5,14 +5,18 @@
 #include <vector>
 #include <memory>
 #include <Kokkos_ViewHooks.hpp>
+#include <mpi.h>
 
 namespace KokkosResilience
 {
+  template< typename Backend >
+  class Context;
+  
   class VeloCCheckpointBackend
   {
   public:
   
-    VeloCCheckpointBackend( int mpi_comm, const std::string &veloc_config);
+    VeloCCheckpointBackend( Context< VeloCCheckpointBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
     ~VeloCCheckpointBackend();
   
     void checkpoint( const std::string &label, int version,
@@ -25,7 +29,8 @@ namespace KokkosResilience
 
   private:
   
-    int m_mpi_comm;
+    MPI_Comm m_mpi_comm;
+    Context< VeloCCheckpointBackend > *m_context;
   };
 }
 
