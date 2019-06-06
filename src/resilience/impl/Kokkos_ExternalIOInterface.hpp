@@ -24,6 +24,9 @@ namespace Experimental {
 class KokkosIOAccessor  {
 
 public:
+   enum { READ_FILE = 0,
+          WRITE_FILE = 1 };
+
    size_t data_size;   
    bool is_contiguous;
    std::string file_path;
@@ -50,9 +53,15 @@ public:
       return WriteFile_impl( src, src_size );
    }
 
+   size_t OpenFile() {
+      return OpenFile_impl();
+   }
+
    virtual size_t ReadFile_impl(void * dest, const size_t dest_size) = 0;
       
    virtual size_t WriteFile_impl(const void * src, const size_t src_size) = 0;
+
+   virtual size_t OpenFile_impl() = 0;
       
    virtual ~KokkosIOAccessor() {
    }
@@ -60,6 +69,7 @@ public:
    static std::string resolve_path( std::string path, std::string default_ );
    static void transfer_from_host ( void * dst, const void * src, size_t size_ );
    static void transfer_to_host ( void * dst, const void * src, size_t size_ );
+   static void create_empty_file ( void * dst );
 };
 
 struct KokkosIOInterface : Kokkos::Impl::SharedAllocationHeader {

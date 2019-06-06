@@ -1,3 +1,4 @@
+
 /*
 //@HEADER
 // ************************************************************************
@@ -40,327 +41,267 @@
 // ************************************************************************
 //@HEADER
 */
-#include "Kokkos_Core.hpp"
-#include "Kokkos_StdFileSpace.hpp"
-#include "sys/stat.h"
+#ifndef __KOKKOS_STD_FILE_SPACE_
+#define __KOKKOS_STD_FILE_SPACE_
+
+#include <cstring>
+#include <string>
+#include <iosfwd>
+#include <typeinfo>
+
+#include <Kokkos_Core_fwd.hpp>
+#include <Kokkos_Concepts.hpp>
+#include <Kokkos_MemoryTraits.hpp>
+#include <impl/Kokkos_SharedAlloc.hpp>
+#include <impl/Kokkos_ExternalIOInterface.hpp>
+#include <fstream>
+
 
 namespace Kokkos {
 
 namespace Experimental {
 
-   int KokkosStdFileAccessor::initialize( const std::string & filepath ) { 
+class KokkosStdFileAccessor : public KokkosIOAccessor {
 
-       file_path = filepath;
-       return 0;
 
+public:
+   size_t file_offset;
+   std::fstream file_strm;
+
+
+   KokkosStdFileAccessor() : KokkosIOAccessor(),
+                             file_offset(0) {
+   }
+   KokkosStdFileAccessor(const size_t size, const std::string & path ) : KokkosIOAccessor(size, path, true),
+                                                                         file_offset(0) {
    }
 
-   bool KokkosStdFileAccessor::open_file( int read_write ) { 
-      
-      // printf("open_file: %s, %d\n", file_path.c_str(), read_write );
-      if (file_strm.is_open()) {
-         printf("file was left open...closing\n");
-         close_file();
+   KokkosStdFileAccessor( const KokkosStdFileAccessor & rhs ) = default;
+   KokkosStdFileAccessor( KokkosStdFileAccessor && rhs ) = default;
+   KokkosStdFileAccessor & operator = ( KokkosStdFileAccessor && ) = default;
+   KokkosStdFileAccessor & operator = ( const KokkosStdFileAccessor & ) = default;
+   KokkosStdFileAccessor( void* ptr ) {
+      KokkosStdFileAccessor * pAcc = static_cast<KokkosStdFileAccessor*>(ptr);
+      if (pAcc) {
+         data_size = pAcc->data_size;
+         file_path = pAcc->file_path;
+         file_offset = pAcc->file_offset;
       }
-      std::string sFullPath = Kokkos::Experimental::StdFileSpace::s_default_path;
-      size_t pos = file_path.find("/");
-      if ( (int)pos == 0 ) {    // only use the default if there is no absolute path...
-         sFullPath = file_path;
-      } else {
-         // printf("building file path %s, %s \n", sFullPath.c_str(), file_path.c_str() );
-         sFullPath += (std::string)"/";
-         sFullPath += file_path;
+
+   } 
+
+   KokkosStdFileAccessor( void* ptr, const size_t offset ) {
+      KokkosStdFileAccessor * pAcc = static_cast<KokkosStdFileAccessor*>(ptr);
+      if (pAcc) {
+         data_size = pAcc->data_size;
+         file_path = pAcc->file_path;
+         file_offset = offset;
       }
-      // printf("opening file: %s, %d\n", sFullPath.c_str(), read_write );
-
-       if ( read_write == KokkosStdFileAccessor::WRITE_FILE ) {
-            file_strm.open( sFullPath.c_str(), std::ios::out | std::ios::trunc | std::ios::binary );
-       } else if (read_write == KokkosStdFileAccessor::READ_FILE ) { 
-            file_strm.open( sFullPath.c_str(), std::ios::in | std::ios::binary );
-       } else {
-            printf("open_file: incorrect read write parameter specified .\n");
-            return -1;
-       }
-
-      return file_strm.is_open();
-
    }
 
-   size_t KokkosStdFileAccessor::ReadFile_impl(void * dest, const size_t dest_size) {
-      size_t dataRead = 0;
-      char* ptr = (char*)dest;
-      if (open_file(KokkosStdFileAccessor::READ_FILE)) {
-         // printf("reading file: %08x, %ld \n", (unsigned long)dest, dest_size);
-         while ( !file_strm.eof() && dataRead < dest_size ) {
-            file_strm.read( &ptr[dataRead], dest_size );
-            dataRead += file_strm.gcount();
-         }
-      } else {
-         printf("WARNING: cannot open file for reading: %s\n", file_path.c_str());
-      }
-      close_file();
-      if (dataRead < dest_size) {
-         printf("StdFile: less data available than requested \n");
-      }
-      return dataRead;
+   int initialize( const std::string & filepath );
 
-   }
+   bool open_file(int read_write = KokkosStdFileAccessor::READ_FILE);
+   void close_file();
+
+   virtual size_t ReadFile_impl(void * dest, const size_t dest_size);
    
-   size_t KokkosStdFileAccessor::WriteFile_impl(const void * src, const size_t src_size) {
-      size_t m_written = 0;
-      char* ptr = (char*)src;
-      if (open_file(KokkosStdFileAccessor::WRITE_FILE) ) {
-          file_strm.write(&ptr[0], src_size);
-          if (!file_strm.fail())
-             m_written = src_size;
-      }
-      close_file();
-      if (m_written != src_size) {
-         printf("StdFile: write failed \n");
-      }
-      return m_written;
-   }
-   void KokkosStdFileAccessor::close_file() {
-      if (file_strm.is_open()) {
-         file_strm.close();
-      }
-   }
-
-   void KokkosStdFileAccessor::finalize() {
-      close_file();
-   }
-
-   std::string StdFileSpace::s_default_path = "./";
-
-   StdFileSpace::StdFileSpace() {
-
-   }
-
-   /**\brief  Allocate untracked memory in the space */
-   void * StdFileSpace::allocate( const size_t arg_alloc_size, const std::string & path ) const {
-      KokkosStdFileAccessor * pAcc = new KokkosStdFileAccessor( arg_alloc_size, path );
-      pAcc->initialize( path );
-      KokkosIOInterface * pInt = new KokkosIOInterface;
-      pInt->pAcc = pAcc;
-      // printf("allocate std file: %s, %08x \n", path.c_str(), (unsigned long)pAcc);
-      return (void*)pInt;
-
-   }
-
-   /**\brief  Deallocate untracked memory in the space */
-   void StdFileSpace::deallocate( void * const arg_alloc_ptr
-                             , const size_t arg_alloc_size ) const {
-       const KokkosIOInterface * pInt = reinterpret_cast<KokkosIOInterface *>(arg_alloc_ptr);
-       if (pInt) {
-          KokkosStdFileAccessor * pAcc = static_cast<KokkosStdFileAccessor*>(pInt->pAcc);
-
-          if (pAcc) {
-             pAcc->finalize();
-             delete pAcc;
-          }
-
-          delete pInt;
-
-       }
-
-   }
-  
-   void StdFileSpace::restore_all_views() {
-      typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
-      if (pList == nullptr)  printf("%s::restore views mirror list returned empty list \n", name());
-      while (pList != nullptr) {
-         Kokkos::Impl::DeepCopy< Kokkos::HostSpace, Kokkos::Experimental::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
-                        (((base_record*)pList->src)->data(), ((base_record*)pList->dst)->data(), ((base_record*)pList->src)->size());
-         // delete the records along the way...
-         if (pList->pNext == nullptr) {
-            delete pList;
-            pList = nullptr;
-         } else {
-            // printf("restore next record: %08x \n", (unsigned long)pList->pNext);
-            pList = pList->pNext;
-            // printf("record: %08x, %08x \n", (unsigned long)pList->src, (unsigned long)pList->dst);
-            if (pList->pPrev != nullptr) delete pList->pPrev;
-         }
-      }
-   }
+   virtual size_t WriteFile_impl(const void * src, const size_t src_size);
    
-   void StdFileSpace::restore_view(const std::string lbl) {
-      typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pRes = base_record::get_filtered_mirror_entry( (std::string)name(), lbl );
-      if (pRes != nullptr) {
-         Kokkos::Impl::DeepCopy< Kokkos::HostSpace, Kokkos::Experimental::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
-                        (((base_record*)pRes->src)->data(), ((base_record*)pRes->dst)->data(), ((base_record*)pRes->src)->size());
-         delete pRes;
-      }
-   }
-  
-   void StdFileSpace::checkpoint_views() {
-      typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
-      if (pList == nullptr) {
-         printf("memspace %s returned empty list of checkpoint views \n", name());
-      }
-      while (pList != nullptr) {
- //     typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-         Kokkos::Impl::DeepCopy< Kokkos::Experimental::StdFileSpace, Kokkos::HostSpace, Kokkos::DefaultHostExecutionSpace >
-                        (((base_record*)pList->dst)->data(), ((base_record*)pList->src)->data(), ((base_record*)pList->src)->size());
-         // delete the records along the way...
-         if (pList->pNext == nullptr) {
-            delete pList;
-            pList = nullptr;
-         } else {
-            pList = pList->pNext;
-            delete pList->pPrev;
-         }
-      }
-       
-   }
-   void StdFileSpace::set_default_path( const std::string path ) {
+   virtual size_t OpenFile_impl();
 
-      StdFileSpace::s_default_path = path;
-
+   void finalize();
+   
+   virtual ~KokkosStdFileAccessor() {
    }
-  
-} // Experimental
+};
+
+
+/// \class StdFileSpace
+/// \brief Memory management for StdFile 
+///
+/// StdFileSpace is a memory space that governs access to StdFile data.
+/// 
+class StdFileSpace {
+public:
+  //! Tag this class as a kokkos memory space
+  typedef Kokkos::Experimental::StdFileSpace  file_space;   // used to uniquely identify file spaces
+  typedef Kokkos::Experimental::StdFileSpace  memory_space;
+  typedef size_t     size_type;
+
+  /// \typedef execution_space
+  /// \brief Default execution space for this memory space.
+  ///
+  /// Every memory space has a default execution space.  This is
+  /// useful for things like initializing a View (which happens in
+  /// parallel using the View's default execution space).
+#if defined( KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_OPENMP )
+  typedef Kokkos::OpenMP    execution_space;
+#elif defined( KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_THREADS )
+  typedef Kokkos::Threads   execution_space;
+//#elif defined( KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_QTHREADS )
+//  typedef Kokkos::Qthreads  execution_space;
+#elif defined( KOKKOS_ENABLE_OPENMP )
+  typedef Kokkos::OpenMP    execution_space;
+#elif defined( KOKKOS_ENABLE_THREADS )
+  typedef Kokkos::Threads   execution_space;
+//#elif defined( KOKKOS_ENABLE_QTHREADS )
+//  typedef Kokkos::Qthreads  execution_space;
+#elif defined( KOKKOS_ENABLE_SERIAL )
+  typedef Kokkos::Serial    execution_space;
+#else
+#  error "At least one of the following host execution spaces must be defined: Kokkos::OpenMP, Kokkos::Threads, Kokkos::Qthreads, or Kokkos::Serial.  You might be seeing this message if you disabled the Kokkos::Serial device explicitly using the Kokkos_ENABLE_Serial:BOOL=OFF CMake option, but did not enable any of the other host execution space devices."
+#endif
+
+  //! This memory space preferred device_type
+  typedef Kokkos::Device< execution_space, memory_space > device_type;
+
+  /**\brief  Default memory space instance */
+  StdFileSpace();
+  StdFileSpace( StdFileSpace && rhs ) = default;
+  StdFileSpace( const StdFileSpace & rhs ) = default;
+  StdFileSpace & operator = ( StdFileSpace && ) = default;
+  StdFileSpace & operator = ( const StdFileSpace & ) = default;
+  ~StdFileSpace() = default;
+
+  /**\brief  Allocate untracked memory in the space */
+  void * allocate( const size_t arg_alloc_size, const std::string & path ) const;
+
+  /**\brief  Deallocate untracked memory in the space */
+  void deallocate( void * const arg_alloc_ptr
+                 , const size_t arg_alloc_size ) const;
+
+  /**\brief Return Name of the MemorySpace */
+  static constexpr const char* name() { return m_name; }
+
+  static void restore_all_views(); 
+  static void restore_view(const std::string name);
+  static void checkpoint_views();
+  static void checkpoint_create_view_targets();
+  static void set_default_path( const std::string path );
+  static std::string s_default_path;
+
+private:
+  static constexpr const char* m_name = "StdFile";
+  friend class Kokkos::Impl::SharedAllocationRecord< Kokkos::Experimental::StdFileSpace, void >;
+};
+
+}
+}
+
+namespace Kokkos {
+
+namespace Impl {
+
+template<>
+class SharedAllocationRecord< Kokkos::Experimental::StdFileSpace, void >
+  : public SharedAllocationRecord< void, void >
+{
+private:
+  friend Kokkos::Experimental::StdFileSpace;
+
+  typedef SharedAllocationRecord< void, void >  RecordBase;
+
+  SharedAllocationRecord( const SharedAllocationRecord & ) = delete;
+  SharedAllocationRecord & operator = ( const SharedAllocationRecord & ) = delete;
+
+  static void deallocate( RecordBase * );
+
+#ifdef KOKKOS_DEBUG
+  /**\brief  Root record for tracked allocations from this StdFileSpace instance */
+  static RecordBase s_root_record;
+#endif
+
+  const Kokkos::Experimental::StdFileSpace m_space;
+
+protected:
+  ~SharedAllocationRecord();
+  SharedAllocationRecord() = default;
+
+  SharedAllocationRecord( const Kokkos::Experimental::StdFileSpace        & arg_space
+                        , const std::string              & arg_label
+                        , const size_t                     arg_alloc_size
+                        , const RecordBase::function_type  arg_dealloc = & deallocate
+                        );
+
+public:
+
+  inline
+  std::string get_label() const
+  {
+    return std::string( RecordBase::head()->m_label );
+  }
+
+  KOKKOS_INLINE_FUNCTION static
+  SharedAllocationRecord * allocate( const Kokkos::Experimental::StdFileSpace &  arg_space
+                                   , const std::string       &  arg_label
+                                   , const size_t               arg_alloc_size
+                                   )
+  {
+#if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
+    return new SharedAllocationRecord( arg_space, arg_label, arg_alloc_size );
+#else
+    return (SharedAllocationRecord *) 0;
+#endif
+  }
+
+
+  /**\brief  Allocate tracked memory in the space */
+  static
+  void * allocate_tracked( const Kokkos::Experimental::StdFileSpace & arg_space
+                         , const std::string & arg_label
+                         , const size_t arg_alloc_size );
+
+  /**\brief  Reallocate tracked memory in the space */
+  static
+  void * reallocate_tracked( void * const arg_alloc_ptr
+                           , const size_t arg_alloc_size );
+
+  /**\brief  Deallocate tracked memory in the space */
+  static
+  void deallocate_tracked( void * const arg_alloc_ptr );
+
+  static SharedAllocationRecord * get_record( void * arg_alloc_ptr );
+
+  static void print_records( std::ostream &, const Kokkos::Experimental::StdFileSpace &, bool detail = false );
+};
+
+
+template<class ExecutionSpace> struct DeepCopy< Kokkos::Experimental::StdFileSpace , Kokkos::HostSpace , ExecutionSpace >
+{
+  inline
+  DeepCopy( void * dst , const void * src , size_t n )
+  {  
+      Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
+  }
+
+  inline
+  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
+  {
+    exec.fence();
+    Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
+  }
+};
+
+template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Experimental::StdFileSpace , ExecutionSpace >
+{
+  inline
+  DeepCopy( void * dst , const void * src , size_t n )
+  {       
+     Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
+  }
+
+  inline
+  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
+  {
+    exec.fence();
+    Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
+  }
+};
+
+} // Impl
 
 } // Kokkos
 
-
-
-namespace Kokkos {
-namespace Impl {
-
-#ifdef KOKKOS_DEBUG
-SharedAllocationRecord< void , void >
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::s_root_record ;
+#include <impl/Kokkos_DirectoryManagement.h>
 #endif
-
-void
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-deallocate( SharedAllocationRecord< void , void > * arg_rec )
-{
-  delete static_cast<SharedAllocationRecord*>(arg_rec);
-}
-
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-~SharedAllocationRecord()
-{
-  #if defined(KOKKOS_ENABLE_PROFILING)
-  if(Kokkos::Profiling::profileLibraryLoaded()) {
-      Kokkos::Profiling::deallocateData(
-      Kokkos::Profiling::SpaceHandle(Kokkos::Experimental::StdFileSpace::name()),RecordBase::m_alloc_ptr->m_label,
-      data(),size());
-  }
-  #endif
-
-  m_space.deallocate( SharedAllocationRecord< void , void >::m_alloc_ptr
-                    , SharedAllocationRecord< void , void >::m_alloc_size
-                    );
-}
-
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-SharedAllocationRecord( const Kokkos::Experimental::StdFileSpace & arg_space
-                      , const std::string       & arg_label
-                      , const size_t              arg_alloc_size
-                      , const SharedAllocationRecord< void , void >::function_type arg_dealloc
-                      )
-  // Pass through allocated [ SharedAllocationHeader , user_memory ]
-  // Pass through deallocation function
-  : SharedAllocationRecord< void , void >
-      (
-#ifdef KOKKOS_DEBUG
-      & SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::s_root_record,
-#endif
-        reinterpret_cast<SharedAllocationHeader*>( arg_space.allocate( arg_alloc_size, arg_label ) )
-      , arg_alloc_size
-      , arg_dealloc
-      )
-  , m_space( arg_space )
-{
-#if defined(KOKKOS_ENABLE_PROFILING)
-  if(Kokkos::Profiling::profileLibraryLoaded()) {
-    Kokkos::Profiling::allocateData(Kokkos::Profiling::SpaceHandle(arg_space.name()),arg_label,data(),arg_alloc_size);
-   }
-#endif
-  // Fill in the Header information
-  RecordBase::m_alloc_ptr->m_record = static_cast< SharedAllocationRecord< void , void > * >( this );
-
-  strncpy( RecordBase::m_alloc_ptr->m_label
-          , arg_label.c_str()
-          , SharedAllocationHeader::maximum_label_length
-          );
-  // Set last element zero, in case c_str is too long
-  RecordBase::m_alloc_ptr->m_label[SharedAllocationHeader::maximum_label_length - 1] = (char) 0;
-}
-
-//----------------------------------------------------------------------------
-
-void * SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-allocate_tracked( const Kokkos::Experimental::StdFileSpace & arg_space
-                , const std::string & arg_alloc_label
-                , const size_t arg_alloc_size )
-{
-  if ( ! arg_alloc_size ) return (void *) 0 ;
-
-  SharedAllocationRecord * const r =
-    allocate( arg_space , arg_alloc_label , arg_alloc_size );
-
-  RecordBase::increment( r );
-
-  return r->data();
-}
-
-void SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-deallocate_tracked( void * const arg_alloc_ptr )
-{
-  if ( arg_alloc_ptr != 0 ) {
-    SharedAllocationRecord * const r = get_record( arg_alloc_ptr );
-
-    RecordBase::decrement( r );
-  }
-}
-
-void * SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-reallocate_tracked( void * const arg_alloc_ptr
-                  , const size_t arg_alloc_size )
-{
-  SharedAllocationRecord * const r_old = get_record( arg_alloc_ptr );
-  SharedAllocationRecord * const r_new = allocate( r_old->m_space , r_old->get_label() , arg_alloc_size );
-
-  RecordBase::increment( r_new );
-  RecordBase::decrement( r_old );
-
-  return r_new->data();
-}
-
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void > *
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::get_record( void * alloc_ptr )
-{
-  typedef SharedAllocationHeader  Header ;
-  typedef SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >  RecordHost ;
-
-  SharedAllocationHeader const * const head   = alloc_ptr ? Header::get_header( alloc_ptr ) : (SharedAllocationHeader *)0 ;
-  RecordHost                   * const record = head ? static_cast< RecordHost * >( head->m_record ) : (RecordHost *) 0 ;
-
-  if ( ! alloc_ptr || record->m_alloc_ptr != head ) {
-    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Impl::SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::get_record ERROR" ) );
-  }
-
-  return record ;
-}
-
-// Iterate records to print orphaned memory ...
-void SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-print_records( std::ostream & s , const Kokkos::Experimental::StdFileSpace & , bool detail )
-{
-#ifdef KOKKOS_DEBUG
-  SharedAllocationRecord< void , void >::print_host_accessible_records( s , "StdFileSpace" , & s_root_record , detail );
-#else
-  throw_runtime_exception("SharedAllocationRecord<StdFileSpace>::print_records only works with KOKKOS_DEBUG enabled");
-#endif
-}
-
-} // namespace Experimental
-} // namespace Kokkos
-

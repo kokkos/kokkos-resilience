@@ -13,12 +13,28 @@ namespace Experimental {
       if ( pos >= 0 && pos < path.length() ) {    // only use the default if there is no path info in the path...
          sFullPath = path;
       } else {
-         sFullPath += (std::string)"/";
+         size_t posII = sFullPath.rfind("/");
+         if (posII != (sFullPath.length()-1)) {
+            sFullPath += (std::string)"/";
+         }
          sFullPath += path;
       }
 
       return sFullPath;
 
+   }
+
+   // Create empty file...to prevent file access issues when writing / reading in parallel 
+   void KokkosIOAccessor::create_empty_file ( void * dst )  {
+
+      Kokkos::Impl::SharedAllocationHeader * pData = reinterpret_cast<Kokkos::Impl::SharedAllocationHeader*>(dst);
+      KokkosIOInterface * pDataII = reinterpret_cast<KokkosIOInterface*>(pData-1);
+      Kokkos::Experimental::KokkosIOAccessor * pAcc = pDataII->pAcc;
+
+      if (pAcc) {
+         //printf("calling openfile ...\n");
+         pAcc->OpenFile();   // virtual method implemented by specific IO interface
+      }
    }
 
    // Copy from host memory space to designated IO buffer (dst is an instance of KokkosIOAccessor offset by SharedAllocationHeader)
@@ -72,7 +88,7 @@ namespace Experimental {
          char * config = std::getenv( "KOKKOS_IO_CONFIG" );
          if (config != nullptr)
             path = config;
-         printf("loading IOConfigurationManager: %s\n", path.c_str());
+         // printf("loading IOConfigurationManager: %s\n", path.c_str());
          KokkosIOConfigurationManager::m_Inst->load_configuration(path);
       }
       return KokkosIOConfigurationManager::m_Inst;
