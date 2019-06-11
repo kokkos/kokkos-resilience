@@ -64,8 +64,10 @@ namespace
       
       std::string fname( veloc_file_name );
       std::ofstream vfile( fname, std::ios::binary );
-  
+
+#ifdef KR_ENABLE_TRACING
       auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "write" );
+#endif
       for ( auto &&v : views )
       {
         char *bytes = static_cast< char * >( v->data() );
@@ -73,7 +75,9 @@ namespace
         
         vfile.write( bytes, len );
       }
+#ifdef KR_ENABLE_TRACING
       write_trace.end();
+#endif
     } catch ( ... ) {
       status = false;
     }
@@ -105,8 +109,10 @@ namespace
       
       std::string fname( veloc_file_name );
       std::ifstream vfile( fname, std::ios::binary );
-  
+
+#ifdef KR_ENABLE_TRACING
       auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "read" );
+#endif
       for ( auto &&v : views )
       {
         char *bytes = static_cast< char * >( v->data() );
@@ -114,7 +120,9 @@ namespace
         
         vfile.read( bytes, len );
       }
+#ifdef KR_ENABLE_TRACING
       read_trace.end();
+#endif
     } catch ( ... ) {
       status = false;
     }
