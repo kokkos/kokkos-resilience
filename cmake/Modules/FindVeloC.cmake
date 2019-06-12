@@ -53,6 +53,7 @@ set_target_properties(veloc::veloc PROPERTIES
 set(VeloC_DIR ${_veloc_root})
 set(VeloC_LINK_DIRECTORIES ${_veloc_root}/lib64)
 
+
 mark_as_advanced(
   _veloc_library
   _veloc_include_dir

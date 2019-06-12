@@ -92,6 +92,12 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
 
+
+install(FILES 
+        ${CMAKE_MODULE_PATH}/FindVeloC.cmake
+        ${CMAKE_MODULE_PATH}/FindHDF5.cmake
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+
 # Need to install/export VeloC find module for downstream dependencies
 configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
 
