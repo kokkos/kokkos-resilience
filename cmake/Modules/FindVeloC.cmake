@@ -47,10 +47,11 @@ add_library(veloc::veloc UNKNOWN IMPORTED)
 set_target_properties(veloc::veloc PROPERTIES
                       IMPORTED_LOCATION ${_veloc_client_lib}
                       INTERFACE_INCLUDE_DIRECTORIES ${_veloc_include_dir}
-                      INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX"
+                      INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX;er;axl;rankstr"
                       )
 
 set(VeloC_DIR ${_veloc_root})
+set(VeloC_LINK_DIRECTORIES ${_veloc_root}/lib64)
 
 mark_as_advanced(
   _veloc_library

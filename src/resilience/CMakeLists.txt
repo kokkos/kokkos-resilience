@@ -1,5 +1,37 @@
 target_sources(resilience PRIVATE
-               resilience.cpp
-               veloc/veloc_backend.cpp
-               util/trace.cpp
+               ${PROJECT_SOURCE_DIR}/src/resilience/resilience.cpp
+               ${PROJECT_SOURCE_DIR}/src/resilience/veloc/veloc_backend.cpp
+               ${PROJECT_SOURCE_DIR}/src/resilience/util/trace.cpp
+               ${PROJECT_SOURCE_DIR}/src/resilience/impl/Kokkos_ExternalIOInterface.cpp
+               ${PROJECT_SOURCE_DIR}/src/resilience/impl/Kokkos_StdFileSpace.cpp
                )
+
+INSTALL (DIRECTORY
+         "${PROJECT_SOURCE_DIR}/src/resilience/"
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+         FILES_MATCHING PATTERN "*.hpp"
+                        PATTERN "*.h"
+)
+INSTALL (DIRECTORY
+         "${PROJECT_SOURCE_DIR}/src/resilience/impl"
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+         FILES_MATCHING PATTERN "*.hpp"
+                        PATTERN "*.h"
+)
+INSTALL (DIRECTORY
+         "${PROJECT_SOURCE_DIR}/src/resilience/veloc"
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+         FILES_MATCHING PATTERN "*.hpp"
+                        PATTERN "*.h"
+)
+INSTALL (DIRECTORY
+         "${PROJECT_SOURCE_DIR}/src/resilience/util"
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+         FILES_MATCHING PATTERN "*.hpp"
+                        PATTERN "*.h"
+)
+if (USE_HDF5)
+    target_sources(resilience PRIVATE
+              ${PROJECT_SOURCE_DIR}/src/resilience/impl/Kokkos_HDF5Space.cpp)
+endif()
+
