@@ -30,6 +30,12 @@ namespace KokkosResilience
       bool operator()( int i ) const { return !( i % Freq ); }
     };
   }
+
+  template< typename Context >
+  int latest_version(Context &ctx, const std::string &label) {
+
+    return ctx.backend().latest_version(label);
+  }
   
   template< typename Context, typename F, typename FilterFunc = filter::default_filter >
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter = filter::default_filter{} )
