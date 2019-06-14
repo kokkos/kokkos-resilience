@@ -13,8 +13,8 @@ message(STATUS "Module path: ${CMAKE_MODULE_PATH}")
 set(VeloC_DIR @VeloC_DIR@)
 find_dependency(VeloC REQUIRED)
 
-set(VeloC_LINK_DIRECTORIES @VeloC_LINK_DIRECTORIES@)
-link_directories(${VeloC_LINK_DIRECTORIES})
+set(resilience_LINK_DIRECTORIES "@VeloC_LINK_DIRECTORIES@")
+set(Kokkos_LINK_DIRECTORIES "@Kokkos_LINK_DIRECTORIES@")
 
 if (USE_HDF5)
    set(HDF5_DIR @HDF5_DIR@)
