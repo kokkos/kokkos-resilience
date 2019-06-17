@@ -20,11 +20,11 @@ target_include_directories(resilience PUBLIC
 
 # TODO: change this when Kokkos cmake gets updated
 find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
-target_include_directories(kokkos INTERFACE ${Kokkos_INCLUDE_DIRS})
-message("Kokkos include dirs: ${Kokkos_INCLUDE_DIRS}")
+##target_include_directories(kokkos INTERFACE ${Kokkos_INCLUDE_DIRS})
+##message("Kokkos include dirs: ${Kokkos_INCLUDE_DIRS}")
 
-
-target_link_libraries(resilience PUBLIC kokkos)
+##target_link_libraries(resilience PUBLIC kokkos)
+TARGET_LINK_KOKKOS(resilience PUBLIC)
 
 # VeloC backend
 find_package(VeloC REQUIRED)
@@ -114,3 +114,9 @@ endif()
 if (KR_ENABLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
+
+##get_cmake_property(_variableNames VARIABLES)
+##list (SORT _variableNames)
+##foreach (_variableName ${_variableNames})
+##    message(STATUS "${_variableName}=${${_variableName}}")
+##endforeach()
