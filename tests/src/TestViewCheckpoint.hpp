@@ -46,6 +46,7 @@
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
+#define KOKKOS_ENABLE_MANUAL_CHECKPOINT
 #include <Kokkos_Resilience.hpp>
 
 namespace Test {

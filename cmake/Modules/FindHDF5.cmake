@@ -6,7 +6,7 @@ find_path(_hdf5_root
           )
 
 find_library(_hdf5_lib
-             NAMES libhdf5.a libhdf5.so
+             NAMES libhdf5.so
              HINTS ${_hdf5_root}/lib ${_hdf5_root}/lib64)
 
 find_path(_hdf5_include_dir

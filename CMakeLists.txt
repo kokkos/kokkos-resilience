@@ -7,7 +7,7 @@ add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
 
 include_directories(${kokkos-resilience_SOURCE_DIR})
-add_subdirectory(src)
+include_directories(${kokkos-resilience_BINARY_DIR})
 
 # Require C++14
 target_compile_features(resilience PUBLIC cxx_std_14)
@@ -26,13 +26,14 @@ find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 ##target_link_libraries(resilience PUBLIC kokkos)
 TARGET_LINK_KOKKOS(resilience PUBLIC)
 
-# VeloC backend
-find_package(VeloC REQUIRED)
-target_link_libraries(resilience PRIVATE veloc::veloc)
+option( USE_VELOC "use VeloC backend for automatic checkpointing" ON )
 
-# MPI requirement
-find_package(MPI REQUIRED)
-target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
+# VeloC backend
+if (USE_VELOC)
+   find_package(VeloC REQUIRED)
+   target_link_libraries(resilience PRIVATE veloc::veloc)
+endif()
+
 
 # Library options
 option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
@@ -45,15 +46,24 @@ option( USE_HDF5_PARALLEL "use parallel version of HDF5" ON )
 
 if (USE_HDF5_PARALLEL)
   set(USE_HDF5 ON)
+  set(KOKKOS_ENABLE_HDF5_PARALLEL ON)
 endif()
 
 if (USE_HDF5)
    find_package(HDF5 REQUIRED)
    target_link_libraries(resilience PRIVATE HDF5::HDF5)
+   set(KOKKOS_ENABLE_HDF5 ON)
 endif()
 
-link_directories(${VeloC_LINK_DIRECTORIES}
-                 ${Kokkos_LINK_DIRECTORIES} )
+# MPI requirement
+if (USE_VELOC OR USE_HDF5_PARALLEL)
+   find_package(MPI REQUIRED)
+   target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
+   link_directories(${VeloC_LINK_DIRECTORIES})
+   set(KOKKOS_ENABLE_VELOC ON)
+endif()
+
+add_subdirectory(src)
 
 ##link_libraries(dl)
 # Export targets for in-tree linking
@@ -61,6 +71,10 @@ export(TARGETS resilience
        NAMESPACE Kokkos::
        FILE resilienceTargets.cmake
        )
+
+if (Kokkos_ENABLE_Cuda)
+   set(KOKKOS_ENABLE_RES_CUDA)
+endif()
 
 # Set up find_package config and version file
 # Allow same major version compatibility
@@ -93,13 +107,25 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
 
 
-install(FILES 
+if (USE_VELOC)
+   install(FILES 
         ${CMAKE_MODULE_PATH}/FindVeloC.cmake
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+
+   # Need to install/export VeloC find module for downstream dependencies
+   configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
+
+endif()
+
+if (USE_HDF5)
+   install(FILES 
         ${CMAKE_MODULE_PATH}/FindHDF5.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
 
-# Need to install/export VeloC find module for downstream dependencies
-configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
+endif()
+
+CONFIGURE_FILE(cmake/KokkosResilience_config.h.in KokkosResilience_config.h @ONLY)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/KokkosResilience_config.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
 
 # Add subdirectories for examples and tests if they are enabled
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)

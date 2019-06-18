@@ -1,8 +1,8 @@
-#include <resilience/checkpoint.hpp>
-#include <resilience/veloc/veloc_backend.hpp>
-#include <resilience/context.hpp>
+
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
+#define KOKKOS_ENABLE_AUTOMATIC_CHECKPOINT
+#include <Kokkos_Resilience.hpp>
 
 int
 main( int argc, char **argv )

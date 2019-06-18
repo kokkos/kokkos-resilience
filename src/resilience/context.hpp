@@ -4,7 +4,9 @@
 #include <utility>
 #include <mpi.h>
 
-#include "veloc/veloc_backend.hpp"
+#ifdef KOKKOS_ENABLE_VELOC
+   #include "veloc/veloc_backend.hpp"
+#endif
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
@@ -20,6 +22,7 @@ namespace KokkosResilience
   template< typename Backend >
   class Context;
   
+#ifdef KOKKOS_ENABLE_VELOC
   template<>
   class Context< VeloCCheckpointBackend >
   {
@@ -80,6 +83,9 @@ namespace KokkosResilience
     Util::detail::TraceStack  m_trace;
 #endif
   };
+
+#endif  // KOKKOS_ENABLE_VELOC
+
 }
 
 #endif  // INC_RESILIENCE_CONTEXT_HPP

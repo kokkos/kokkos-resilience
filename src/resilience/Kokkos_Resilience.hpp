@@ -1,16 +1,23 @@
-#ifndef __KOKKOS_RESILIENCE__
-#define __KOKKOS_RESILIENCE__
+#ifndef INC_RESILIENCE_RESILIENCE_HPP
+#define INC_RESILIENCE_RESILIENCE_HPP
 
-#include <impl/Kokkos_StdFileSpace.hpp>
+#include <KokkosResilience_config.h>
 
-#ifdef KOKKOS_ENABLE_HDF5 
-   #include <impl/Kokkos_HDF5Space.hpp>
+#include <context.hpp>
+
+#ifdef KOKKOS_ENABLE_MANUAL_CHECKPOINT
+   #include <Kokkos_ManualCheckpoint.hpp>
+#endif
+
+#ifdef KOKKOS_ENABLE_AUTOMATIC_CHECKPOINT
+   #include <Kokkos_AutomaticCheckpoint.hpp>
+#endif
+
+#ifdef KOKKOS_ENABLE_RES_CUDA 
+   #include <Kokkos_ResCuda.hpp>
+   #include <Kokkos_ResCudaSpace.hpp>
+   #include <Kokkos_Cuda_ResParallel.hpp>
 #endif
 
 
-
-
-
-
-#endif
-
+#endif  // INC_RESILIENCE_RESILIENCE_HPP
