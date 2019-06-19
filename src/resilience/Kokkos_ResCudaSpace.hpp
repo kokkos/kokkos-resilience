@@ -455,7 +455,7 @@ namespace Experimental {
 #define KOKKOS_MAKE_RESILIENCE_FUNC_NAME( id ) id##_resilience_func
 
 #define KOKKOS_DECLARE_RESILIENCE_OBJECTS(data_type, id) \
-   template __global__ static void Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >( \
+   template __global__ void Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >( \
                                                                 Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> ); \
    void * KOKKOS_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >; 
 

@@ -43,6 +43,7 @@
 */
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Resilience.hpp>
 #include<cuda/TestCuda_Category.hpp>
 
 KOKKOS_DECLARE_RESILIENCE_OBJECTS(int,int)

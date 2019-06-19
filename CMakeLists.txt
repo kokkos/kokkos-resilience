@@ -28,6 +28,7 @@ TARGET_LINK_KOKKOS(resilience PUBLIC)
 
 option( USE_VELOC "use VeloC backend for automatic checkpointing" ON )
 
+
 # VeloC backend
 if (USE_VELOC)
    find_package(VeloC REQUIRED)
@@ -59,8 +60,13 @@ endif()
 if (USE_VELOC OR USE_HDF5_PARALLEL)
    find_package(MPI REQUIRED)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
-   link_directories(${VeloC_LINK_DIRECTORIES})
    set(KOKKOS_ENABLE_VELOC ON)
+endif()
+
+if (USE_VELOC)
+   link_directories(${KOKKOS_LIBRARY_DIRS} ${VeloC_LINK_DIRECTORIES})
+else()
+   link_directories(${KOKKOS_LIBRARY_DIRS})
 endif()
 
 add_subdirectory(src)
@@ -73,7 +79,9 @@ export(TARGETS resilience
        )
 
 if (Kokkos_ENABLE_Cuda)
-   set(KOKKOS_ENABLE_RES_CUDA)
+   set(KOKKOS_ENABLE_RES_CUDA ON)
+else()
+   set(KOKKOS_ENABLE_RES_CUDA OFF)
 endif()
 
 # Set up find_package config and version file

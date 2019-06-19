@@ -53,6 +53,8 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Cuda.hpp>
+
+#include <Kokkos_Resilience.hpp>
 #include <Kokkos_ResCudaSpace.hpp>
 
 #include <Cuda/Kokkos_Cuda_Instance.hpp>

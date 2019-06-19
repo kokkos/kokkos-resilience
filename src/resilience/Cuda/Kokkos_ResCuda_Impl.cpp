@@ -54,6 +54,7 @@
 #include <Cuda/Kokkos_Cuda_Locks.hpp>
 #include <impl/Kokkos_Error.hpp>
 #include <impl/Kokkos_Profiling_Interface.hpp>
+#include <Kokkos_Resilience.hpp>
 
 /*--------------------------------------------------------------------------*/
 /* Standard 'C' libraries */

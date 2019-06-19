@@ -132,7 +132,7 @@ public:
   /// return asynchronously, before the functor completes.  This
   /// method does not return until all dispatched functors on this
   /// device have completed.
-  static void fence();
+  void fence();
 
   /** \brief  Return the maximum amount of concurrency.  */
   static int concurrency();

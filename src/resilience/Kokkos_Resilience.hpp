@@ -16,7 +16,7 @@
 #ifdef KOKKOS_ENABLE_RES_CUDA 
    #include <Kokkos_ResCuda.hpp>
    #include <Kokkos_ResCudaSpace.hpp>
-   #include <Kokkos_Cuda_ResParallel.hpp>
+   #include <Cuda/Kokkos_Cuda_ResParallel.hpp>
 #endif
 
 
