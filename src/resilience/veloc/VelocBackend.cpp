@@ -4,7 +4,7 @@
 #include <fstream>
 #include <veloc.h>
 
-#include "resilience/Context.hpp"
+#include "../Context.hpp"
 
 #ifdef KR_ENABLE_TRACING
    #include "../util/trace.hpp"
@@ -62,7 +62,7 @@ namespace
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
+      VELOC_SAFE_CALL( VELOC_Route_file( label.c_str(), veloc_file_name ) );
       
       std::string fname( veloc_file_name );
       std::ofstream vfile( fname, std::ios::binary );
@@ -110,7 +110,7 @@ namespace
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
+      VELOC_SAFE_CALL( VELOC_Route_file( label.c_str(), veloc_file_name ) );
       printf( "restore file name: %s\n", veloc_file_name );
       
       std::string fname( veloc_file_name );
