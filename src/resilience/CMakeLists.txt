@@ -1,10 +1,14 @@
 target_sources(resilience PRIVATE
                ${PROJECT_SOURCE_DIR}/src/resilience/Kokkos_Resilience.cpp
-               ${PROJECT_SOURCE_DIR}/src/resilience/veloc/veloc_backend.cpp
                ${PROJECT_SOURCE_DIR}/src/resilience/util/trace.cpp
                ${PROJECT_SOURCE_DIR}/src/resilience/impl/Kokkos_ExternalIOInterface.cpp
                ${PROJECT_SOURCE_DIR}/src/resilience/impl/Kokkos_StdFileSpace.cpp
                )
+
+if (USE_VELOC)
+   target_sources(resilience PRIVATE
+               ${PROJECT_SOURCE_DIR}/src/resilience/veloc/veloc_backend.cpp)
+endif()
 
 INSTALL (DIRECTORY
          "${PROJECT_SOURCE_DIR}/src/resilience/"

@@ -11,8 +11,6 @@
 #include <iterator>
 #include <fstream>
 
-#include <mpi.h>
-
 #include <pico/picojson.h>
 
 #include "timer.hpp"

@@ -10,10 +10,5 @@
 #endif
 
 
-#ifdef KOKKOS_ENABLE_RES_CUDA
-#include <Kokkos_ResCuda.hpp>
-#include <Kokkos_Cuda_ResParallel.hpp>
-#endif
-
 #endif
 

@@ -2,7 +2,9 @@
 #define INC_RESILIENCE_CONTEXT_HPP
 
 #include <utility>
+#ifdef KOKKOS_ENABLE_VELOC
 #include <mpi.h>
+#endif
 
 #ifdef KOKKOS_ENABLE_VELOC
    #include "veloc/veloc_backend.hpp"

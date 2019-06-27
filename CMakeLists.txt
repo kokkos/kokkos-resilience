@@ -9,8 +9,12 @@ add_library(Kokkos::resilience ALIAS resilience)
 include_directories(${kokkos-resilience_SOURCE_DIR})
 include_directories(${kokkos-resilience_BINARY_DIR})
 
-# Require C++14
-target_compile_features(resilience PUBLIC cxx_std_14)
+    # Require C++14
+if (CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
+    message("nvcc wrapper requires that CXX standard by set in kokkos build")
+else()
+   target_compile_features(resilience PUBLIC cxx_std_14)
+endif()
 
 target_include_directories(resilience PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -42,8 +46,8 @@ if (KR_ENABLE_TRACING)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
 endif()
 
-option( USE_HDF5 "add HDF5 support" ON )
-option( USE_HDF5_PARALLEL "use parallel version of HDF5" ON )
+option( USE_HDF5 "add HDF5 support" OFF )
+option( USE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
 
 if (USE_HDF5_PARALLEL)
   set(USE_HDF5 ON)
@@ -71,7 +75,6 @@ endif()
 
 add_subdirectory(src)
 
-##link_libraries(dl)
 # Export targets for in-tree linking
 export(TARGETS resilience
        NAMESPACE Kokkos::
