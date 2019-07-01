@@ -69,6 +69,9 @@ namespace KokkosResilience
     overhead_trace.end();
 #endif
     
+    // Register any views that haven't already been registered
+    ctx.backend().register_hashes( views );
+    
     if ( ctx.backend().restart_available( label, iteration ) )
     {
       // Load views with data
