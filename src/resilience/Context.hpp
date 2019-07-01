@@ -26,7 +26,7 @@ namespace KokkosResilience
   
 #ifdef KR_ENABLE_VELOC
   template<>
-  class Context< VeloCCheckpointBackend >
+  class Context< VeloCFileBackend >
   {
   public:
     
@@ -70,7 +70,7 @@ namespace KokkosResilience
     
     MPI_Comm comm() const noexcept { return m_comm; }
     
-    VeloCCheckpointBackend &backend() { return m_backend; }
+    VeloCFileBackend &backend() { return m_backend; }
     
 #ifdef KR_ENABLE_TRACING
     Util::detail::TraceStack  &trace() { return m_trace; };
@@ -79,7 +79,7 @@ namespace KokkosResilience
   private:
     
     MPI_Comm  m_comm;
-    VeloCCheckpointBackend m_backend;
+    VeloCFileBackend m_backend;
     
 #ifdef KR_ENABLE_TRACING
     Util::detail::TraceStack  m_trace;

@@ -13,12 +13,12 @@ namespace KokkosResilience
   template< typename Backend >
   class Context;
   
-  class VeloCCheckpointBackend
+  class VeloCFileBackend
   {
   public:
   
-    VeloCCheckpointBackend( Context< VeloCCheckpointBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
-    ~VeloCCheckpointBackend();
+    VeloCFileBackend( Context< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
+    ~VeloCFileBackend();
   
     void checkpoint( const std::string &label, int version,
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
@@ -32,7 +32,7 @@ namespace KokkosResilience
   private:
   
     MPI_Comm m_mpi_comm;
-    Context< VeloCCheckpointBackend > *m_context;
+    Context< VeloCFileBackend > *m_context;
   };
 }
 

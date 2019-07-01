@@ -36,19 +36,19 @@ namespace
   }
 }
   
-  VeloCCheckpointBackend::VeloCCheckpointBackend( Context< VeloCCheckpointBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config )
+  VeloCFileBackend::VeloCFileBackend( Context< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config )
     : m_mpi_comm( mpi_comm ), m_context( &ctx )
   {
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str()));
   }
   
-  VeloCCheckpointBackend::~VeloCCheckpointBackend()
+  VeloCFileBackend::~VeloCFileBackend()
   {
     VELOC_Finalize( false );
   }
   
   void
-  VeloCCheckpointBackend::checkpoint( const std::string &label, int version,
+  VeloCFileBackend::checkpoint( const std::string &label, int version,
                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
   {
     // Wait for previous checkpoint to finish
@@ -88,7 +88,7 @@ namespace
   }
   
   bool
-  VeloCCheckpointBackend::restart_available( const std::string &label, int version )
+  VeloCFileBackend::restart_available( const std::string &label, int version )
   {
     int latest = VELOC_Restart_test( label.c_str(), 0 );
  
@@ -96,11 +96,11 @@ namespace
     return version <= latest;
   }
 
-  int VeloCCheckpointBackend::latest_version( const std::string &label ) {
+  int VeloCFileBackend::latest_version( const std::string &label ) {
       return VELOC_Restart_test(label.c_str(), 0);
    }
   
-  void VeloCCheckpointBackend::restart( const std::string &label, int version,
+  void VeloCFileBackend::restart( const std::string &label, int version,
                                         const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ) );
