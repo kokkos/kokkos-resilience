@@ -104,7 +104,7 @@ public:
   void execute() const
     {
         Kokkos::Impl::shared_allocation_enable_duplicates();
-        typedef Kokkos::RangePolicy<Kokkos::Cuda> surrogate_policy;
+        typedef Kokkos::RangePolicy<Kokkos::Cuda, WorkTag, LaunchBounds> surrogate_policy;
 
         surrogate_policy lPolicy[3];
         for (int i = 0; i < 3; i++) { 
@@ -122,7 +122,7 @@ public:
         closureII.execute();
         closureIII.execute();
         Kokkos::fence();
-        printf("Combining duplicates \n");
+        //printf("Combining duplicates \n");
         Kokkos::Experimental::combine_res_duplicates();
     }
 
@@ -130,7 +130,9 @@ public:
                const Policy       & arg_policy )
       : m_functor( arg_functor )
       , m_policy(  arg_policy )
-    { printf("res pf constructor\n"); }
+    { 
+      // printf("res pf constructor\n"); 
+    }
 };
 
 #ifdef JSM_TODO
