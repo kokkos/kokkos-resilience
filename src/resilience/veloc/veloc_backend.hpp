@@ -24,6 +24,7 @@ namespace KokkosResilience
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
   
     bool restart_available( const std::string &label, int version );
+    int latest_version (const std::string &label);
   
     void restart( const std::string &label, int version,
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );

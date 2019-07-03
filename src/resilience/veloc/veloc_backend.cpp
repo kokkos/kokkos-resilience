@@ -67,7 +67,7 @@ namespace
       
       std::string fname( veloc_file_name );
       std::ofstream vfile( fname, std::ios::binary );
-  
+
 #ifdef KR_ENABLE_TRACING
       auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "write" );
 #endif
@@ -92,10 +92,14 @@ namespace
   VeloCCheckpointBackend::restart_available( const std::string &label, int version )
   {
     int latest = VELOC_Restart_test( label.c_str(), 0 );
-    
+ 
     // res is < 0 if no versions available, else it is the latest version
     return version <= latest;
   }
+
+  int VeloCCheckpointBackend::latest_version( const std::string &label ) {
+      return VELOC_Restart_test(label.c_str(), 0);
+   }
   
   void VeloCCheckpointBackend::restart( const std::string &label, int version,
                                         const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
@@ -112,7 +116,7 @@ namespace
       
       std::string fname( veloc_file_name );
       std::ifstream vfile( fname, std::ios::binary );
-  
+
 #ifdef KR_ENABLE_TRACING
       auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "read" );
 #endif
