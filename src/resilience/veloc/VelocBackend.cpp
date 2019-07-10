@@ -49,7 +49,7 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
+                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > & )
   {
     bool status = true;
     
@@ -100,6 +100,8 @@ namespace KokkosResilience
       {
         int id = static_cast< int >( m_view_labels.size() );
         VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), view->span(), view->data_type_size() ) );
+        
+        m_view_labels.emplace( view->label() );
       }
     }
   }
