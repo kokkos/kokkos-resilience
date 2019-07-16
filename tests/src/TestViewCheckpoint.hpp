@@ -49,6 +49,7 @@
 #define KOKKOS_ENABLE_MANUAL_CHECKPOINT
 #include <Kokkos_Resilience.hpp>
 
+#include <mpi.h>
 namespace Test {
 
 namespace {
