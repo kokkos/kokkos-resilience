@@ -22,8 +22,8 @@ if ((NOT ${_veloc_root})
         OR (NOT ${_veloc_module_lib})
         OR (NOT ${_veloc_include_dir}))
   set(_fail_msg "Could NOT find VeloC (set VeloC_DIR or VeloC_ROOT to point to install)")
-elseif ((NOT ${MPI_FOUND}) OR (NOT ${MPI_CXX_FOUND}))
-  set(_fail_msg "Could NOT find Veloc (missing MPI)")
+##elseif ((NOT ${MPI_FOUND}) OR (NOT ${MPI_CXX_FOUND}))
+##  set(_fail_msg "Could NOT find Veloc (missing MPI)")
 else()
   set(_fail_msg "Could NOT find VeloC")
 endif()
@@ -34,8 +34,6 @@ find_package_handle_standard_args(VeloC ${_fail_msg}
                                   _veloc_client_lib
                                   _veloc_module_lib
                                   _veloc_include_dir
-                                  MPI_FOUND
-                                  MPI_CXX_FOUND
                                   )
 
 add_library(veloc::veloc_modules UNKNOWN IMPORTED)
@@ -47,10 +45,12 @@ add_library(veloc::veloc UNKNOWN IMPORTED)
 set_target_properties(veloc::veloc PROPERTIES
                       IMPORTED_LOCATION ${_veloc_client_lib}
                       INTERFACE_INCLUDE_DIRECTORIES ${_veloc_include_dir}
-                      INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX"
+                      INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX;er;axl;rankstr;kvtree;redset;shuffile"
                       )
 
 set(VeloC_DIR ${_veloc_root})
+set(VeloC_LINK_DIRECTORIES ${_veloc_root}/lib64)
+
 
 mark_as_advanced(
   _veloc_library

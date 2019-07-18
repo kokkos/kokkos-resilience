@@ -5,7 +5,10 @@
 #include <veloc.h>
 
 #include "../context.hpp"
-#include "../util/trace.hpp"
+
+#ifdef KR_ENABLE_TRACING
+   #include "../util/trace.hpp"
+#endif
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
 
@@ -59,7 +62,7 @@ namespace
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
       printf( "veloc file name: %s\n", veloc_file_name );
       
       std::string fname( veloc_file_name );
@@ -108,7 +111,7 @@ namespace
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
       printf( "restore file name: %s\n", veloc_file_name );
       
       std::string fname( veloc_file_name );

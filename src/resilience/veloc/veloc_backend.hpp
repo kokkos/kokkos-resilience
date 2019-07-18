@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
 #include <mpi.h>
 

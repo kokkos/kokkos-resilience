@@ -11,8 +11,6 @@
 #include <iterator>
 #include <fstream>
 
-#include <mpi.h>
-
 #include <pico/picojson.h>
 
 #include "timer.hpp"
@@ -44,6 +42,8 @@ namespace KokkosResilience
     class TraceBase
     {
     public:
+      explicit TraceBase( ) : m_done( false ), m_parent( nullptr ), m_trace_stack( nullptr ) 
+      {}
   
       explicit TraceBase( detail::TraceStack *trace )
         : m_done( false ), m_parent( nullptr ), m_trace_stack( trace )
@@ -190,7 +190,18 @@ namespace KokkosResilience
       
       
     }
-    
+
+    class TraceShell : public TraceBase
+    {
+       public:
+          inline virtual void end() {
+          }
+
+          inline virtual std::string get_typestring() const {
+             return (std::string)"unknown";
+          }
+    };
+
     template< typename Id >
     class Trace : public TraceBase
     {
@@ -265,7 +276,8 @@ namespace KokkosResilience
       
       Trace< Id > *m_trace;
     };
-    
+
+#ifdef KR_TRACING_ENABLED
     template< typename TraceType, typename Context, typename... Args >
     auto begin_trace( Context &ctx, Args &&... args )
     {
@@ -275,6 +287,13 @@ namespace KokkosResilience
       
       return ret;
     }
+#else
+    template< typename TraceType, typename Context, typename... Args >
+    auto begin_trace( Context &ctx, Args &&... args )
+    {
+       return TraceShell();    
+    }
+#endif
     
     template< typename Id >
     class TimingTrace : public Trace< Id >
