@@ -56,7 +56,7 @@ endif()
 
 if (USE_HDF5)
    find_package(HDF5 REQUIRED)
-   target_link_libraries(resilience PRIVATE HDF5::HDF5)
+   target_link_libraries(resilience PUBLIC HDF5::HDF5)
    set(KOKKOS_ENABLE_HDF5 ON)
 endif()
 
