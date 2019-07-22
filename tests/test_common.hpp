@@ -4,13 +4,26 @@
 #include <gtest/gtest.h>
 #include <Kokkos_Core.hpp>
 
-using enabled_exec_spaces = ::testing::Types<
+namespace detail
+{
+  struct dummy {};
+  
+  template< typename, typename... Rest >
+  using remove_first_type = ::testing::Types< Rest... >;
+  
+  using exec_spaces = remove_first_type< dummy
 #ifdef KOKKOS_ENABLE_SERIAL
-  Kokkos::Serial
+    , Kokkos::Serial
 #endif
 #ifdef KOKKOS_ENABLE_OPENMP
-  Kokkos::OpenMP
+    , Kokkos::OpenMP
 #endif
->;
+#ifdef KOKKOS_ENABLE_CUDA
+    , Kokkos::Cuda
+#endif
+  >;
+}
+
+using enabled_exec_spaces = detail::exec_spaces;
 
 #endif // INC_TEST_COMMON_HPP
