@@ -150,15 +150,10 @@ option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
 add_subdirectory(tpl)
 
 if (KR_ENABLE_TESTS)
+  enable_testing()
   add_subdirectory(tests)
 endif()
 
 if (KR_ENABLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
-
-##get_cmake_property(_variableNames VARIABLES)
-##list (SORT _variableNames)
-##foreach (_variableName ${_variableNames})
-##    message(STATUS "${_variableName}=${${_variableName}}")
-##endforeach()
