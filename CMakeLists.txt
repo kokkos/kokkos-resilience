@@ -73,6 +73,11 @@ else()
    link_directories(${KOKKOS_LIBRARY_DIRS})
 endif()
 
+
+find_package(Boost REQUIRED)
+
+target_link_libraries(resilience PUBLIC Boost::boost)
+
 add_subdirectory(src)
 
 # Export targets for in-tree linking
@@ -119,7 +124,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
 
 
 if (USE_VELOC)
-   install(FILES 
+   install(FILES
         ${CMAKE_MODULE_PATH}/FindVeloC.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
 
@@ -129,7 +134,7 @@ if (USE_VELOC)
 endif()
 
 if (USE_HDF5)
-   install(FILES 
+   install(FILES
         ${CMAKE_MODULE_PATH}/FindHDF5.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
 
