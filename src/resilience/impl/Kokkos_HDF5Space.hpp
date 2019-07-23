@@ -7,6 +7,7 @@
 #include <iosfwd>
 #include <typeinfo>
 
+#include <KokkosResilience_config.h>
 #include <Kokkos_Core_fwd.hpp>
 #include <Kokkos_Concepts.hpp>
 #include <Kokkos_MemoryTraits.hpp>
