@@ -60,7 +60,7 @@ namespace {
       auto F_B = Kokkos::create_chkpt_mirror(fs, h_B);
       
       if ( iter == 0 ) {
-        Kokkos::parallel_for (dim0, KOKKOS_LAMBDA(const int i) {
+        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(const int i) {
           for (int j=0; j< dim1; j++) {
             A(i,j) = 0;  B(i,j) = 0;
           }
@@ -73,7 +73,7 @@ namespace {
       for ( int r = 0; r < N; r++ ) {
         Kokkos::deep_copy(A, h_A);  Kokkos::deep_copy(B, h_B);
         
-        Kokkos::parallel_for (dim0, KOKKOS_LAMBDA(const int i) {
+        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(const int i) {
           for (int j=0; j< dim1; j++) {
             A(i,j) += 1;  B(i,j) += 1;
           }
@@ -115,7 +115,7 @@ namespace {
       cp_file_space_type::set_default_path("./data");
       Kokkos::View<char**,cp_file_space_type> cp_view(file_name, dim0, dim1);
       
-      Kokkos::parallel_for (dim0, KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = i * dim0 + j;
         }
@@ -129,7 +129,7 @@ namespace {
       Kokkos::deep_copy( cp_view, h_view_2 );
       Kokkos::fence();
       
-      Kokkos::parallel_for (dim0, KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = 0;
         }
@@ -172,18 +172,18 @@ namespace {
       typedef CpFileSpace cp_file_space_type;
       Kokkos::View<double**,cp_file_space_type> cp_view(file_name, dim0, dim1);
       
-      Kokkos::parallel_for (dim0, KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = i + j;
         }
       });
       Kokkos::deep_copy( h_view_2, view_2 );
-      
+
       // host_space to ExecSpace
       Kokkos::deep_copy( cp_view, h_view_2 );
       Kokkos::fence();
       
-      Kokkos::parallel_for (dim0, KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = 0;
         }

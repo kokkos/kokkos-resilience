@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "test_common.hpp"
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Resilience.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
 
@@ -98,6 +99,8 @@ struct TestResilientRange {
   }
   
 };
+
+KOKKOS_DECLARE_RESILIENCE_OBJECTS(int,int)
 
 
 TYPED_TEST_SUITE( TestResilience, enabled_exec_spaces );
