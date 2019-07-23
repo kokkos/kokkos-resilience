@@ -56,7 +56,7 @@ endif()
 
 if (USE_HDF5)
    find_package(HDF5 REQUIRED)
-   target_link_libraries(resilience PRIVATE HDF5::HDF5)
+   target_link_libraries(resilience PUBLIC HDF5::HDF5)
    set(KOKKOS_ENABLE_HDF5 ON)
 endif()
 
@@ -150,15 +150,10 @@ option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
 add_subdirectory(tpl)
 
 if (KR_ENABLE_TESTS)
+  enable_testing()
   add_subdirectory(tests)
 endif()
 
 if (KR_ENABLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
-
-##get_cmake_property(_variableNames VARIABLES)
-##list (SORT _variableNames)
-##foreach (_variableName ${_variableNames})
-##    message(STATUS "${_variableName}=${${_variableName}}")
-##endforeach()
