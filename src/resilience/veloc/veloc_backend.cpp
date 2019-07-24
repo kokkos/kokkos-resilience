@@ -62,7 +62,7 @@ namespace
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
       printf( "veloc file name: %s\n", veloc_file_name );
       
       std::string fname( veloc_file_name );
@@ -111,7 +111,7 @@ namespace
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
       printf( "restore file name: %s\n", veloc_file_name );
       
       std::string fname( veloc_file_name );

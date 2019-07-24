@@ -12,7 +12,7 @@
 #include <Kokkos_MemoryTraits.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
 #include <KokkosResilience_config.h>
-#include <impl/Kokkos_ExternalIOInterface.hpp>
+#include "../filesystem/Kokkos_ExternalIOInterface.hpp"
 #include <hdf5.h>
 
 
@@ -50,7 +50,7 @@ public:
       OperationPrimitive & operator = ( OperationPrimitive && ) = default;
       OperationPrimitive & operator = ( const OperationPrimitive & ) = default;
 
-      OperationPrimitive( OperationPrimitive * ptr_ ) : type(ptr_->type), val(ptr_->val), operation(ptr_->operation), 
+      OperationPrimitive( OperationPrimitive * ptr_ ) : type(ptr_->type), val(ptr_->val), operation(ptr_->operation),
                                                               m_left(ptr_->m_left), m_right(ptr_->m_right) {}
 
       ~OperationPrimitive() {
@@ -69,7 +69,7 @@ public:
             case 1:
                return val;
             case 2:
-               return per_opp( m_left != nullptr ? m_left->evaluate() : 0 , 
+               return per_opp( m_left != nullptr ? m_left->evaluate() : 0 ,
                                m_right != nullptr ? m_right->evaluate() : 0 );
             default:
                return 0;
@@ -129,10 +129,10 @@ public:
 
    boost::property_tree::ptree * get_config() { return &m_config; }
 
-   void set_param_list( boost::property_tree::ptree l_config, int data_scope, std::string var_name, 
+   void set_param_list( boost::property_tree::ptree l_config, int data_scope, std::string var_name,
                         hsize_t var [], std::map<const std::string, size_t> & var_map );
 
-   KokkosHDF5ConfigurationManager( const boost::property_tree::ptree & config_ ) : m_config(config_) { 
+   KokkosHDF5ConfigurationManager( const boost::property_tree::ptree & config_ ) : m_config(config_) {
        boost::property_tree::ptree l_config = config_.get_child("Layout_Config");
        std::string sLayout  = l_config.get<std::string>("layout");
        if (sLayout == "CONTIGUOUS") {
@@ -240,24 +240,24 @@ public:
          local_block[i] = cp_.local_block[i];
          view_offset[i] = cp_.view_offset[i];
       }
-      // need to re-initialize 
+      // need to re-initialize
       if (data_size != cp_.data_size) {
          if (m_layout == KokkosHDF5ConfigurationManager::LAYOUT_DEFAULT) {
-            initialize( size, file_path, data_set ); 
+            initialize( size, file_path, data_set );
          } else {
-            initialize( size, file_path, KokkosHDF5ConfigurationManager ( 
+            initialize( size, file_path, KokkosHDF5ConfigurationManager (
                                  KokkosIOConfigurationManager::get_instance()->get_config(file_path) ) );
          }
       }
       m_is_initialized = true;
-   } 
+   }
 
    int initialize( const size_t size_,
-                   const std::string & filepath, 
+                   const std::string & filepath,
                    KokkosHDF5ConfigurationManager config_ );
 
    int initialize( const size_t size_,
-                   const std::string & filepath, 
+                   const std::string & filepath,
                    const std::string & dataset_name );
 
    int open_file(int read_write);
@@ -280,10 +280,10 @@ public:
 
 
 /// \class HDF5Space
-/// \brief Memory management for HDF5 
+/// \brief Memory management for HDF5
 ///
 /// HDF5Space is a memory space that governs access to HDF5 data.
-/// 
+///
 class HDF5Space {
 public:
   //! Tag this class as a kokkos memory space
@@ -336,7 +336,7 @@ public:
   /**\brief Return Name of the MemorySpace */
   static constexpr const char* name() { return m_name; }
 
-  static void restore_all_views(); 
+  static void restore_all_views();
   static void restore_view(const std::string name);
   static void checkpoint_views();
   static void checkpoint_create_view_targets();
@@ -452,7 +452,7 @@ template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Exp
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  {       
+  {
     Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
   }
 

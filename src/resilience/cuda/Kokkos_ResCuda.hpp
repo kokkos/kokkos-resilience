@@ -54,14 +54,14 @@
 
 #include <Kokkos_Cuda.hpp>
 #include <Kokkos_CudaSpace.hpp>
-#include <Kokkos_ResCudaSpace.hpp>
+#include "Kokkos_ResCudaSpace.hpp"
 
 #include <Kokkos_Parallel.hpp>
 #include <Kokkos_TaskScheduler.hpp>
 #include <Kokkos_Layout.hpp>
 #include <Kokkos_ScratchSpace.hpp>
 #include <Kokkos_MemoryTraits.hpp>
-#include <impl/Kokkos_Tags.hpp>
+#include <filesystem/Kokkos_Tags.hpp>
 
 
 /*--------------------------------------------------------------------------*/

@@ -67,7 +67,7 @@ namespace Experimental {
       std::map<std::string, Kokkos::Experimental::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
       while ( it != ResCudaSpace::duplicate_map.end() ) {
           Kokkos::Experimental::DuplicateTracker * dt = it->second;
-//          Kokkos::Experimental::SpecDuplicateTracker< int*, Kokkos::ResCudaSpace > * dt = 
+//          Kokkos::Experimental::SpecDuplicateTracker< int*, Kokkos::ResCudaSpace > * dt =
 //                    (Kokkos::Experimental::SpecDuplicateTracker< int*, Kokkos::ResCudaSpace > *)it->second;
           printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
           dt->combine_dups();
@@ -107,10 +107,10 @@ public:
         typedef Kokkos::RangePolicy<Kokkos::Cuda, WorkTag, LaunchBounds> surrogate_policy;
 
         surrogate_policy lPolicy[3];
-        for (int i = 0; i < 3; i++) { 
+        for (int i = 0; i < 3; i++) {
            cudaStream_t stream;
            cudaStreamCreate(&stream);
-           Kokkos::Cuda cuda_inst(stream); 
+           Kokkos::Cuda cuda_inst(stream);
            new (&lPolicy[i]) surrogate_policy(cuda_inst, m_policy.begin(), m_policy.end());
         }
 
@@ -130,13 +130,13 @@ public:
                const Policy       & arg_policy )
       : m_functor( arg_functor )
       , m_policy(  arg_policy )
-    { 
-      // printf("res pf constructor\n"); 
+    {
+      // printf("res pf constructor\n");
     }
 };
 
 #ifdef JSM_TODO
-// MDRangePolicy impl
+// MDRangePolicy filesystem
 template< class FunctorType , class ... Traits >
 class ParallelFor< FunctorType
                  , Kokkos::MDRangePolicy< Traits ... >
@@ -494,7 +494,7 @@ public:
       // This is the final block with the final result at the final threads' location
 
       size_type * const shared = kokkos_impl_cuda_shared_memory<size_type>() + ( blockDim.y - 1 ) * word_count.value ;
-      size_type * const global = m_result_ptr_device_accessible? reinterpret_cast<size_type*>(m_result_ptr) : 
+      size_type * const global = m_result_ptr_device_accessible? reinterpret_cast<size_type*>(m_result_ptr) :
                                  ( m_unified_space ? m_unified_space : m_scratch_space );
 
       if ( threadIdx.y == 0 ) {
@@ -625,7 +625,7 @@ public:
 };
 
 
-// MDRangePolicy impl
+// MDRangePolicy filesystem
 template< class FunctorType , class ReducerType, class ... Traits >
 class ParallelReduce< FunctorType
                     , Kokkos::MDRangePolicy< Traits ... >
@@ -2036,7 +2036,7 @@ public:
     }
 
   ParallelScanWithTotal( const FunctorType  & arg_functor ,
-                         const Policy       & arg_policy ,   
+                         const Policy       & arg_policy ,
                          ReturnType         & arg_returnvalue )
   : m_functor( arg_functor )
   , m_policy( arg_policy )
@@ -2061,7 +2061,7 @@ namespace Experimental {
           return;
       }
       int N = data_len / sizeof(rd_type);
-      m_cf.load_ptrs( static_cast<rd_type*>(original_data), static_cast<rd_type*>(dup_list[0]), 
+      m_cf.load_ptrs( static_cast<rd_type*>(original_data), static_cast<rd_type*>(dup_list[0]),
                     static_cast<rd_type*>(dup_list[1]), static_cast<rd_type*>(dup_list[2]), N );
 
       printf("invoking parallel combine operation\n");
@@ -2078,7 +2078,7 @@ namespace Experimental {
       printf("launching kernel: %ld \n", sizeof(m_cf) );
 //      launch_comb_dup_kernel< comb_type >
 //          <<< grid , block , 0 , spc.cuda_stream() >>> ( cf );
-      cudaError_t cErr = cudaLaunchKernel(func_ptr, grid, block, args, 0, spc.cuda_stream() ); 
+      cudaError_t cErr = cudaLaunchKernel(func_ptr, grid, block, args, 0, spc.cuda_stream() );
       
      
 //      cudaError_t cErr = cudaGetLastError();

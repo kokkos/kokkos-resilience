@@ -57,14 +57,14 @@
 namespace Kokkos {
 
 
-/** \brief  Cuda on-device memory management */
+/** \brief  cuda on-device memory management */
 
 class ResCudaSpace : public CudaSpace {
 public:
   //! Tag this class as a kokkos memory space
   typedef ResCudaSpace             memory_space ;
   typedef ResCudaSpace          resilient_space ;
-  typedef Kokkos::Cuda          execution_space ;
+  typedef Kokkos::cuda          execution_space ;
   typedef Kokkos::Device<execution_space,memory_space> device_type;
 
   typedef unsigned int          size_type ;
@@ -148,8 +148,8 @@ struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::CudaHostPinnedSpace > {
 };
 
 //----------------------------------------
-// CudaUVMSpace::execution_space == Cuda
-// CudaUVMSpace accessible to both Cuda and Host
+// CudaUVMSpace::execution_space == cuda
+// CudaUVMSpace accessible to both cuda and Host
 
 template<>
 struct MemorySpaceAccess< Kokkos::CudaUVMSpace , Kokkos::ResCudaSpace > {
@@ -179,29 +179,29 @@ struct MemorySpaceAccess< Kokkos::CudaHostPinnedSpace , Kokkos::ResCudaSpace > {
 namespace Kokkos {
 namespace Impl {
 
-template<> struct DeepCopy< ResCudaSpace , ResCudaSpace , Cuda>
+template<> struct DeepCopy< ResCudaSpace , ResCudaSpace , cuda>
 {
   DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const Cuda & , void * dst , const void * src , size_t );
+  DeepCopy( const cuda & , void * dst , const void * src , size_t );
 };
 
-template<> struct DeepCopy< ResCudaSpace , HostSpace , Cuda >
+template<> struct DeepCopy< ResCudaSpace , HostSpace , cuda >
 {
   DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const Cuda & , void * dst , const void * src , size_t );
+  DeepCopy( const cuda & , void * dst , const void * src , size_t );
 };
 
-template<> struct DeepCopy< HostSpace , ResCudaSpace , Cuda >
+template<> struct DeepCopy< HostSpace , ResCudaSpace , cuda >
 {
   DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const Cuda & , void * dst , const void * src , size_t );
+  DeepCopy( const cuda & , void * dst , const void * src , size_t );
 };
 
 template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , ResCudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< ResCudaSpace , ResCudaSpace , Cuda >( dst , src , n ); }
+  { (void) DeepCopy< ResCudaSpace , ResCudaSpace , cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -215,7 +215,7 @@ template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , HostSpace , Execu
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< ResCudaSpace , HostSpace , Cuda>( dst , src , n ); }
+  { (void) DeepCopy< ResCudaSpace , HostSpace , cuda>( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -230,7 +230,7 @@ struct DeepCopy< HostSpace , ResCudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , ResCudaSpace , Cuda >( dst , src , n ); }
+  { (void) DeepCopy< HostSpace , ResCudaSpace , cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -245,7 +245,7 @@ struct DeepCopy< ResCudaSpace , CudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< CudaSpace , CudaSpace , Cuda >( dst , src , n ); }
+  { (void) DeepCopy< CudaSpace , CudaSpace , cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -260,7 +260,7 @@ struct DeepCopy< CudaSpace , ResCudaSpace , ExecutionSpace>
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< CudaSpace , CudaSpace , Cuda >( dst , src , n ); }
+  { (void) DeepCopy< CudaSpace , CudaSpace , cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -285,10 +285,10 @@ struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::HostS
 {
   enum { value = false };
   KOKKOS_INLINE_FUNCTION static void verify( void )
-    { Kokkos::abort("Cuda code attempted to access HostSpace memory"); }
+    { Kokkos::abort("cuda code attempted to access HostSpace memory"); }
 
   KOKKOS_INLINE_FUNCTION static void verify( const void * )
-    { Kokkos::abort("Cuda code attempted to access HostSpace memory"); }
+    { Kokkos::abort("cuda code attempted to access HostSpace memory"); }
 };
 
 /** Running in ResCudaSpace accessing CudaUVMSpace: ok */
@@ -317,10 +317,10 @@ struct VerifyExecutionCanAccessMemorySpace<
 {
   enum { value = false };
   KOKKOS_INLINE_FUNCTION static void verify( void )
-    { Kokkos::abort("Cuda code attempted to access unknown Space memory"); }
+    { Kokkos::abort("cuda code attempted to access unknown Space memory"); }
 
   KOKKOS_INLINE_FUNCTION static void verify( const void * )
-    { Kokkos::abort("Cuda code attempted to access unknown Space memory"); }
+    { Kokkos::abort("cuda code attempted to access unknown Space memory"); }
 };
 
 //----------------------------------------------------------------------------
@@ -412,7 +412,7 @@ public:
       static_assert( ( std::is_same< AliasType , int >::value ||
                        std::is_same< AliasType , ::int2 >::value ||
                        std::is_same< AliasType , ::int4 >::value )
-                   , "Cuda texture fetch only supported for alias types of int, ::int2, or ::int4" );
+                   , "cuda texture fetch only supported for alias types of int, ::int2, or ::int4" );
 
       if ( m_tex_obj == 0 ) {
         m_tex_obj = attach_texture_object( sizeof(AliasType)
@@ -457,10 +457,10 @@ namespace Experimental {
 #define KOKKOS_DECLARE_RESILIENCE_OBJECTS(data_type, id) \
    template __global__ void Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >( \
                                                                 Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> ); \
-   void * KOKKOS_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >; 
+   void * KOKKOS_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >;
 
 #define KOKKOS_ADD_RESILIENCE_OBJECTS(data_type, id) \
-   Kokkos::Experimental::DuplicateTracker::add_kernel_func( typeid(data_type).name(), KOKKOS_MAKE_RESILIENCE_FUNC_NAME( id )); 
+   Kokkos::Experimental::DuplicateTracker::add_kernel_func( typeid(data_type).name(), KOKKOS_MAKE_RESILIENCE_FUNC_NAME( id ));
 
 
 //----------------------------------------------------------------------------

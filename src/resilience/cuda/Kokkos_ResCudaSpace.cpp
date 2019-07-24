@@ -58,10 +58,10 @@
 #include <Kokkos_ResCudaSpace.hpp>
 
 #include <Cuda/Kokkos_Cuda_Instance.hpp>
-#include <impl/Kokkos_Error.hpp>
+#include <filesystem/Kokkos_Error.hpp>
 
 #if defined(KOKKOS_ENABLE_PROFILING)
-#include <impl/Kokkos_Profiling_Interface.hpp>
+#include <filesystem/Kokkos_Profiling_Interface.hpp>
 #endif
 
 

@@ -53,7 +53,7 @@
 #include <Kokkos_Concepts.hpp>
 #include <Kokkos_MemoryTraits.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
-#include <impl/Kokkos_ExternalIOInterface.hpp>
+#include "../filesystem/Kokkos_ExternalIOInterface.hpp"
 #include <fstream>
 
 
@@ -88,7 +88,7 @@ public:
          file_offset = pAcc->file_offset;
       }
 
-   } 
+   }
 
    KokkosStdFileAccessor( void* ptr, const size_t offset ) {
       KokkosStdFileAccessor * pAcc = static_cast<KokkosStdFileAccessor*>(ptr);
@@ -118,10 +118,10 @@ public:
 
 
 /// \class StdFileSpace
-/// \brief Memory management for StdFile 
+/// \brief Memory management for StdFile
 ///
 /// StdFileSpace is a memory space that governs access to StdFile data.
-/// 
+///
 class StdFileSpace {
 public:
   //! Tag this class as a kokkos memory space
@@ -174,7 +174,7 @@ public:
   /**\brief Return Name of the MemorySpace */
   static constexpr const char* name() { return m_name; }
 
-  static void restore_all_views(); 
+  static void restore_all_views();
   static void restore_view(const std::string name);
   static void checkpoint_views();
   static void checkpoint_create_view_targets();
@@ -271,7 +271,7 @@ template<class ExecutionSpace> struct DeepCopy< Kokkos::Experimental::StdFileSpa
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  {  
+  {
       Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
   }
 
@@ -287,7 +287,7 @@ template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Exp
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  {       
+  {
      Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
   }
 
@@ -303,5 +303,5 @@ template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Exp
 
 } // Kokkos
 
-#include <impl/Kokkos_DirectoryManagement.h>
+#include "../filesystem/Kokkos_DirectoryManagement.h"
 #endif
