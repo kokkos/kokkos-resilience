@@ -1,6 +1,6 @@
 
-#ifndef __KOKKOS_HDF5_SPACE_
-#define __KOKKOS_HDF5_SPACE_
+#ifndef INC_RESILIENCE_HDF5_HDF5SPACE_HPP
+#define INC_RESILIENCE_HDF5_HDF5SPACE_HPP
 
 #include <cstring>
 #include <string>
@@ -468,4 +468,4 @@ template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Exp
 
 } // Kokkos
 
-#endif
+#endif  // INC_RESILIENCE_HDF5_HDF5SPACE_HPP

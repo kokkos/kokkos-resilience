@@ -1,5 +1,5 @@
-#ifndef INC_RESILIENCE_TRACE_HPP
-#define INC_RESILIENCE_TRACE_HPP
+#ifndef INC_RESILIENCE_UTIL_TRACE_HPP
+#define INC_RESILIENCE_UTIL_TRACE_HPP
 
 #include <string>
 #include <unordered_map>
@@ -42,7 +42,7 @@ namespace KokkosResilience
     class TraceBase
     {
     public:
-      explicit TraceBase( ) : m_done( false ), m_parent( nullptr ), m_trace_stack( nullptr ) 
+      explicit TraceBase( ) : m_done( false ), m_parent( nullptr ), m_trace_stack( nullptr )
       {}
   
       explicit TraceBase( detail::TraceStack *trace )
@@ -291,7 +291,7 @@ namespace KokkosResilience
     template< typename TraceType, typename Context, typename... Args >
     auto begin_trace( Context &ctx, Args &&... args )
     {
-       return TraceShell();    
+       return TraceShell();
     }
 #endif
     
@@ -359,4 +359,4 @@ namespace KokkosResilience
   }
 }
 
-#endif
+#endif  // INC_RESILIENCE_UTIL_TRACE_HPP

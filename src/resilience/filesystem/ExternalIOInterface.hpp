@@ -1,7 +1,7 @@
 
 
-#ifndef __KOKKOS_EXTERNAL_IO_
-#define __KOKKOS_EXTERNAL_IO_
+#ifndef INC_RESILIENCE_FILESSYSTEM_EXTERNALIOINTERFACE_HPP
+#define INC_RESILIENCE_FILESSYSTEM_EXTERNALIOINTERFACE_HPP
 
 #include <cstring>
 #include <string>
@@ -27,7 +27,7 @@ public:
    enum { READ_FILE = 0,
           WRITE_FILE = 1 };
 
-   size_t data_size;   
+   size_t data_size;
    bool is_contiguous;
    std::string file_path;
 
@@ -58,11 +58,11 @@ public:
    }
 
    virtual size_t ReadFile_impl(void * dest, const size_t dest_size) = 0;
-      
+   
    virtual size_t WriteFile_impl(const void * src, const size_t src_size) = 0;
 
    virtual size_t OpenFile_impl() = 0;
-      
+   
    virtual ~KokkosIOAccessor() {
    }
 
@@ -96,4 +96,4 @@ public:
 } // Kokkos
 
 
-#endif // __KOKKOS_EXTERNAL_IO
+#endif // INC_RESILIENCE_FILESSYSTEM_EXTERNALIOINTERFACE_HPP

@@ -1,5 +1,5 @@
-#ifndef __KOKKOS_DIRECTORY_MANAGER__
-#define __KOKKOS_DIRECTORY_MANAGER__
+#ifndef INC_RESILIENCE_FILESSYSTEM_DIRECTORYMANAGEMENT_HPP
+#define INC_RESILIENCE_FILESSYSTEM_DIRECTORYMANAGEMENT_HPP
 
 #include <errno.h>
 #include <string>
@@ -85,7 +85,7 @@ struct DirectoryManager {
    template<class ... Dargs>
    inline static int set_checkpoint_directory(bool bCreate, std::string dir, Dargs ...dargs ) {
       std::string path = ensure_directory_exists( bCreate, dir, dargs... );
-      if ( path.length() > 0 ) { 
+      if ( path.length() > 0 ) {
           MemorySpace::set_default_path(path);
           return 0;
       } else {
@@ -106,4 +106,4 @@ struct DirectoryManager {
 } // Kokkos
 
 } // EXPERIMENTAL
-#endif
+#endif  // INC_RESILIENCE_FILESSYSTEM_DIRECTORYMANAGEMENT_HPP

@@ -1,5 +1,5 @@
-#ifndef INC_RESILIENCE_TIMER_HPP
-#define INC_RESILIENCE_TIMER_HPP
+#ifndef INC_RESILIENCE_UTIL_TIMER_HPP
+#define INC_RESILIENCE_UTIL_TIMER_HPP
 
 #include <chrono>
 
@@ -31,4 +31,4 @@ namespace KokkosResilience
   }
 }
 
-#endif  // INC_RESILIENCE_TIMER_HPP
+#endif  // INC_RESILIENCE_UTIL_TIMER_HPP

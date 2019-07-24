@@ -1,6 +1,6 @@
 
-#ifndef __DUPLICATE_TRACKER__
-#define __DUPLICATE_TRACKER__
+#ifndef INC_RESILIENCE_EXEC_TRACKDUPLICATES_HPP
+#define INC_RESILIENCE_EXEC_TRACKDUPLICATES_HPP
 
 #include <Kokkos_Macros.hpp>
 #include <cmath>
@@ -60,8 +60,8 @@ public:
 
    inline virtual ~DuplicateTracker() {}
 
-   inline 
-   DuplicateTracker() : original_data(nullptr) { 
+   inline
+   DuplicateTracker() : original_data(nullptr) {
       dup_cnt = 0;
       data_len = 0;
       for (int i = 0; i < 3; i++) { dup_list[i] = nullptr; }
@@ -74,7 +74,7 @@ public:
       for (int i = 0; i < dup_cnt; i++) { dup_list[i] = dt.dup_list[i]; }
    }
 
-   inline 
+   inline
    void add_dup( Kokkos::Impl::SharedAllocationRecord<void,void>* dup ) {
       if (dup_cnt < 3) {
          dup_list[dup_cnt] = (void*)dup->data();
@@ -83,12 +83,12 @@ public:
       }
    }
 
-   inline 
+   inline
    virtual void combine_dups() {
    }
 };
 
-template<class DType, class ExecSpace> 
+template<class DType, class ExecSpace>
 class CombineFunctor {
 public:
    typedef MergeFunctor<DType> functor_type;
@@ -100,7 +100,7 @@ public:
 
    static void * s_dup_kernel;
 
-   inline  
+   inline
    CombineFunctor() : orig_view(nullptr), dup_view{}, m_len (0) {}
 
    inline void load_ptrs( DType * orig, DType * d1, DType * d2, DType * d3, size_t len) {
@@ -116,7 +116,7 @@ public:
       return (int)m_len;
    }
 
-   KOKKOS_INLINE_FUNCTION 
+   KOKKOS_INLINE_FUNCTION
    CombineFunctor( const CombineFunctor & rhs ) : orig_view(rhs.orig_view), dup_view{} {
       for (int i = 0; i < 3; i++)
           dup_view[i] = rhs.dup_view[i];
@@ -158,12 +158,12 @@ public:
 
    comb_type m_cf;
 
-   inline 
-   SpecDuplicateTracker() : DuplicateTracker( ), m_cf() { 
+   inline
+   SpecDuplicateTracker() : DuplicateTracker( ), m_cf() {
    }
 
-   inline 
-   SpecDuplicateTracker(const SpecDuplicateTracker & rhs) : DuplicateTracker( rhs ), m_cf(rhs.m_cf)  { 
+   inline
+   SpecDuplicateTracker(const SpecDuplicateTracker & rhs) : DuplicateTracker( rhs ), m_cf(rhs.m_cf)  {
    }
    
    virtual void combine_dups();
@@ -183,7 +183,7 @@ public:
        printf("retrieved existing tracking entry from map: %s\n", SP->get_label().c_str());
     } else {
        dt = new dt_type();
-       //printf("dup_kernel ptr = %08x \n", comb_type::s_dup_kernel); 
+       //printf("dup_kernel ptr = %08x \n", comb_type::s_dup_kernel);
        //dt->func_ptr = (void*)pLaunch; // comb_type::s_dup_kernel;
        dt->func_ptr = DuplicateTracker::get_kernel_func( typeid(Type).name() );
        dt->data_len = orig->size();
@@ -199,4 +199,4 @@ public:
 
 } // Kokkos
 
-#endif
+#endif  // INC_RESILIENCE_EXEC_TRACKDUPLICATES_HPP
