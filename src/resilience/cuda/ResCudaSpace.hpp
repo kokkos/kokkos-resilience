@@ -21,7 +21,7 @@ public:
   //! Tag this class as a kokkos memory space
   typedef ResCudaSpace             memory_space ;
   typedef ResCudaSpace          resilient_space ;
-  typedef Kokkos::cuda          execution_space ;
+  typedef Kokkos::Cuda          execution_space ;
   typedef Kokkos::Device<execution_space,memory_space> device_type;
 
   typedef unsigned int          size_type ;
@@ -136,29 +136,29 @@ struct MemorySpaceAccess< Kokkos::CudaHostPinnedSpace , Kokkos::ResCudaSpace > {
 namespace Kokkos {
 namespace Impl {
 
-template<> struct DeepCopy< ResCudaSpace , ResCudaSpace , cuda>
+template<> struct DeepCopy< ResCudaSpace , ResCudaSpace , Cuda>
 {
   DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const cuda & , void * dst , const void * src , size_t );
+  DeepCopy( const Cuda & , void * dst , const void * src , size_t );
 };
 
-template<> struct DeepCopy< ResCudaSpace , HostSpace , cuda >
+template<> struct DeepCopy< ResCudaSpace , HostSpace , Cuda >
 {
   DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const cuda & , void * dst , const void * src , size_t );
+  DeepCopy( const Cuda & , void * dst , const void * src , size_t );
 };
 
-template<> struct DeepCopy< HostSpace , ResCudaSpace , cuda >
+template<> struct DeepCopy< HostSpace , ResCudaSpace , Cuda >
 {
   DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const cuda & , void * dst , const void * src , size_t );
+  DeepCopy( const Cuda & , void * dst , const void * src , size_t );
 };
 
 template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , ResCudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< ResCudaSpace , ResCudaSpace , cuda >( dst , src , n ); }
+  { (void) DeepCopy< ResCudaSpace , ResCudaSpace , Cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -172,7 +172,7 @@ template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , HostSpace , Execu
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< ResCudaSpace , HostSpace , cuda>( dst , src , n ); }
+  { (void) DeepCopy< ResCudaSpace , HostSpace , Cuda>( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -187,7 +187,7 @@ struct DeepCopy< HostSpace , ResCudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , ResCudaSpace , cuda >( dst , src , n ); }
+  { (void) DeepCopy< HostSpace , ResCudaSpace , Cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -202,7 +202,7 @@ struct DeepCopy< ResCudaSpace , CudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< CudaSpace , CudaSpace , cuda >( dst , src , n ); }
+  { (void) DeepCopy< CudaSpace , CudaSpace , Cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -217,7 +217,7 @@ struct DeepCopy< CudaSpace , ResCudaSpace , ExecutionSpace>
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< CudaSpace , CudaSpace , cuda >( dst , src , n ); }
+  { (void) DeepCopy< CudaSpace , CudaSpace , Cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )

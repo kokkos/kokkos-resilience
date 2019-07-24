@@ -11,14 +11,14 @@
 
 #include <Kokkos_Cuda.hpp>
 #include <Kokkos_CudaSpace.hpp>
-#include "Kokkos_ResCudaSpace.hpp"
+#include "ResCudaSpace.hpp"
 
 #include <Kokkos_Parallel.hpp>
 #include <Kokkos_TaskScheduler.hpp>
 #include <Kokkos_Layout.hpp>
 #include <Kokkos_ScratchSpace.hpp>
 #include <Kokkos_MemoryTraits.hpp>
-#include <filesystem/Kokkos_Tags.hpp>
+#include <impl/Kokkos_Tags.hpp>
 
 
 /*--------------------------------------------------------------------------*/
@@ -222,7 +222,7 @@ struct VerifyExecutionCanAccessMemorySpace
 #include <Cuda/Kokkos_Cuda_KernelLaunch.hpp>
 #include <Cuda/Kokkos_Cuda_View.hpp>
 #include <Cuda/Kokkos_Cuda_Team.hpp>
-#include <Cuda/Kokkos_Cuda_ResParallel.hpp>
+#include "CudaResParallel.hpp"
 #include <Cuda/Kokkos_Cuda_Task.hpp>
 #include <Cuda/Kokkos_Cuda_UniqueToken.hpp>
 
