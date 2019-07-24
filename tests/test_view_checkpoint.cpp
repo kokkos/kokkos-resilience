@@ -2,7 +2,7 @@
 #include "test_common.hpp"
 #include <Kokkos_Core.hpp>
 #define KOKKOS_ENABLE_MANUAL_CHECKPOINT
-#include <Kokkos_Resilience.hpp>
+#include <resilience/Kokkos_Resilience.hpp>
 
 #ifdef KOKKOS_ENABLE_HDF5_PARALLEL
 #include <mpi.h>

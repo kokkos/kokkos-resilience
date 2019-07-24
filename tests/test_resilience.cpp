@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "test_common.hpp"
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Resilience.hpp>
+#include <resilience/Kokkos_Resilience.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
 

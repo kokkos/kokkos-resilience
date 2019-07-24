@@ -1,9 +1,9 @@
 #ifndef INC_RESILIENCE_RESILIENCE_HPP
 #define INC_RESILIENCE_RESILIENCE_HPP
 
-#include <KokkosResilience_config.h>
+#include <resilience/KokkosResilience_config.h>
 
-#include <context.hpp>
+#include "context.hpp"
 
 #ifdef KOKKOS_ENABLE_MANUAL_CHECKPOINT
    #include "Kokkos_ManualCheckpoint.hpp"

@@ -1,7 +1,7 @@
 
 #include <gtest/gtest.h>
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Resilience.hpp>
+#include <resilience/Kokkos_Resilience.hpp>
 
 int
 main( int argc, char **argv )

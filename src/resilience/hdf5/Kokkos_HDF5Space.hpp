@@ -11,7 +11,7 @@
 #include <Kokkos_Concepts.hpp>
 #include <Kokkos_MemoryTraits.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
-#include <KokkosResilience_config.h>
+#include "../KokkosResilience_config.h"
 #include "../filesystem/Kokkos_ExternalIOInterface.hpp"
 #include <hdf5.h>
 
