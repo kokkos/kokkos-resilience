@@ -1,7 +1,7 @@
 #ifndef INC_RESILIENCE_RESILIENCE_HPP
 #define INC_RESILIENCE_RESILIENCE_HPP
 
-#include <resilience/KokkosResilience_config.h>
+#include <resilience/config/config.hpp>
 
 #include "context.hpp"
 

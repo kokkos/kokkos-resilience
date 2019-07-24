@@ -136,8 +136,8 @@ if (USE_HDF5)
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
 endif()
 
-CONFIGURE_FILE(cmake/KokkosResilience_config.h.in src/resilience/KokkosResilience_config.h @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/KokkosResilience_config.h DESTINATION include/resilience)
+configure_file(src/resilience/config/config.hpp.in src/resilience/config/config.hpp @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/config.hpp DESTINATION include/resilience/config)
 
 # Add subdirectories for examples and tests if they are enabled
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
