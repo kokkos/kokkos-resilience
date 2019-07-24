@@ -1,10 +1,10 @@
-#include "veloc_backend.hpp"
+#include "VelocBackend.hpp"
 
 #include <sstream>
 #include <fstream>
 #include <veloc.h>
 
-#include "../context.hpp"
+#include "resilience/Context.hpp"
 
 #ifdef KR_ENABLE_TRACING
    #include "../util/trace.hpp"

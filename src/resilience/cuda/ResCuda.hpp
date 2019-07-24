@@ -41,8 +41,8 @@
 //@HEADER
 */
 
-#ifndef KOKKOS_RESCUDA_HPP
-#define KOKKOS_RESCUDA_HPP
+#ifndef RESCUDA_HPP
+#define RESCUDA_HPP
 
 #include <Kokkos_Macros.hpp>
 #if defined( KOKKOS_ENABLE_CUDA )

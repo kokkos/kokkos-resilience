@@ -41,8 +41,8 @@
 //@HEADER
 */
 
-#ifndef KOKKOS_CUDA_RESPARALLEL_HPP
-#define KOKKOS_CUDA_RESPARALLEL_HPP
+#ifndef CUDARESPARALLEL_HPP
+#define CUDARESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
 #if defined( __CUDACC__ ) && defined( KOKKOS_ENABLE_CUDA )

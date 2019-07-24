@@ -1,4 +1,4 @@
-#include "trace.hpp"
+#include "Trace.hpp"
 
 namespace KokkosResilience
 {

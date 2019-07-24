@@ -53,7 +53,7 @@
 #include <Kokkos_Concepts.hpp>
 #include <Kokkos_MemoryTraits.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
-#include "../filesystem/Kokkos_ExternalIOInterface.hpp"
+#include "resilience/filesystem/ExternalIOInterface.hpp"
 #include <fstream>
 
 
@@ -303,5 +303,5 @@ template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Exp
 
 } // Kokkos
 
-#include "../filesystem/Kokkos_DirectoryManagement.h"
+#include "resilience/filesystem/DirectoryManagement.hpp"
 #endif

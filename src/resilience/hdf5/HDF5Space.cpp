@@ -1,5 +1,5 @@
 #include "Kokkos_Core.hpp"
-#include "Kokkos_HDF5Space.hpp"
+#include "HDF5Space.hpp"
 #include "Kokkos_Macros.hpp"
 
 #ifdef KOKKOS_ENABLE_HDF5_PARALLEL

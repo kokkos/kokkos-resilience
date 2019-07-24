@@ -41,8 +41,8 @@
 //@HEADER
 */
 
-#ifndef KOKKOS_RESCUDASPACE_HPP
-#define KOKKOS_RESCUDASPACE_HPP
+#ifndef RESCUDASPACE_HPP
+#define RESCUDASPACE_HPP
 
 #include <Kokkos_Macros.hpp>
 #if defined( KOKKOS_ENABLE_CUDA )
@@ -467,5 +467,5 @@ namespace Experimental {
 //----------------------------------------------------------------------------
 
 #endif /* #if defined( KOKKOS_ENABLE_CUDA ) */
-#endif /* #define KOKKOS_RESCUDASPACE_HPP */
+#endif /* #define RESCUDASPACE_HPP */
 

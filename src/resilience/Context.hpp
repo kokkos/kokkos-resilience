@@ -7,7 +7,7 @@
 #endif
 
 #ifdef KOKKOS_ENABLE_VELOC
-   #include "veloc/veloc_backend.hpp"
+   #include "veloc/VelocBackend.hpp"
 #endif
 
 // Tracing support

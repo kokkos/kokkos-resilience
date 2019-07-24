@@ -41,7 +41,7 @@
 //@HEADER
 */
 #include "Kokkos_Core.hpp"
-#include "Kokkos_StdFileSpace.hpp"
+#include "StdFileSpace.hpp"
 #include "sys/stat.h"
 
 namespace Kokkos {

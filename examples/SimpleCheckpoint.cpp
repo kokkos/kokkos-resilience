@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
 #define KOKKOS_ENABLE_AUTOMATIC_CHECKPOINT
-#include <resilience/Kokkos_Resilience.hpp>
+#include <resilience/Resilience.hpp>
 
 int
 main( int argc, char **argv )

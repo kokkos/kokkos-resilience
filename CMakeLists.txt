@@ -114,7 +114,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
 
-install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
 
 if (USE_VELOC)
@@ -136,7 +136,7 @@ if (USE_HDF5)
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
 endif()
 
-configure_file(src/resilience/config/config.hpp.in src/resilience/config/config.hpp @ONLY)
+configure_file(src/resilience/config/Config.hpp.in src/resilience/config/Config.hpp @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/config.hpp DESTINATION include/resilience/config)
 
 # Add subdirectories for examples and tests if they are enabled

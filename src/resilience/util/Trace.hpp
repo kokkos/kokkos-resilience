@@ -13,7 +13,7 @@
 
 #include <pico/picojson.h>
 
-#include "timer.hpp"
+#include "Timer.hpp"
 
 namespace KokkosResilience
 {

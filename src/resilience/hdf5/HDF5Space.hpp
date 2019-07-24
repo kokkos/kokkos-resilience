@@ -11,8 +11,8 @@
 #include <Kokkos_Concepts.hpp>
 #include <Kokkos_MemoryTraits.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
-#include <resilience/config/config.hpp>
-#include "../filesystem/Kokkos_ExternalIOInterface.hpp"
+#include <resilience/config/Config.hpp>
+#include "resilience/filesystem/ExternalIOInterface.hpp"
 #include <hdf5.h>
 
 

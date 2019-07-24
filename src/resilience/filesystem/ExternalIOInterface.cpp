@@ -1,6 +1,6 @@
 
 #include "Kokkos_Core.hpp"
-#include "Kokkos_ExternalIOInterface.hpp"
+#include "ExternalIOInterface.hpp"
 
 namespace Kokkos {
 
