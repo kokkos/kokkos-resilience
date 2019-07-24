@@ -44,33 +44,31 @@
 #include "StdFileSpace.hpp"
 #include "sys/stat.h"
 
-namespace Kokkos {
+namespace KokkosResilience {
 
-namespace Experimental {
-
-   int KokkosStdFileAccessor::initialize( const std::string & filepath ) { 
+   int KokkosStdFileAccessor::initialize( const std::string & filepath ) {
 
        file_path = filepath;
        return 0;
 
    }
 
-   size_t KokkosStdFileAccessor::OpenFile_impl() { 
+   size_t KokkosStdFileAccessor::OpenFile_impl() {
 
-      open_file(KokkosIOAccessor::WRITE_FILE); 
+      open_file(KokkosIOAccessor::WRITE_FILE);
       close_file();
       return 0;
    }
 
 
-   bool KokkosStdFileAccessor::open_file( int read_write ) { 
+   bool KokkosStdFileAccessor::open_file( int read_write ) {
       
       // printf("open_file: %s, %d\n", file_path.c_str(), read_write );
       if (file_strm.is_open()) {
          printf("file was left open...closing\n");
          close_file();
       }
-      std::string sFullPath = Kokkos::Experimental::StdFileSpace::s_default_path;
+      std::string sFullPath = KokkosResilience::StdFileSpace::s_default_path;
       size_t pos = file_path.find("/");
       if ( (int)pos == 0 ) {    // only use the default if there is no absolute path...
          sFullPath = file_path;
@@ -83,7 +81,7 @@ namespace Experimental {
 
        if ( read_write == KokkosIOAccessor::WRITE_FILE ) {
             file_strm.open( sFullPath.c_str(), std::ios::out | std::ios::trunc | std::ios::binary );
-       } else if (read_write == KokkosIOAccessor::READ_FILE ) { 
+       } else if (read_write == KokkosIOAccessor::READ_FILE ) {
             file_strm.open( sFullPath.c_str(), std::ios::in | std::ios::binary );
        } else {
             printf("open_file: incorrect read write parameter specified .\n");
@@ -178,7 +176,7 @@ namespace Experimental {
       Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
       if (pList == nullptr)  printf("%s::restore views mirror list returned empty list \n", name());
       while (pList != nullptr) {
-         Kokkos::Impl::DeepCopy< Kokkos::HostSpace, Kokkos::Experimental::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
+         Kokkos::Impl::DeepCopy< Kokkos::HostSpace, KokkosResilience::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pList->src)->data(), ((base_record*)pList->dst)->data(), ((base_record*)pList->src)->size());
          // delete the records along the way...
          if (pList->pNext == nullptr) {
@@ -197,7 +195,7 @@ namespace Experimental {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
       Kokkos::Impl::MirrorTracker * pRes = base_record::get_filtered_mirror_entry( (std::string)name(), lbl );
       if (pRes != nullptr) {
-         Kokkos::Impl::DeepCopy< Kokkos::HostSpace, Kokkos::Experimental::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
+         Kokkos::Impl::DeepCopy< Kokkos::HostSpace, KokkosResilience::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pRes->src)->data(), ((base_record*)pRes->dst)->data(), ((base_record*)pRes->src)->size());
          delete pRes;
       }
@@ -220,7 +218,7 @@ namespace Experimental {
             delete pList->pPrev;
          }
       }
-       
+      
    }
    void StdFileSpace::checkpoint_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
@@ -230,7 +228,7 @@ namespace Experimental {
       }
       while (pList != nullptr) {
  //     typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-         Kokkos::Impl::DeepCopy< Kokkos::Experimental::StdFileSpace, Kokkos::HostSpace, Kokkos::DefaultHostExecutionSpace >
+         Kokkos::Impl::DeepCopy< KokkosResilience::StdFileSpace, Kokkos::HostSpace, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pList->dst)->data(), ((base_record*)pList->src)->data(), ((base_record*)pList->src)->size());
          // delete the records along the way...
          if (pList->pNext == nullptr) {
@@ -241,7 +239,7 @@ namespace Experimental {
             delete pList->pPrev;
          }
       }
-       
+      
    }
    void StdFileSpace::set_default_path( const std::string path ) {
 
@@ -249,9 +247,7 @@ namespace Experimental {
 
    }
   
-} // Experimental
-
-} // Kokkos
+} // namespace KokkosResilience
 
 
 
@@ -264,19 +260,19 @@ SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::s_root_reco
 #endif
 
 void
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
+SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
 deallocate( SharedAllocationRecord< void , void > * arg_rec )
 {
   delete static_cast<SharedAllocationRecord*>(arg_rec);
 }
 
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
+SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
 ~SharedAllocationRecord()
 {
   #if defined(KOKKOS_ENABLE_PROFILING)
   if(Kokkos::Profiling::profileLibraryLoaded()) {
       Kokkos::Profiling::deallocateData(
-      Kokkos::Profiling::SpaceHandle(Kokkos::Experimental::StdFileSpace::name()),RecordBase::m_alloc_ptr->m_label,
+      Kokkos::Profiling::SpaceHandle(KokkosResilience::StdFileSpace::name()),RecordBase::m_alloc_ptr->m_label,
       data(),size());
   }
   #endif
@@ -286,8 +282,8 @@ SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
                     );
 }
 
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-SharedAllocationRecord( const Kokkos::Experimental::StdFileSpace & arg_space
+SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
+SharedAllocationRecord( const KokkosResilience::StdFileSpace & arg_space
                       , const std::string       & arg_label
                       , const size_t              arg_alloc_size
                       , const SharedAllocationRecord< void , void >::function_type arg_dealloc
@@ -323,8 +319,8 @@ SharedAllocationRecord( const Kokkos::Experimental::StdFileSpace & arg_space
 
 //----------------------------------------------------------------------------
 
-void * SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-allocate_tracked( const Kokkos::Experimental::StdFileSpace & arg_space
+void * SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
+allocate_tracked( const KokkosResilience::StdFileSpace & arg_space
                 , const std::string & arg_alloc_label
                 , const size_t arg_alloc_size )
 {
@@ -338,7 +334,7 @@ allocate_tracked( const Kokkos::Experimental::StdFileSpace & arg_space
   return r->data();
 }
 
-void SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
+void SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
 deallocate_tracked( void * const arg_alloc_ptr )
 {
   if ( arg_alloc_ptr != 0 ) {
@@ -348,7 +344,7 @@ deallocate_tracked( void * const arg_alloc_ptr )
   }
 }
 
-void * SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
+void * SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
 reallocate_tracked( void * const arg_alloc_ptr
                   , const size_t arg_alloc_size )
 {
@@ -361,11 +357,11 @@ reallocate_tracked( void * const arg_alloc_ptr
   return r_new->data();
 }
 
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void > *
-SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::get_record( void * alloc_ptr )
+SharedAllocationRecord< KokkosResilience::StdFileSpace , void > *
+SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::get_record( void * alloc_ptr )
 {
   typedef SharedAllocationHeader  Header ;
-  typedef SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >  RecordHost ;
+  typedef SharedAllocationRecord< KokkosResilience::StdFileSpace , void >  RecordHost ;
 
   SharedAllocationHeader const * const head   = alloc_ptr ? Header::get_header( alloc_ptr ) : (SharedAllocationHeader *)0 ;
   RecordHost                   * const record = head ? static_cast< RecordHost * >( head->m_record ) : (RecordHost *) 0 ;
@@ -378,8 +374,8 @@ SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::get_record(
 }
 
 // Iterate records to print orphaned memory ...
-void SharedAllocationRecord< Kokkos::Experimental::StdFileSpace , void >::
-print_records( std::ostream & s , const Kokkos::Experimental::StdFileSpace & , bool detail )
+void SharedAllocationRecord< KokkosResilience::StdFileSpace , void >::
+print_records( std::ostream & s , const KokkosResilience::StdFileSpace & , bool detail )
 {
 #ifdef KOKKOS_DEBUG
   SharedAllocationRecord< void , void >::print_host_accessible_records( s , "StdFileSpace" , & s_root_record , detail );

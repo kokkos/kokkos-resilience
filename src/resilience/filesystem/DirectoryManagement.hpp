@@ -9,9 +9,7 @@
   #include <time.h>
 #endif
 
-namespace Kokkos {
-namespace Experimental {
-
+namespace KokkosResilience {
 
 template<class MemorySpace>
 struct DirectoryManager {
@@ -103,7 +101,6 @@ struct DirectoryManager {
    }
 };
 
-} // Kokkos
+} // namespace KokkosResilience
 
-} // EXPERIMENTAL
 #endif  // INC_RESILIENCE_FILESSYSTEM_DIRECTORYMANAGEMENT_HPP

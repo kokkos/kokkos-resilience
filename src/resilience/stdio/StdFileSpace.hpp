@@ -14,9 +14,7 @@
 #include <fstream>
 
 
-namespace Kokkos {
-
-namespace Experimental {
+namespace KokkosResilience {
 
 class KokkosStdFileAccessor : public KokkosIOAccessor {
 
@@ -82,8 +80,8 @@ public:
 class StdFileSpace {
 public:
   //! Tag this class as a kokkos memory space
-  typedef Kokkos::Experimental::StdFileSpace  file_space;   // used to uniquely identify file spaces
-  typedef Kokkos::Experimental::StdFileSpace  memory_space;
+  typedef KokkosResilience::StdFileSpace  file_space;   // used to uniquely identify file spaces
+  typedef KokkosResilience::StdFileSpace  memory_space;
   typedef size_t     size_type;
 
   /// \typedef execution_space
@@ -140,22 +138,21 @@ public:
 
 private:
   static constexpr const char* m_name = "StdFile";
-  friend class Kokkos::Impl::SharedAllocationRecord< Kokkos::Experimental::StdFileSpace, void >;
+  friend class Kokkos::Impl::SharedAllocationRecord< KokkosResilience::StdFileSpace, void >;
 };
 
-}
-}
+} // namespace KokkosResilience
 
 namespace Kokkos {
 
 namespace Impl {
 
 template<>
-class SharedAllocationRecord< Kokkos::Experimental::StdFileSpace, void >
+class SharedAllocationRecord< KokkosResilience::StdFileSpace, void >
   : public SharedAllocationRecord< void, void >
 {
 private:
-  friend Kokkos::Experimental::StdFileSpace;
+  friend KokkosResilience::StdFileSpace;
 
   typedef SharedAllocationRecord< void, void >  RecordBase;
 
@@ -169,13 +166,13 @@ private:
   static RecordBase s_root_record;
 #endif
 
-  const Kokkos::Experimental::StdFileSpace m_space;
+  const KokkosResilience::StdFileSpace m_space;
 
 protected:
   ~SharedAllocationRecord();
   SharedAllocationRecord() = default;
 
-  SharedAllocationRecord( const Kokkos::Experimental::StdFileSpace        & arg_space
+  SharedAllocationRecord( const KokkosResilience::StdFileSpace        & arg_space
                         , const std::string              & arg_label
                         , const size_t                     arg_alloc_size
                         , const RecordBase::function_type  arg_dealloc = & deallocate
@@ -190,7 +187,7 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION static
-  SharedAllocationRecord * allocate( const Kokkos::Experimental::StdFileSpace &  arg_space
+  SharedAllocationRecord * allocate( const KokkosResilience::StdFileSpace &  arg_space
                                    , const std::string       &  arg_label
                                    , const size_t               arg_alloc_size
                                    )
@@ -205,7 +202,7 @@ public:
 
   /**\brief  Allocate tracked memory in the space */
   static
-  void * allocate_tracked( const Kokkos::Experimental::StdFileSpace & arg_space
+  void * allocate_tracked( const KokkosResilience::StdFileSpace & arg_space
                          , const std::string & arg_label
                          , const size_t arg_alloc_size );
 
@@ -220,39 +217,39 @@ public:
 
   static SharedAllocationRecord * get_record( void * arg_alloc_ptr );
 
-  static void print_records( std::ostream &, const Kokkos::Experimental::StdFileSpace &, bool detail = false );
+  static void print_records( std::ostream &, const KokkosResilience::StdFileSpace &, bool detail = false );
 };
 
 
-template<class ExecutionSpace> struct DeepCopy< Kokkos::Experimental::StdFileSpace , Kokkos::HostSpace , ExecutionSpace >
+template<class ExecutionSpace> struct DeepCopy< KokkosResilience::StdFileSpace , Kokkos::HostSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
   {
-      Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_from_host( dst, src, n );
   }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
   {
     exec.fence();
-    Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_from_host( dst, src, n );
   }
 };
 
-template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Experimental::StdFileSpace , ExecutionSpace >
+template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , KokkosResilience::StdFileSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
   {
-     Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_to_host( dst, src, n );
   }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
   {
     exec.fence();
-    Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_to_host( dst, src, n );
   }
 };
 

@@ -16,9 +16,7 @@
 #include <hdf5.h>
 
 
-namespace Kokkos {
-
-namespace Experimental {
+namespace KokkosResilience {
 
 class KokkosHDF5ConfigurationManager  {
 public:
@@ -287,8 +285,8 @@ public:
 class HDF5Space {
 public:
   //! Tag this class as a kokkos memory space
-  typedef Kokkos::Experimental::HDF5Space  file_space;   // used to uniquely identify file spaces
-  typedef Kokkos::Experimental::HDF5Space  memory_space;
+  typedef KokkosResilience::HDF5Space  file_space;   // used to uniquely identify file spaces
+  typedef KokkosResilience::HDF5Space  memory_space;
   typedef size_t     size_type;
 
   /// \typedef execution_space
@@ -348,22 +346,21 @@ public:
 
 private:
   static constexpr const char* m_name = "HDF5";
-  friend class Kokkos::Impl::SharedAllocationRecord< Kokkos::Experimental::HDF5Space, void >;
+  friend class Kokkos::Impl::SharedAllocationRecord< KokkosResilience::HDF5Space, void >;
 };
 
-}
-}
+} // namespace KokkosResilience
 
 namespace Kokkos {
 
 namespace Impl {
 
 template<>
-class SharedAllocationRecord< Kokkos::Experimental::HDF5Space, void >
+class SharedAllocationRecord< KokkosResilience::HDF5Space, void >
   : public SharedAllocationRecord< void, void >
 {
 private:
-  friend Kokkos::Experimental::HDF5Space;
+  friend KokkosResilience::HDF5Space;
 
   typedef SharedAllocationRecord< void, void >  RecordBase;
 
@@ -377,13 +374,13 @@ private:
   static RecordBase s_root_record;
 #endif
 
-  const Kokkos::Experimental::HDF5Space m_space;
+  const KokkosResilience::HDF5Space m_space;
 
 protected:
   ~SharedAllocationRecord();
   SharedAllocationRecord() = default;
 
-  SharedAllocationRecord( const Kokkos::Experimental::HDF5Space        & arg_space
+  SharedAllocationRecord( const KokkosResilience::HDF5Space        & arg_space
                         , const std::string              & arg_label
                         , const size_t                     arg_alloc_size
                         , const RecordBase::function_type  arg_dealloc = & deallocate
@@ -398,7 +395,7 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION static
-  SharedAllocationRecord * allocate( const Kokkos::Experimental::HDF5Space &  arg_space
+  SharedAllocationRecord * allocate( const KokkosResilience::HDF5Space &  arg_space
                                    , const std::string       &  arg_label
                                    , const size_t               arg_alloc_size
                                    )
@@ -413,7 +410,7 @@ public:
 
   /**\brief  Allocate tracked memory in the space */
   static
-  void * allocate_tracked( const Kokkos::Experimental::HDF5Space & arg_space
+  void * allocate_tracked( const KokkosResilience::HDF5Space & arg_space
                          , const std::string & arg_label
                          , const size_t arg_alloc_size );
 
@@ -428,39 +425,39 @@ public:
 
   static SharedAllocationRecord * get_record( void * arg_alloc_ptr );
 
-  static void print_records( std::ostream &, const Kokkos::Experimental::HDF5Space &, bool detail = false );
+  static void print_records( std::ostream &, const KokkosResilience::HDF5Space &, bool detail = false );
 };
 
 
-template<class ExecutionSpace> struct DeepCopy< Kokkos::Experimental::HDF5Space , Kokkos::HostSpace , ExecutionSpace >
+template<class ExecutionSpace> struct DeepCopy< KokkosResilience::HDF5Space , Kokkos::HostSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
   {
-     Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_from_host( dst, src, n );
   }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
   {
     exec.fence();
-    Kokkos::Experimental::KokkosIOAccessor::transfer_from_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_from_host( dst, src, n );
   }
 };
 
-template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , Kokkos::Experimental::HDF5Space , ExecutionSpace >
+template<class ExecutionSpace> struct DeepCopy<  Kokkos::HostSpace , KokkosResilience::HDF5Space , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
   {
-    Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_to_host( dst, src, n );
   }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
   {
     exec.fence();
-    Kokkos::Experimental::KokkosIOAccessor::transfer_to_host( dst, src, n );
+    KokkosResilience::KokkosIOAccessor::transfer_to_host( dst, src, n );
   }
 };
 

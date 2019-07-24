@@ -216,18 +216,18 @@ TYPED_TEST( TestViewCheckpoint, stdio )
   using exec_space = typename TestFixture::exec_space;
   
   mkdir("./data", 0777);
-  TestFSDeepCopy< exec_space, Kokkos::Experimental::StdFileSpace >::test_view_chkpt("./data//cp_view.bin",10,10);
+  TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data//cp_view.bin",10,10);
   remove("./data/cp_view.bin");
-  TestFSDeepCopy< exec_space, Kokkos::Experimental::StdFileSpace >::test_view_chkpt("./data/cp_view.bin",100,100);
+  TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data/cp_view.bin",100,100);
   remove("./data/cp_view.bin");
-  TestFSDeepCopy< exec_space, Kokkos::Experimental::StdFileSpace >::test_view_chkpt("./data/cp_view.bin",10000,10000);
+  TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data/cp_view.bin",10000,10000);
   remove("./data/cp_view.bin");
   
   mkdir("./data/stdfile", 0777);
   remove("./data/stdfile/view_A");
   remove("./data/stdfile/view_B");
   for (int n = 0; n < 10; n++) {
-    TestCheckPointView< exec_space, Kokkos::Experimental::StdFileSpace >::test_view_chkpt(n, "view", 10,10,"./data/stdfile");
+    TestCheckPointView< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt(n, "view", 10,10,"./data/stdfile");
   }
 }
 
@@ -247,19 +247,19 @@ TYPED_TEST( TestViewCheckpoint, hdf5 )
   sprintf( buff, ".%d", mpi_rank );
   file_name += (std::string)buff;
 #endif
-  TestFSDeepCopy< exec_space, Kokkos::Experimental::HDF5Space >::test_view_chkpt(file_name,10,10);
+  TestFSDeepCopy< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt(file_name,10,10);
   remove("./data/cp_view.hdf*");
-  TestFSDeepCopy< exec_space, Kokkos::Experimental::HDF5Space >::test_view_chkpt("./data/cp_view.hdf",100,100);
+  TestFSDeepCopy< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt("./data/cp_view.hdf",100,100);
   remove("./data/cp_view.hdf*");
-  TestFSDeepCopy< exec_space, Kokkos::Experimental::HDF5Space >::test_view_chkpt("./data/cp_view.hdf",10000,10000);
+  TestFSDeepCopy< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt("./data/cp_view.hdf",10000,10000);
   remove("./data/cp_view.hdf*");
-  TestFSConfig< exec_space, Kokkos::Experimental::HDF5Space >::test_view_chkpt("1D_regular_test",10,10);
+  TestFSConfig< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt("1D_regular_test",10,10);
 
   mkdir("./data/hdf5", 0777);
   remove("./data/hdf5/view_A*");
   remove("./data/hdf5/view_B*");
   for (int n = 0; n < 10; n++) {
-     TestCheckPointView< exec_space, Kokkos::Experimental::HDF5Space >::test_view_chkpt(n, "view", 10,10,"./data/hdf5");
+     TestCheckPointView< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt(n, "view", 10,10,"./data/hdf5");
   }
 }
 

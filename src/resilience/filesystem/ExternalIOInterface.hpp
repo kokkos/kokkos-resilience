@@ -17,9 +17,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <map>
 
-namespace Kokkos {
-
-namespace Experimental {
+namespace KokkosResilience {
 
 class KokkosIOAccessor  {
 
@@ -91,9 +89,7 @@ public:
 
 };
 
-} // Experimental
-
-} // Kokkos
+} // namespace KokkosResilience
 
 
 #endif // INC_RESILIENCE_FILESSYSTEM_EXTERNALIOINTERFACE_HPP

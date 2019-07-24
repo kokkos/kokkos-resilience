@@ -2,9 +2,7 @@
 #include "Kokkos_Core.hpp"
 #include "ExternalIOInterface.hpp"
 
-namespace Kokkos {
-
-namespace Experimental {
+namespace KokkosResilience {
 
    std::string KokkosIOAccessor::resolve_path( std::string path, std::string default_ ) {
 
@@ -24,12 +22,12 @@ namespace Experimental {
 
    }
 
-   // Create empty file...to prevent file access issues when writing / reading in parallel 
+   // Create empty file...to prevent file access issues when writing / reading in parallel
    void KokkosIOAccessor::create_empty_file ( void * dst )  {
 
       Kokkos::Impl::SharedAllocationHeader * pData = reinterpret_cast<Kokkos::Impl::SharedAllocationHeader*>(dst);
       KokkosIOInterface * pDataII = reinterpret_cast<KokkosIOInterface*>(pData-1);
-      Kokkos::Experimental::KokkosIOAccessor * pAcc = pDataII->pAcc;
+      KokkosResilience::KokkosIOAccessor * pAcc = pDataII->pAcc;
 
       if (pAcc) {
          //printf("calling openfile ...\n");
@@ -43,7 +41,7 @@ namespace Experimental {
 
       Kokkos::Impl::SharedAllocationHeader * pData = reinterpret_cast<Kokkos::Impl::SharedAllocationHeader*>(dst);
       KokkosIOInterface * pDataII = reinterpret_cast<KokkosIOInterface*>(pData-1);
-      Kokkos::Experimental::KokkosIOAccessor * pAcc = pDataII->pAcc;
+      KokkosResilience::KokkosIOAccessor * pAcc = pDataII->pAcc;
 
       if (pAcc) {
          pAcc->WriteFile( src, size_ );   // virtual method implemented by specific IO interface
@@ -57,7 +55,7 @@ namespace Experimental {
 
       const Kokkos::Impl::SharedAllocationHeader * pData = reinterpret_cast<const Kokkos::Impl::SharedAllocationHeader*>(src);
       const KokkosIOInterface * pDataII = reinterpret_cast<const KokkosIOInterface*>(pData-1);
-      Kokkos::Experimental::KokkosIOAccessor * pAcc = pDataII->pAcc;
+      KokkosResilience::KokkosIOAccessor * pAcc = pDataII->pAcc;
       if (pAcc) {
          pAcc->ReadFile( dst, size_ );
       }
@@ -73,7 +71,7 @@ namespace Experimental {
       boost::property_tree::ptree pt;
       boost::property_tree::json_parser::read_json( path, pt );
 
-      for (auto & ar: pt) {         
+      for (auto & ar: pt) {
          boost::property_tree::ptree ptII = ar.second;
          std::string name = ptII.get<std::string>("name");
          m_config_list[name] = ptII;
@@ -96,8 +94,5 @@ namespace Experimental {
 
    KokkosIOConfigurationManager * KokkosIOConfigurationManager::m_Inst = nullptr;
 
-
-} // Experimental
-
-} // Kokkos
+} // namespace KokkosResilience
 
