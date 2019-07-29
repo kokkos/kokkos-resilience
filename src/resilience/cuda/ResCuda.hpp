@@ -26,7 +26,7 @@
 
 /*--------------------------------------------------------------------------*/
 
-namespace Kokkos {
+namespace KokkosResilience {
 
 
 /// \class ResCuda
@@ -39,7 +39,7 @@ namespace Kokkos {
 /// extensions, and the Serial execution space executes "parallel" kernels
 /// sequentially.  The ResCuda execution space uses NVIDIA's CUDA programming
 /// model to execute kernels in parallel on GPUs.
-class ResCuda : Cuda {
+class ResCuda : Kokkos::Cuda {
 public:
   //! \name Type declarations that all Kokkos execution spaces must provide.
   //@{
@@ -59,13 +59,13 @@ public:
   typedef Kokkos::Device<execution_space,memory_space> device_type;
 
   //! The size_type best suited for this execution space.
-  typedef Cuda::size_type  size_type ;
+  typedef Kokkos::Cuda::size_type  size_type ;
 
   //! This execution space's preferred array layout.
-  typedef LayoutLeft            array_layout ;
+  typedef Kokkos::LayoutLeft            array_layout ;
 
   //!
-  typedef ScratchMemorySpace< Cuda >  scratch_memory_space ;
+  typedef Kokkos::ScratchMemorySpace< Cuda >  scratch_memory_space ;
 
   //@}
   //--------------------------------------------------
@@ -170,8 +170,8 @@ namespace Impl {
 
 template<>
 struct MemorySpaceAccess
-  < Kokkos::ResCudaSpace
-  , Kokkos::ResCuda::scratch_memory_space
+  < KokkosResilience::ResCudaSpace
+  , KokkosResilience::ResCuda::scratch_memory_space
   >
 {
   enum { assignable = false };
@@ -189,8 +189,8 @@ struct MemorySpaceAccess
 
 template<>
 struct MemorySpaceAccess
-  < Kokkos::ResCudaUVMSpace
-  , Kokkos::ResCuda::scratch_memory_space
+  < KokkosResilience::ResCudaUVMSpace
+  , KokkosResilience::ResCuda::scratch_memory_space
   >
 {
   enum { assignable = false };
@@ -203,8 +203,8 @@ struct MemorySpaceAccess
 
 template<>
 struct VerifyExecutionCanAccessMemorySpace
-  < Kokkos::ResCudaSpace
-  , Kokkos::ResCuda::scratch_memory_space
+  < KokkosResilience::ResCudaSpace
+  , KokkosResilience::ResCuda::scratch_memory_space
   >
 {
   enum { value = true };

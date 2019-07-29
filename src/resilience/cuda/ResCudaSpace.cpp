@@ -71,22 +71,22 @@
 namespace Kokkos {
 namespace Impl {
 
-DeepCopy<ResCudaSpace,ResCudaSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
+DeepCopy<KokkosResilience::ResCudaSpace,KokkosResilience::ResCudaSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
 { CUDA_SAFE_CALL( cudaMemcpy( dst , src , n , cudaMemcpyDefault ) ); }
 
-DeepCopy<HostSpace,ResCudaSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
+DeepCopy<HostSpace,KokkosResilience::ResCudaSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
 { CUDA_SAFE_CALL( cudaMemcpy( dst , src , n , cudaMemcpyDefault ) ); }
 
-DeepCopy<ResCudaSpace,HostSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
+DeepCopy<KokkosResilience::ResCudaSpace,HostSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
 { CUDA_SAFE_CALL( cudaMemcpy( dst , src , n , cudaMemcpyDefault ) ); }
 
-DeepCopy<ResCudaSpace,ResCudaSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
+DeepCopy<KokkosResilience::ResCudaSpace,KokkosResilience::ResCudaSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
 { CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , instance.cuda_stream() ) ); }
 
-DeepCopy<HostSpace,ResCudaSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
+DeepCopy<HostSpace,KokkosResilience::ResCudaSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
 { CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , instance.cuda_stream() ) ); }
 
-DeepCopy<ResCudaSpace,HostSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
+DeepCopy<KokkosResilience::ResCudaSpace,HostSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
 { CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , instance.cuda_stream() ) ); }
 
 } // namespace Impl
@@ -100,7 +100,7 @@ DeepCopy<ResCudaSpace,HostSpace,Cuda>::DeepCopy( const Cuda & instance , void * 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-namespace Kokkos {
+namespace KokkosResilience {
 
 
 ResCudaSpace::ResCudaSpace()
@@ -121,21 +121,6 @@ void ResCudaSpace::clear_duplicates_list() {
 }
 } // namespace Kokkos
 
-namespace Kokkos {
-namespace Experimental {
-
-std::map<std::string, void*> DuplicateTracker::kernel_func_list;
-
-void DuplicateTracker::add_kernel_func ( std::string name, void * func_ptr ) {
-    kernel_func_list[name] = func_ptr;
-}
-
-void * DuplicateTracker::get_kernel_func ( std::string name ) {
-    return kernel_func_list[name];
-}
-
-}}
-
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 
@@ -144,12 +129,12 @@ namespace Impl {
 
 #ifdef KOKKOS_DEBUG
 SharedAllocationRecord< void , void >
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::s_root_record ;
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::s_root_record ;
 
 #endif
 
 ::cudaTextureObject_t
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
 attach_texture_object( const unsigned sizeof_alias
                      , void *   const alloc_ptr
                      , size_t   const alloc_size )
@@ -188,18 +173,18 @@ attach_texture_object( const unsigned sizeof_alias
 }
 
 std::string
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::get_label() const
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::get_label() const
 {
   SharedAllocationHeader header ;
 
-  Kokkos::Impl::DeepCopy< Kokkos::HostSpace , Kokkos::ResCudaSpace >( & header , RecordBase::head() , sizeof(SharedAllocationHeader) );
+  Kokkos::Impl::DeepCopy< Kokkos::HostSpace , KokkosResilience::ResCudaSpace >( & header , RecordBase::head() , sizeof(SharedAllocationHeader) );
 
   return std::string( header.m_label );
 }
 
-SharedAllocationRecord< Kokkos::ResCudaSpace , void > *
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
-allocate( const Kokkos::ResCudaSpace &  arg_space
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void > *
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
+allocate( const KokkosResilience::ResCudaSpace &  arg_space
         , const std::string       &  arg_label
         , const size_t               arg_alloc_size
         )
@@ -208,23 +193,23 @@ allocate( const Kokkos::ResCudaSpace &  arg_space
 }
 
 void
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
 deallocate( SharedAllocationRecord< void , void > * arg_rec )
 {
   delete static_cast<SharedAllocationRecord*>(arg_rec);
 }
 
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
 ~SharedAllocationRecord()
 {
   #if defined(KOKKOS_ENABLE_PROFILING)
   if(Kokkos::Profiling::profileLibraryLoaded()) {
 
     SharedAllocationHeader header ;
-    Kokkos::Impl::DeepCopy<ResCudaSpace,HostSpace>( & header , RecordBase::m_alloc_ptr , sizeof(SharedAllocationHeader) );
+    Kokkos::Impl::DeepCopy<KokkosResilience::ResCudaSpace,HostSpace>( & header , RecordBase::m_alloc_ptr , sizeof(SharedAllocationHeader) );
 
     Kokkos::Profiling::deallocateData(
-      Kokkos::Profiling::SpaceHandle(Kokkos::ResCudaSpace::name()),header.m_label,
+      Kokkos::Profiling::SpaceHandle(KokkosResilience::ResCudaSpace::name()),header.m_label,
       data(),size());
   }
   #endif
@@ -234,8 +219,8 @@ SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
                     );
 }
 
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
-SharedAllocationRecord( const Kokkos::ResCudaSpace & arg_space
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
+SharedAllocationRecord( const KokkosResilience::ResCudaSpace & arg_space
                       , const std::string       & arg_label
                       , const size_t              arg_alloc_size
                       , const SharedAllocationRecord< void , void >::function_type arg_dealloc
@@ -273,14 +258,14 @@ SharedAllocationRecord( const Kokkos::ResCudaSpace & arg_space
   header.m_label[SharedAllocationHeader::maximum_label_length - 1] = (char) 0;
 
   // Copy to device memory
-  Kokkos::Impl::DeepCopy<ResCudaSpace,HostSpace>( RecordBase::m_alloc_ptr , & header , sizeof(SharedAllocationHeader) );
+  Kokkos::Impl::DeepCopy<KokkosResilience::ResCudaSpace,HostSpace>( RecordBase::m_alloc_ptr , & header , sizeof(SharedAllocationHeader) );
 }
 
 
 //----------------------------------------------------------------------------
 
-void * SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
-allocate_tracked( const Kokkos::ResCudaSpace & arg_space
+void * SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
+allocate_tracked( const KokkosResilience::ResCudaSpace & arg_space
                 , const std::string & arg_alloc_label
                 , const size_t arg_alloc_size )
 {
@@ -294,7 +279,7 @@ allocate_tracked( const Kokkos::ResCudaSpace & arg_space
   return r->data();
 }
 
-void SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
+void SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
 deallocate_tracked( void * const arg_alloc_ptr )
 {
   if ( arg_alloc_ptr != 0 ) {
@@ -304,14 +289,14 @@ deallocate_tracked( void * const arg_alloc_ptr )
   }
 }
 
-void * SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
+void * SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
 reallocate_tracked( void * const arg_alloc_ptr
                   , const size_t arg_alloc_size )
 {
   SharedAllocationRecord * const r_old = get_record( arg_alloc_ptr );
   SharedAllocationRecord * const r_new = allocate( r_old->m_space , r_old->get_label() , arg_alloc_size );
 
-  Kokkos::Impl::DeepCopy<ResCudaSpace,ResCudaSpace>( r_new->data() , r_old->data()
+  Kokkos::Impl::DeepCopy<KokkosResilience::ResCudaSpace,KokkosResilience::ResCudaSpace>( r_new->data() , r_old->data()
                                              , std::min( r_old->size() , r_new->size() ) );
 
   RecordBase::increment( r_new );
@@ -322,10 +307,10 @@ reallocate_tracked( void * const arg_alloc_ptr
 
 //----------------------------------------------------------------------------
 
-SharedAllocationRecord< Kokkos::ResCudaSpace , void > *
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::get_record( void * alloc_ptr )
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void > *
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::get_record( void * alloc_ptr )
 {
-  using RecordCuda = SharedAllocationRecord< Kokkos::ResCudaSpace , void > ;
+  using RecordCuda = SharedAllocationRecord< KokkosResilience::ResCudaSpace , void > ;
 
   using Header     = SharedAllocationHeader ;
 
@@ -335,7 +320,7 @@ SharedAllocationRecord< Kokkos::ResCudaSpace , void >::get_record( void * alloc_
   Header const * const head_cuda = alloc_ptr ? Header::get_header( alloc_ptr ) : (Header*) 0 ;
 
   if ( alloc_ptr ) {
-    Kokkos::Impl::DeepCopy<HostSpace,ResCudaSpace>( & head , head_cuda , sizeof(SharedAllocationHeader) );
+    Kokkos::Impl::DeepCopy<HostSpace,KokkosResilience::ResCudaSpace>( & head , head_cuda , sizeof(SharedAllocationHeader) );
   }
 
   RecordCuda * const record = alloc_ptr ? static_cast< RecordCuda * >( head.m_record ) : (RecordCuda *) 0 ;
@@ -349,8 +334,8 @@ SharedAllocationRecord< Kokkos::ResCudaSpace , void >::get_record( void * alloc_
 
 // Iterate records to print orphaned memory ...
 void
-SharedAllocationRecord< Kokkos::ResCudaSpace , void >::
-print_records( std::ostream & s , const Kokkos::ResCudaSpace & , bool detail )
+SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >::
+print_records( std::ostream & s , const KokkosResilience::ResCudaSpace & , bool detail )
 {
 #ifdef KOKKOS_DEBUG
   SharedAllocationRecord< void , void > * r = & s_root_record ;

@@ -522,7 +522,7 @@ namespace Impl {
 
 #ifdef KOKKOS_DEBUG
 SharedAllocationRecord< void , void >
-SharedAllocationRecord< Kokkos::Experimental::HDF5Space , void >::s_root_record ;
+SharedAllocationRecord< KokkosResilience::HDF5Space , void >::s_root_record ;
 #endif
 
 
@@ -560,7 +560,7 @@ SharedAllocationRecord( const KokkosResilience::HDF5Space & arg_space
   : SharedAllocationRecord< void , void >
       (
 #ifdef KOKKOS_DEBUG
-      & SharedAllocationRecord< Kokkos::Experimental::HDF5Space , void >::s_root_record,
+      & SharedAllocationRecord< KokkosResilience::HDF5Space , void >::s_root_record,
 #endif
         reinterpret_cast<SharedAllocationHeader*>( arg_space.allocate( arg_alloc_size, arg_label ) )
       , arg_alloc_size
@@ -635,7 +635,7 @@ SharedAllocationRecord< KokkosResilience::HDF5Space , void >::get_record( void *
   RecordHost                   * const record = head ? static_cast< RecordHost * >( head->m_record ) : (RecordHost *) 0 ;
 
   if ( ! alloc_ptr || record->m_alloc_ptr != head ) {
-    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Impl::SharedAllocationRecord< Kokkos::Experimental::HDF5Space , void >::get_record ERROR" ) );
+    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Impl::SharedAllocationRecord< KokkosResilience::HDF5Space , void >::get_record ERROR" ) );
   }
 
   return record ;
@@ -652,6 +652,6 @@ print_records( std::ostream & s , const KokkosResilience::HDF5Space & , bool det
 #endif
 }
 
-} // namespace Experimental
+} // namespace Impl
 } // namespace Kokkos
 

@@ -52,7 +52,7 @@ template< class ExecSpace, class ScheduleType, class DataType >
 struct TestResilientRange {
   typedef int value_type; ///< typedef required for the parallel_reduce
   
-  typedef Kokkos::View< DataType*, Kokkos::ResCudaSpace > view_type;
+  typedef Kokkos::View< DataType*, KokkosResilience::ResCudaSpace > view_type;
 //  typedef Kokkos::View< int*, Kokkos::HostSpace > test_type;
 //  typedef Kokkos::View< int*, Kokkos::HostSpace > view_type;
   
@@ -78,7 +78,7 @@ struct TestResilientRange {
 //      ResSurrogate f(m_data);
     printf("calling parallel_for\n");
 //      Kokkos::parallel_for(N, f);
-    Kokkos::RangePolicy<Kokkos::ResCuda> rp (0,N);
+    Kokkos::RangePolicy<KokkosResilience::ResCuda> rp (0,N);
 /*      auto ml = KOKKOS_LAMBDA(const int i){
    #if defined(__CUDA_ARCH__)
          printf("insided lambda[%d]\n", i);
@@ -100,7 +100,7 @@ struct TestResilientRange {
   
 };
 
-KOKKOS_DECLARE_RESILIENCE_OBJECTS(int,int)
+KR_DECLARE_RESILIENCE_OBJECTS(int,int)
 
 
 TYPED_TEST_SUITE( TestResilience, enabled_exec_spaces );
@@ -110,7 +110,7 @@ TYPED_TEST( TestResilience, range )
   
   using exec_space = typename TestFixture::exec_space;
   
-  KOKKOS_ADD_RESILIENCE_OBJECTS(int,int);
+  KR_ADD_RESILIENCE_OBJECTS(int,int);
   
   { TestResilientRange< exec_space, Kokkos::Schedule<Kokkos::Static>, int >f(10); f.test_for(); }
 }

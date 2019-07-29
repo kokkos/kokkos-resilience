@@ -26,7 +26,7 @@
 
 //----------------------------------------------------------------------------
 
-namespace Kokkos {
+namespace KokkosResilience {
 
 ResCuda::size_type ResCuda::detect_device_count()
 { return Cuda::detect_device_count();}
@@ -109,7 +109,7 @@ void ResCuda::fence()
 
 const char* ResCuda::name() { return "ResCuda"; }
 
-} // namespace Kokkos
+} // namespace KokkosResilience
 
 #else
 

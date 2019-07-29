@@ -4,6 +4,7 @@
 #include <Kokkos_Macros.hpp>
 #if defined( KOKKOS_ENABLE_CUDA )
 
+#include <impl/Kokkos_TrackDuplicates.hpp>
 #include <Kokkos_CudaSpace.hpp>
 #include <cmath>
 #include <map>
@@ -11,12 +12,12 @@
 
 /*--------------------------------------------------------------------------*/
 
-namespace Kokkos {
+namespace KokkosResilience {
 
 
 /** \brief  cuda on-device memory management */
 
-class ResCudaSpace : public CudaSpace {
+class ResCudaSpace : public Kokkos::CudaSpace {
 public:
   //! Tag this class as a kokkos memory space
   typedef ResCudaSpace             memory_space ;
@@ -41,7 +42,7 @@ public:
 
 private:
 
-  friend class Kokkos::Impl::SharedAllocationRecord< Kokkos::ResCudaSpace , void > ;
+  friend class Kokkos::Impl::SharedAllocationRecord< ResCudaSpace , void > ;
 };
 
 } // namespace Kokkos
@@ -52,12 +53,12 @@ private:
 namespace Kokkos {
 namespace Impl {
 
-static_assert( Kokkos::Impl::MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::ResCudaSpace >::assignable , "" );
+static_assert( Kokkos::Impl::MemorySpaceAccess< KokkosResilience::ResCudaSpace , KokkosResilience::ResCudaSpace >::assignable , "" );
 
 //----------------------------------------
 
 template<>
-struct MemorySpaceAccess< Kokkos::HostSpace , Kokkos::ResCudaSpace > {
+struct MemorySpaceAccess< Kokkos::HostSpace , KokkosResilience::ResCudaSpace > {
   enum { assignable = false };
   enum { accessible = false };
   enum { deepcopy   = true };
@@ -66,14 +67,14 @@ struct MemorySpaceAccess< Kokkos::HostSpace , Kokkos::ResCudaSpace > {
 //----------------------------------------
 
 template<>
-struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::HostSpace > {
+struct MemorySpaceAccess< KokkosResilience::ResCudaSpace , Kokkos::HostSpace > {
   enum { assignable = false };
   enum { accessible = false };
   enum { deepcopy   = true };
 };
 
 template<>
-struct MemorySpaceAccess< Kokkos::CudaSpace , Kokkos::ResCudaSpace > {
+struct MemorySpaceAccess< Kokkos::CudaSpace , KokkosResilience::ResCudaSpace > {
   enum { assignable = true };
   enum { accessible = true };
   enum { deepcopy   = true };
@@ -82,14 +83,14 @@ struct MemorySpaceAccess< Kokkos::CudaSpace , Kokkos::ResCudaSpace > {
 //----------------------------------------
 
 template<>
-struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::CudaSpace > {
+struct MemorySpaceAccess< KokkosResilience::ResCudaSpace , Kokkos::CudaSpace > {
   enum { assignable = true };
   enum { accessible = true };
   enum { deepcopy   = true };
 };
 
 template<>
-struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::CudaUVMSpace > {
+struct MemorySpaceAccess< KokkosResilience::ResCudaSpace , Kokkos::CudaUVMSpace > {
   // CudaSpace::execution_space == CudaUVMSpace::execution_space
   enum { assignable = true };
   enum { accessible = true };
@@ -97,7 +98,7 @@ struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::CudaUVMSpace > {
 };
 
 template<>
-struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::CudaHostPinnedSpace > {
+struct MemorySpaceAccess< KokkosResilience::ResCudaSpace , Kokkos::CudaHostPinnedSpace > {
   // CudaSpace::execution_space != CudaHostPinnedSpace::execution_space
   enum { assignable = false };
   enum { accessible = true }; // ResCudaSpace::execution_space
@@ -109,7 +110,7 @@ struct MemorySpaceAccess< Kokkos::ResCudaSpace , Kokkos::CudaHostPinnedSpace > {
 // CudaUVMSpace accessible to both cuda and Host
 
 template<>
-struct MemorySpaceAccess< Kokkos::CudaUVMSpace , Kokkos::ResCudaSpace > {
+struct MemorySpaceAccess< Kokkos::CudaUVMSpace , KokkosResilience::ResCudaSpace > {
   // CudaUVMSpace::execution_space == CudaSpace::execution_space
   // Can access CudaUVMSpace from Host but cannot access ResCudaSpace from Host
   enum { assignable = false };
@@ -120,7 +121,7 @@ struct MemorySpaceAccess< Kokkos::CudaUVMSpace , Kokkos::ResCudaSpace > {
 };
 
 template<>
-struct MemorySpaceAccess< Kokkos::CudaHostPinnedSpace , Kokkos::ResCudaSpace > {
+struct MemorySpaceAccess< Kokkos::CudaHostPinnedSpace , KokkosResilience::ResCudaSpace > {
   enum { assignable = false }; // Cannot access from Host
   enum { accessible = false };
   enum { deepcopy   = true };
@@ -136,29 +137,29 @@ struct MemorySpaceAccess< Kokkos::CudaHostPinnedSpace , Kokkos::ResCudaSpace > {
 namespace Kokkos {
 namespace Impl {
 
-template<> struct DeepCopy< ResCudaSpace , ResCudaSpace , Cuda>
+template<> struct DeepCopy< KokkosResilience::ResCudaSpace , KokkosResilience::ResCudaSpace , Cuda>
 {
   DeepCopy( void * dst , const void * src , size_t );
   DeepCopy( const Cuda & , void * dst , const void * src , size_t );
 };
 
-template<> struct DeepCopy< ResCudaSpace , HostSpace , Cuda >
+template<> struct DeepCopy< KokkosResilience::ResCudaSpace , HostSpace , Cuda >
 {
   DeepCopy( void * dst , const void * src , size_t );
   DeepCopy( const Cuda & , void * dst , const void * src , size_t );
 };
 
-template<> struct DeepCopy< HostSpace , ResCudaSpace , Cuda >
+template<> struct DeepCopy< HostSpace , KokkosResilience::ResCudaSpace , Cuda >
 {
   DeepCopy( void * dst , const void * src , size_t );
   DeepCopy( const Cuda & , void * dst , const void * src , size_t );
 };
 
-template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , ResCudaSpace , ExecutionSpace >
+template<class ExecutionSpace> struct DeepCopy< KokkosResilience::ResCudaSpace , KokkosResilience::ResCudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< ResCudaSpace , ResCudaSpace , Cuda >( dst , src , n ); }
+  { (void) DeepCopy< KokkosResilience::ResCudaSpace , KokkosResilience::ResCudaSpace , Cuda >( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -168,26 +169,11 @@ template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , ResCudaSpace , Ex
   }
 };
 
-template<class ExecutionSpace> struct DeepCopy< ResCudaSpace , HostSpace , ExecutionSpace >
+template<class ExecutionSpace> struct DeepCopy< KokkosResilience::ResCudaSpace , HostSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< ResCudaSpace , HostSpace , Cuda>( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
-    exec.fence();
-    DeepCopyAsyncCuda (dst,src,n);
-  }
-};
-
-template<class ExecutionSpace>
-struct DeepCopy< HostSpace , ResCudaSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , ResCudaSpace , Cuda >( dst , src , n ); }
+  { (void) DeepCopy< KokkosResilience::ResCudaSpace , HostSpace , Cuda>( dst , src , n ); }
 
   inline
   DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
@@ -198,7 +184,22 @@ struct DeepCopy< HostSpace , ResCudaSpace , ExecutionSpace >
 };
 
 template<class ExecutionSpace>
-struct DeepCopy< ResCudaSpace , CudaSpace , ExecutionSpace >
+struct DeepCopy< HostSpace , KokkosResilience::ResCudaSpace , ExecutionSpace >
+{
+  inline
+  DeepCopy( void * dst , const void * src , size_t n )
+  { (void) DeepCopy< HostSpace , KokkosResilience::ResCudaSpace , Cuda >( dst , src , n ); }
+
+  inline
+  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
+  {
+    exec.fence();
+    DeepCopyAsyncCuda (dst,src,n);
+  }
+};
+
+template<class ExecutionSpace>
+struct DeepCopy< KokkosResilience::ResCudaSpace , CudaSpace , ExecutionSpace >
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
@@ -213,7 +214,7 @@ struct DeepCopy< ResCudaSpace , CudaSpace , ExecutionSpace >
 };
 
 template<class ExecutionSpace>
-struct DeepCopy< CudaSpace , ResCudaSpace , ExecutionSpace>
+struct DeepCopy< CudaSpace , KokkosResilience::ResCudaSpace , ExecutionSpace>
 {
   inline
   DeepCopy( void * dst , const void * src , size_t n )
@@ -238,7 +239,7 @@ namespace Impl {
 
 /** Running in ResCudaSpace attempting to access HostSpace: error */
 template<>
-struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::HostSpace >
+struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResCudaSpace , Kokkos::HostSpace >
 {
   enum { value = false };
   KOKKOS_INLINE_FUNCTION static void verify( void )
@@ -250,7 +251,7 @@ struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::HostS
 
 /** Running in ResCudaSpace accessing CudaUVMSpace: ok */
 template<>
-struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::CudaUVMSpace >
+struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResCudaSpace , Kokkos::CudaUVMSpace >
 {
   enum { value = true };
   KOKKOS_INLINE_FUNCTION static void verify( void ) { }
@@ -259,7 +260,7 @@ struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::CudaU
 
 /** Running in CudaSpace accessing CudaHostPinnedSpace: ok */
 template<>
-struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::CudaHostPinnedSpace >
+struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResCudaSpace , Kokkos::CudaHostPinnedSpace >
 {
   enum { value = true };
   KOKKOS_INLINE_FUNCTION static void verify( void ) { }
@@ -269,7 +270,7 @@ struct VerifyExecutionCanAccessMemorySpace< Kokkos::ResCudaSpace , Kokkos::CudaH
 /** Running in CudaSpace attempting to access an unknown space: error */
 template< class OtherSpace >
 struct VerifyExecutionCanAccessMemorySpace<
-  typename enable_if< ! is_same<Kokkos::ResCudaSpace,OtherSpace>::value , Kokkos::ResCudaSpace >::type ,
+  typename enable_if< ! is_same<KokkosResilience::ResCudaSpace,OtherSpace>::value , KokkosResilience::ResCudaSpace >::type ,
   OtherSpace >
 {
   enum { value = false };
@@ -283,11 +284,11 @@ struct VerifyExecutionCanAccessMemorySpace<
 //----------------------------------------------------------------------------
 /** Running in HostSpace attempting to access CudaSpace */
 template<>
-struct VerifyExecutionCanAccessMemorySpace< Kokkos::HostSpace , Kokkos::ResCudaSpace >
+struct VerifyExecutionCanAccessMemorySpace< Kokkos::HostSpace , KokkosResilience::ResCudaSpace >
 {
   enum { value = false };
-  inline static void verify( void ) { ResCudaSpace::access_error(); }
-  inline static void verify( const void * p ) { ResCudaSpace::access_error(p); }
+  inline static void verify( void ) { KokkosResilience::ResCudaSpace::access_error(); }
+  inline static void verify( const void * p ) { KokkosResilience::ResCudaSpace::access_error(p); }
 };
 
 } // namespace Impl
@@ -300,7 +301,7 @@ namespace Kokkos {
 namespace Impl {
 
 template<>
-class SharedAllocationRecord< Kokkos::ResCudaSpace , void >
+class SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >
   : public SharedAllocationRecord< void , void >
 {
 private:
@@ -324,30 +325,30 @@ private:
 #endif
 
   ::cudaTextureObject_t   m_tex_obj ;
-  const Kokkos::ResCudaSpace m_space ;
+  const KokkosResilience::ResCudaSpace m_space ;
 
 protected:
 
   ~SharedAllocationRecord();
   SharedAllocationRecord() : RecordBase(), m_tex_obj(0), m_space() {}
 
-  SharedAllocationRecord( const Kokkos::ResCudaSpace        & arg_space
+  SharedAllocationRecord( const KokkosResilience::ResCudaSpace        & arg_space
                         , const std::string              & arg_label
                         , const size_t                     arg_alloc_size
                         , const RecordBase::function_type  arg_dealloc = & deallocate
                         );
 
 public:
-  Kokkos::ResCudaSpace get_space() const { return m_space; }
+  KokkosResilience::ResCudaSpace get_space() const { return m_space; }
   std::string get_label() const ;
 
-  static SharedAllocationRecord * allocate( const Kokkos::ResCudaSpace &  arg_space
+  static SharedAllocationRecord * allocate( const KokkosResilience::ResCudaSpace &  arg_space
                                           , const std::string       &  arg_label
                                           , const size_t               arg_alloc_size );
 
   /**\brief  Allocate tracked memory in the space */
   static
-  void * allocate_tracked( const Kokkos::ResCudaSpace & arg_space
+  void * allocate_tracked( const KokkosResilience::ResCudaSpace & arg_space
                          , const std::string & arg_label
                          , const size_t arg_alloc_size );
 
@@ -388,14 +389,15 @@ public:
       return ptr - reinterpret_cast<AliasType*>( RecordBase::m_alloc_ptr );
     }
 
-  static void print_records( std::ostream & , const Kokkos::ResCudaSpace & , bool detail = false );
+  static void print_records( std::ostream & , const KokkosResilience::ResCudaSpace & , bool detail = false );
 };
 
 
 
 } // namespace Impl
+} // namespace Kokkos
 
-namespace Experimental {
+namespace KokkosResilience {
 //  template <class DType, class ExecSpace> void * CombineFunctor<DType,ExecSpace>::s_dup_kernel = nullptr;
 
   template<class Functor>
@@ -405,19 +407,18 @@ namespace Experimental {
           cf.exec(iwork);
   }
  
-} // namespace Experimental
+} // namespace KokkosResilience
 
-} // namespace Kokkos
 
-#define KOKKOS_MAKE_RESILIENCE_FUNC_NAME( id ) id##_resilience_func
+#define KR_MAKE_RESILIENCE_FUNC_NAME( id ) id##_resilience_func
 
-#define KOKKOS_DECLARE_RESILIENCE_OBJECTS(data_type, id) \
-   template __global__ void Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >( \
-                                                                Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> ); \
-   void * KOKKOS_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&Kokkos::Experimental::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, Kokkos::ResCuda> >;
+#define KR_DECLARE_RESILIENCE_OBJECTS(data_type, id) \
+   template __global__ void KokkosResilience::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, KokkosResilience::ResCuda> >( \
+                                                                Kokkos::Experimental::CombineFunctor<data_type, KokkosResilience::ResCuda> ); \
+   void * KR_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&KokkosResilience::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, KokkosResilience::ResCuda> >;
 
-#define KOKKOS_ADD_RESILIENCE_OBJECTS(data_type, id) \
-   Kokkos::Experimental::DuplicateTracker::add_kernel_func( typeid(data_type).name(), KOKKOS_MAKE_RESILIENCE_FUNC_NAME( id ));
+#define KR_ADD_RESILIENCE_OBJECTS(data_type, id) \
+   Kokkos::Experimental::DuplicateTracker::add_kernel_func( typeid(data_type).name(), KR_MAKE_RESILIENCE_FUNC_NAME( id ));
 
 
 //----------------------------------------------------------------------------

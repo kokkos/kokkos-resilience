@@ -12,32 +12,32 @@
 #include <utility>
 #include <Kokkos_Parallel.hpp>
 #include <Cuda/Kokkos_Cuda_Parallel.hpp>
+#include <impl/Kokkos_TrackDuplicates.hpp>
 
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 
-namespace Kokkos {
-namespace Experimental {
+namespace KokkosResilience {
 
    static void combine_res_duplicates() {
       std::map<std::string, Kokkos::Experimental::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
       while ( it != ResCudaSpace::duplicate_map.end() ) {
           Kokkos::Experimental::DuplicateTracker * dt = it->second;
-//          Kokkos::Experimental::SpecDuplicateTracker< int*, Kokkos::ResCudaSpace > * dt =
-//                    (Kokkos::Experimental::SpecDuplicateTracker< int*, Kokkos::ResCudaSpace > *)it->second;
           printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
           dt->combine_dups();
           it++;
       }
    }
-}
+} // namespace KokkosResilience
+
+namespace Kokkos {
 namespace Impl {
 
 template< class FunctorType , class ... Traits >
 class ParallelFor< FunctorType
                  , Kokkos::RangePolicy< Traits ... >
-                 , Kokkos::ResCuda
+                 , KokkosResilience::ResCuda
                  >
 {
 private:
@@ -80,7 +80,7 @@ public:
         closureIII.execute();
         Kokkos::fence();
         //printf("Combining duplicates \n");
-        Kokkos::Experimental::combine_res_duplicates();
+        KokkosResilience::combine_res_duplicates();
     }
 
     ParallelFor( const FunctorType  & arg_functor ,
@@ -2005,9 +2005,10 @@ public:
 };
 #endif
 } // namespace Impl
+} // namespace Kokkos
 
+namespace Kokkos {
 namespace Experimental {
-
 
    template<class Type, class ExecutionSpace>
    void SpecDuplicateTracker<Type, ExecutionSpace>::combine_dups() {
@@ -2051,9 +2052,7 @@ namespace Experimental {
       Kokkos::fence();
 
    }
-
-}
-
+} // namespace Experimental
 } // namespace Kokkos
 
 
