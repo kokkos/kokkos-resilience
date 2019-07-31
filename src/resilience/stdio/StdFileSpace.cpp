@@ -70,7 +70,8 @@ namespace KokkosResilience {
       }
       std::string sFullPath = KokkosResilience::StdFileSpace::s_default_path;
       size_t pos = file_path.find("/");
-      if ( (int)pos == 0 ) {    // only use the default if there is no absolute path...
+      size_t pos2 = file_path.find("./");
+      if ( ((int)pos == 0) || ((int)pos2 == 0) ) {    // only use the default if there is no resolveable path...
          sFullPath = file_path;
       } else {
          // printf("building file path %s, %s \n", sFullPath.c_str(), file_path.c_str() );

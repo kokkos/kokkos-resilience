@@ -227,7 +227,7 @@ TYPED_TEST( TestViewCheckpoint, stdio )
   remove("./data/stdfile/view_A");
   remove("./data/stdfile/view_B");
   for (int n = 0; n < 10; n++) {
-    TestCheckPointView< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt(n, "view", 10,10,"./data/stdfile");
+    TestCheckPointView< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt(n, "view", 10,10,"./data/stdfile/");
   }
 }
 
@@ -259,7 +259,7 @@ TYPED_TEST( TestViewCheckpoint, hdf5 )
   remove("./data/hdf5/view_A*");
   remove("./data/hdf5/view_B*");
   for (int n = 0; n < 10; n++) {
-     TestCheckPointView< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt(n, "view", 10,10,"./data/hdf5");
+     TestCheckPointView< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt(n, "view", 10,10,"./data/hdf5/");
   }
 }
 
