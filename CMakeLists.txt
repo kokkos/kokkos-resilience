@@ -68,7 +68,7 @@ endif()
 
 find_package(Boost REQUIRED)
 
-target_link_libraries(resilience PUBLIC Boost::boost)
+##target_link_libraries(resilience PUBLIC Boost::boost)
 
 add_subdirectory(src)
 
