@@ -6,29 +6,21 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
 
-include_directories(${kokkos-resilience_SOURCE_DIR})
-include_directories(${kokkos-resilience_BINARY_DIR})
-
-    # Require C++14
-if (CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
-    message("nvcc wrapper requires that CXX standard by set in kokkos build")
-else()
+# Require C++14
+if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
    target_compile_features(resilience PUBLIC cxx_std_14)
 endif()
 
 target_include_directories(resilience PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/resilience>
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                            $<INSTALL_INTERFACE:include>
                            )
 
 # TODO: change this when Kokkos cmake gets updated
 find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
-##target_include_directories(kokkos INTERFACE ${Kokkos_INCLUDE_DIRS})
-##message("Kokkos include dirs: ${Kokkos_INCLUDE_DIRS}")
 
-##target_link_libraries(resilience PUBLIC kokkos)
-TARGET_LINK_KOKKOS(resilience PUBLIC)
+target_link_kokkos(resilience PUBLIC)
 
 option( USE_VELOC "use VeloC backend for automatic checkpointing" ON )
 
@@ -122,6 +114,8 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
 
+install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
+
 
 if (USE_VELOC)
    install(FILES
@@ -134,14 +128,16 @@ if (USE_VELOC)
 endif()
 
 if (USE_HDF5)
-   install(FILES
-        ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+  install(FILES
+          ${CMAKE_MODULE_PATH}/FindHDF5.cmake
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
 
+  # Need to install/export HDF5 find module for downstream dependencies
+  configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
 endif()
 
-CONFIGURE_FILE(cmake/KokkosResilience_config.h.in KokkosResilience_config.h @ONLY)
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/KokkosResilience_config.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+configure_file(src/resilience/config/Config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp DESTINATION include/resilience/config)
 
 # Add subdirectories for examples and tests if they are enabled
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
