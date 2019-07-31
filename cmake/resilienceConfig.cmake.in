@@ -24,3 +24,6 @@ if (USE_HDF5)
    set(HDF5_DIR @HDF5_DIR@)
    find_dependency(HDF5 REQUIRED)
 endif()
+
+set(BOOST_ROOT @BOOST_ROOT@)
+find_dependency(Boost REQUIRED)
