@@ -22,7 +22,7 @@ struct DirectoryManager {
          for ( int nRetry = 0; nRetry < 5; nRetry++ ) {
             mkdir(dir.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
             nErr = errno;
-            if ( nErr != EINPROGRESS )
+            if ( ( nErr != EINPROGRESS ) && ( nErr != EAGAIN ))
                break;
             thread_yield();
          }
@@ -38,7 +38,7 @@ struct DirectoryManager {
             for ( int nRetry = 0; nRetry < 5; nRetry++ ) {
                mkdir(path.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
                nErr = errno;
-               if ( nErr != EINPROGRESS )
+               if ( (nErr != EINPROGRESS) && ( nErr != EAGAIN ) )
                   break;
                thread_yield();
             }
@@ -63,7 +63,7 @@ struct DirectoryManager {
          for ( int nRetry = 0; nRetry < 5; nRetry++ ) {
             mkdir(dir.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
             nErr = errno;
-            if ( nErr != EINPROGRESS )
+            if ( (nErr != EINPROGRESS) && ( nErr != EAGAIN ) )
                break;
             thread_yield();
          }
