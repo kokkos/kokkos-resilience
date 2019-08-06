@@ -7,7 +7,8 @@
 #include "ManualCheckpoint.hpp"
 
 #ifdef KR_ENABLE_VELOC
-   #include "AutomaticCheckpoint.hpp"
+#include "veloc/VelocBackend.hpp"
+#include "AutomaticCheckpoint.hpp"
 #endif
 
 #ifdef KR_ENABLE_CUDA
