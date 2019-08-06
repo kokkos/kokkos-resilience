@@ -4,12 +4,9 @@
 #include <resilience/config/Config.hpp>
 
 #include "Context.hpp"
+#include "ManualCheckpoint.hpp"
 
-#ifdef KOKKOS_ENABLE_MANUAL_CHECKPOINT
-   #include "ManualCheckpoint.hpp"
-#endif
-
-#ifdef KOKKOS_ENABLE_AUTOMATIC_CHECKPOINT
+#ifdef KR_ENABLE_VELOC
    #include "AutomaticCheckpoint.hpp"
 #endif
 
