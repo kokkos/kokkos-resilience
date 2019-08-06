@@ -13,7 +13,7 @@
    #include "AutomaticCheckpoint.hpp"
 #endif
 
-#ifdef KOKKOS_ENABLE_RES_CUDA
+#ifdef KR_ENABLE_CUDA
    #include "cuda/ResCuda.hpp"
    #include "cuda/ResCudaSpace.hpp"
    #include "cuda/CudaResParallel.hpp"

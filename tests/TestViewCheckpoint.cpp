@@ -4,7 +4,7 @@
 #define KOKKOS_ENABLE_MANUAL_CHECKPOINT
 #include <resilience/Resilience.hpp>
 
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
 #include <mpi.h>
 #endif
 
@@ -42,7 +42,7 @@ namespace {
       viewAName += (std::string)"_A";
       std::string viewBName = view_prefix;
       viewBName += (std::string)"_B";
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
       char buff[16];
        int mpi_rank = 0;
        MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
@@ -121,7 +121,7 @@ namespace {
         }
       });
       Kokkos::deep_copy( h_view_2, view_2 );
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
       
@@ -140,7 +140,7 @@ namespace {
       Kokkos::deep_copy( h_view_2, cp_view );
       Kokkos::fence();
 
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
       
@@ -232,7 +232,7 @@ TYPED_TEST( TestViewCheckpoint, stdio )
 }
 
 
-#ifdef KOKKOS_ENABLE_HDF5
+#ifdef KR_ENABLE_HDF5
 
 TYPED_TEST( TestViewCheckpoint, hdf5 )
 {
@@ -240,7 +240,7 @@ TYPED_TEST( TestViewCheckpoint, hdf5 )
   
   mkdir("./data", 0777);
   std::string file_name = "./data/cp_view.hdf";
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
   char buff[16];
   int mpi_rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
