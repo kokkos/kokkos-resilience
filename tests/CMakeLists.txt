@@ -2,9 +2,9 @@
 find_package(GTest REQUIRED)
 
 add_executable(resilience_tests
-               test_main.cpp
-               test_view_checkpoint.cpp
-               test_resilience.cpp
+               TestMain.cpp
+               TestViewCheckpoint.cpp
+               TestResilience.cpp
                )
 
 
