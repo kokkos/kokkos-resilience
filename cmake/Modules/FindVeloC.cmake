@@ -81,8 +81,14 @@ add_library(veloc::veloc UNKNOWN IMPORTED)
 set_target_properties(veloc::veloc PROPERTIES
                       IMPORTED_LOCATION ${_veloc_client_lib}
                       INTERFACE_INCLUDE_DIRECTORIES ${_veloc_include_dir}
-                      INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;veloc::axl;veloc::er;veloc::rankstr;MPI::MPI_CXX"
+                      INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX"
                       )
+
+if (NOT VELOC_BAREBONE)
+  set_target_properties(veloc::veloc PROPERTIES
+                        INTERFACE_LINK_LIBRARIES "veloc::axl;veloc::er;veloc::rankstr"
+                        )
+endif()
 
 set(VeloC_DIR ${_veloc_root})
 

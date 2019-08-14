@@ -133,7 +133,11 @@ namespace KokkosResilience
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ));
+#ifdef KR_VELOC_BAREBONE
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
+#else
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
+#endif
       
       std::string   fname( veloc_file_name );
       std::ofstream vfile( fname, std::ios::binary );
@@ -184,7 +188,11 @@ namespace KokkosResilience
     bool status = true;
     try
     {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ));
+#ifdef KR_VELOC_BAREBONE
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
+#else
+      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
+#endif
       printf( "restore file name: %s\n", veloc_file_name );
       
       std::string   fname( veloc_file_name );

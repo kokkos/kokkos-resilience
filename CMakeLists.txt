@@ -29,6 +29,10 @@ if (KR_ENABLE_VELOC)
   find_package(VeloC REQUIRED)
   target_link_libraries(resilience PRIVATE veloc::veloc)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
+
+  if (VELOC_BAREBONE)
+    target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
+  endif()
 endif()
 
 
