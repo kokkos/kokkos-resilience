@@ -14,11 +14,11 @@ message(STATUS "Module path: ${CMAKE_MODULE_PATH}")
 
 find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
 
-if (KR_ENABLE_VELOC)
+if (@KR_ENABLE_VELOC@)
    find_dependency(VeloC REQUIRED HINTS @VeloC_DIR@)
 endif()
 
-if (KR_ENABLE_HDF5)
+if (@KR_ENABLE_HDF5@)
    find_dependency(HDF5 REQUIRED HINTS @HDF5_DIR@)
 endif()
 
