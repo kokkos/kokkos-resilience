@@ -63,7 +63,6 @@ namespace
     try
     {
       VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name ) );
-      printf( "veloc file name: %s\n", veloc_file_name );
       
       std::string fname( veloc_file_name );
       std::ofstream vfile( fname, std::ios::binary );

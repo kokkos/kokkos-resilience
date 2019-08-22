@@ -2,7 +2,7 @@
 #include "HDF5Space.hpp"
 #include "Kokkos_Macros.hpp"
 
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
    #include "mpi.h"
 #endif
 
@@ -126,7 +126,7 @@ namespace KokkosResilience {
        file_block[0] = data_size;
        local_block[0] = data_size;
       
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
        MPI_Comm_size( MPI_COMM_WORLD, &mpi_size );
        MPI_Comm_rank( MPI_COMM_WORLD, &mpi_rank);
     //   printf("initializing parallel IO: %d, %d \n", mpi_size, mpi_rank);
@@ -184,7 +184,7 @@ namespace KokkosResilience {
        }
 
        hid_t pid = H5Pcreate(H5P_FILE_ACCESS);
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
        if (m_layout != KokkosHDF5ConfigurationManager::LAYOUT_DEFAULT) {
           //printf("[%d] set mpio api ...\n", mpi_rank);
           H5Pset_fapl_mpio( pid, MPI_COMM_WORLD, MPI_INFO_NULL );
@@ -334,7 +334,7 @@ namespace KokkosResilience {
 //                     size_t offset_ = i*file_block[0] + j*file_block[1] + k*file_block[2] + l*file_block[3];
 //                     printf("[%d] write file: %d, %d, %d, %d -- %d \n", mpi_rank, i, j, k, l, offset_);
                      hid_t pid = H5Pcreate(H5P_DATASET_XFER);
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
                      if ( m_layout != KokkosHDF5ConfigurationManager::LAYOUT_DEFAULT) {
                          //printf("[%d] writing parallel file: %d, %08x \n", mpi_rank, view_offset[0], &ptr[view_offset[0]] );
                          H5Pset_dxpl_mpio(pid, H5FD_MPIO_COLLECTIVE);
@@ -460,7 +460,7 @@ namespace KokkosResilience {
    void HDF5Space::checkpoint_create_view_targets() {
        int mpi_size = 1;
        int mpi_rank = 0;
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
        MPI_Comm_size( MPI_COMM_WORLD, &mpi_size );
        MPI_Comm_rank( MPI_COMM_WORLD, &mpi_rank);
 #endif
@@ -481,7 +481,7 @@ namespace KokkosResilience {
              delete pList->pPrev;
           }
       }
-#ifdef KOKKOS_ENABLE_HDF5_PARALLEL
+#ifdef KR_ENABLE_HDF5_PARALLEL
       if (mpi_size > 1) {
         // printf("[%d] waiting for barrier \n", mpi_rank);
          MPI_Barrier(MPI_COMM_WORLD);

@@ -5,11 +5,11 @@ target_sources(resilience PRIVATE
 add_subdirectory(filesystem)
 add_subdirectory(stdio)
 
-if (USE_VELOC)
+if (KR_ENABLE_VELOC)
   add_subdirectory(veloc)
 endif()
 
-if (USE_HDF5)
+if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
 

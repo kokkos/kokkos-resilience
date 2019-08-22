@@ -2,11 +2,11 @@
 #define INC_RESILIENCE_CONTEXT_HPP
 
 #include <utility>
-#ifdef KOKKOS_ENABLE_VELOC
+#ifdef KR_ENABLE_VELOC
 #include <mpi.h>
 #endif
 
-#ifdef KOKKOS_ENABLE_VELOC
+#ifdef KR_ENABLE_VELOC
    #include "veloc/VelocBackend.hpp"
 #endif
 
@@ -24,7 +24,7 @@ namespace KokkosResilience
   template< typename Backend >
   class Context;
   
-#ifdef KOKKOS_ENABLE_VELOC
+#ifdef KR_ENABLE_VELOC
   template<>
   class Context< VeloCCheckpointBackend >
   {
@@ -86,7 +86,7 @@ namespace KokkosResilience
 #endif
   };
 
-#endif  // KOKKOS_ENABLE_VELOC
+#endif  // KR_ENABLE_VELOC
 
 }
 
