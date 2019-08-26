@@ -6,6 +6,7 @@
 #include <memory>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
+#include <unordered_set>
 #include <mpi.h>
 
 namespace KokkosResilience
@@ -13,12 +14,14 @@ namespace KokkosResilience
   template< typename Backend >
   class Context;
   
-  class VeloCCheckpointBackend
+  class VeloCMemoryBackend
   {
   public:
-  
-    VeloCCheckpointBackend( Context< VeloCCheckpointBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
-    ~VeloCCheckpointBackend();
+    
+    using context_type = Context< VeloCMemoryBackend >;
+    
+    VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm, const std::string &veloc_config );
+    ~VeloCMemoryBackend();
   
     void checkpoint( const std::string &label, int version,
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
@@ -28,11 +31,39 @@ namespace KokkosResilience
   
     void restart( const std::string &label, int version,
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+  
+    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+
+  private:
+    
+    std::unordered_set< std::string > m_view_labels;
+    
+    MPI_Comm m_mpi_comm;
+    context_type *m_context;
+  };
+  
+  class VeloCFileBackend
+  {
+  public:
+  
+    VeloCFileBackend( Context< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
+    ~VeloCFileBackend();
+  
+    void checkpoint( const std::string &label, int version,
+                     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+  
+    bool restart_available( const std::string &label, int version );
+    int latest_version (const std::string &label);
+  
+    void restart( const std::string &label, int version,
+                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+  
+    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > & ) {} // Do nothing
 
   private:
   
     MPI_Comm m_mpi_comm;
-    Context< VeloCCheckpointBackend > *m_context;
+    Context< VeloCFileBackend > *m_context;
   };
 }
 

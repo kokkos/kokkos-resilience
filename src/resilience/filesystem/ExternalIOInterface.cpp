@@ -64,7 +64,7 @@ namespace KokkosResilience {
    void KokkosIOConfigurationManager::load_configuration ( std::string path ) {
 
       if (path.length() == 0 ) {
-         printf("WARNING:KOKKOS_IO_CONFIG not set. loading default setting for HDF5 files access. \n");
+         printf("WARNING:KR_IO_CONFIG not set. loading default setting for HDF5 files access. \n");
          return;
       }
 
@@ -83,7 +83,7 @@ namespace KokkosResilience {
       if (KokkosIOConfigurationManager::m_Inst == nullptr) {
          KokkosIOConfigurationManager::m_Inst = new KokkosIOConfigurationManager;
          std::string path;
-         char * config = std::getenv( "KOKKOS_IO_CONFIG" );
+         char * config = std::getenv( "KR_IO_CONFIG" );
          if (config != nullptr)
             path = config;
          // printf("loading IOConfigurationManager: %s\n", path.c_str());

@@ -2,12 +2,8 @@
 #define INC_RESILIENCE_CONTEXT_HPP
 
 #include <utility>
-#ifdef KOKKOS_ENABLE_VELOC
+#ifdef KR_ENABLE_VELOC
 #include <mpi.h>
-#endif
-
-#ifdef KOKKOS_ENABLE_VELOC
-   #include "veloc/VelocBackend.hpp"
 #endif
 
 // Tracing support
@@ -22,11 +18,7 @@ namespace KokkosResilience
   }
   
   template< typename Backend >
-  class Context;
-  
-#ifdef KOKKOS_ENABLE_VELOC
-  template<>
-  class Context< VeloCCheckpointBackend >
+  class Context
   {
   public:
     
@@ -69,8 +61,8 @@ namespace KokkosResilience
     }
     
     MPI_Comm comm() const noexcept { return m_comm; }
-    
-    VeloCCheckpointBackend &backend() { return m_backend; }
+  
+    Backend &backend() { return m_backend; }
     
 #ifdef KR_ENABLE_TRACING
     Util::detail::TraceStack  &trace() { return m_trace; };
@@ -79,15 +71,12 @@ namespace KokkosResilience
   private:
     
     MPI_Comm  m_comm;
-    VeloCCheckpointBackend m_backend;
+    Backend m_backend;
     
 #ifdef KR_ENABLE_TRACING
     Util::detail::TraceStack  m_trace;
 #endif
   };
-
-#endif  // KOKKOS_ENABLE_VELOC
-
 }
 
 #endif  // INC_RESILIENCE_CONTEXT_HPP

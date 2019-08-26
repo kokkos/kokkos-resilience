@@ -17,18 +17,22 @@ target_include_directories(resilience PUBLIC
                            $<INSTALL_INTERFACE:include>
                            )
 
-# TODO: change this when Kokkos cmake gets updated
 find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
 target_link_kokkos(resilience PUBLIC)
 
-option( USE_VELOC "use VeloC backend for automatic checkpointing" ON )
+option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 
 
 # VeloC backend
-if (USE_VELOC)
-   find_package(VeloC REQUIRED)
-   target_link_libraries(resilience PRIVATE veloc::veloc)
+if (KR_ENABLE_VELOC)
+  find_package(VeloC REQUIRED)
+  target_link_libraries(resilience PRIVATE veloc::veloc)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
+
+  if (VELOC_BAREBONE)
+    target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
+  endif()
 endif()
 
 
@@ -38,33 +42,25 @@ if (KR_ENABLE_TRACING)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
 endif()
 
-option( USE_HDF5 "add HDF5 support" OFF )
-option( USE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
+option( KR_ENABLE_HDF5 "add HDF5 support" OFF )
+option( KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
 
-if (USE_HDF5_PARALLEL)
-  set(USE_HDF5 ON)
-  set(KOKKOS_ENABLE_HDF5_PARALLEL ON)
+if (KR_ENABLE_HDF5_PARALLEL)
+  set(KR_ENABLE_HDF5 ON)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5_PARALLEL)
 endif()
 
-if (USE_HDF5)
+if (KR_ENABLE_HDF5)
    find_package(HDF5 REQUIRED)
    target_link_libraries(resilience PUBLIC HDF5::HDF5)
-   set(KOKKOS_ENABLE_HDF5 ON)
+   target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5)
 endif()
 
 # MPI requirement
-if (USE_VELOC OR USE_HDF5_PARALLEL)
+if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
    find_package(MPI REQUIRED)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
-   set(KOKKOS_ENABLE_VELOC ON)
 endif()
-
-if (USE_VELOC)
-   link_directories(${KOKKOS_LIBRARY_DIRS} ${VeloC_LINK_DIRECTORIES})
-else()
-   link_directories(${KOKKOS_LIBRARY_DIRS})
-endif()
-
 
 find_package(Boost REQUIRED)
 
@@ -79,9 +75,7 @@ export(TARGETS resilience
        )
 
 if (Kokkos_ENABLE_Cuda)
-   set(KOKKOS_ENABLE_RES_CUDA ON)
-else()
-   set(KOKKOS_ENABLE_RES_CUDA OFF)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 
 # Set up find_package config and version file
@@ -117,7 +111,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
 
-if (USE_VELOC)
+if (KR_ENABLE_VELOC)
    install(FILES
         ${CMAKE_MODULE_PATH}/FindVeloC.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
@@ -127,7 +121,7 @@ if (USE_VELOC)
 
 endif()
 
-if (USE_HDF5)
+if (KR_ENABLE_HDF5)
   install(FILES
           ${CMAKE_MODULE_PATH}/FindHDF5.cmake
           DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
