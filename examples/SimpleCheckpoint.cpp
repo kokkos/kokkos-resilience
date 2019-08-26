@@ -1,8 +1,9 @@
 
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
-#define KOKKOS_ENABLE_AUTOMATIC_CHECKPOINT
-#include <resilience/Resilience.hpp>
+#include <resilience/Context.hpp>
+#include <resilience/veloc/VelocBackend.hpp>
+#include <resilience/AutomaticCheckpoint.hpp>
 
 int
 main( int argc, char **argv )
@@ -11,7 +12,7 @@ main( int argc, char **argv )
   
   Kokkos::initialize( argc, argv );
   {
-    auto ctx = KokkosResilience::Context< KokkosResilience::VeloCCheckpointBackend >( MPI_COMM_WORLD, "veloc_test.cfg" );
+    auto ctx = KokkosResilience::Context< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, "veloc_test.cfg" );
     
     int  dim0 = 5, dim1 = 5;
     auto view = Kokkos::View< double ** >( "test_view", dim0, dim1 );

@@ -5,6 +5,7 @@ add_executable(resilience_tests
                TestMain.cpp
                TestViewCheckpoint.cpp
                TestResilience.cpp
+               TestVelocMemoryBackend.cpp
                )
 
 

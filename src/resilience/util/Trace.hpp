@@ -277,7 +277,7 @@ namespace KokkosResilience
       Trace< Id > *m_trace;
     };
 
-#ifdef KR_TRACING_ENABLED
+#ifdef KR_ENABLE_TRACING
     template< typename TraceType, typename Context, typename... Args >
     auto begin_trace( Context &ctx, Args &&... args )
     {
