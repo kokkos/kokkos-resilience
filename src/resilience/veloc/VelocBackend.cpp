@@ -3,6 +3,7 @@
 #include <sstream>
 #include <fstream>
 #include <veloc.h>
+#include <cassert>
 
 #include "../Context.hpp"
 
@@ -60,7 +61,10 @@ namespace KokkosResilience
       {
         auto pos = m_view_labels.find( view->label());
         if ( pos != m_view_labels.end())
+        {
           view->deep_copy_to_buffer( pos->second.data());
+          assert( pos->second.size() == view->data_type_size() * view->span() );
+        }
       }
     }
     
@@ -107,9 +111,18 @@ namespace KokkosResilience
       {
         auto pos = m_view_labels.find( view->label() );
         if ( pos != m_view_labels.end() )
+        {
+          assert( pos->second.size() == view->data_type_size() * view->span() );
           view->deep_copy_from_buffer( pos->second.data() );
+        }
       }
     }
+  }
+
+  void
+  VeloCMemoryBackend::reset()
+  {
+    m_view_labels.clear();
   }
   
   void

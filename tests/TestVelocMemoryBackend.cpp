@@ -17,6 +17,7 @@ public:
   template< typename Layout, typename Context >
   static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy )
   {
+    ctx.backend().reset();
     using memory_space = typename exec_space::memory_space;
     
     auto e = std::default_random_engine( 0 );
@@ -45,7 +46,7 @@ public:
     KokkosResilience::create_directory( "data/persistent" );
     
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
-      Kokkos::parallel_for( dimx, KOKKOS_LAMBDA( int i ) {
+      Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
         for ( int j = 0; j < dimy; ++j )
           main_view( i, j ) -= 1.0;
       } );

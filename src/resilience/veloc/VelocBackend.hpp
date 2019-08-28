@@ -34,6 +34,8 @@ namespace KokkosResilience
   
     void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
 
+    void reset();
+
   private:
     
     std::unordered_map< std::string, std::vector< unsigned char > > m_view_labels;
