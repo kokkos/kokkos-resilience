@@ -49,9 +49,20 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > & )
+                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
     bool status = true;
+    
+    // Check if we need to copy any views to backing store
+    for ( auto &&view : _views )
+    {
+      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      {
+        auto pos = m_view_labels.find( view->label());
+        if ( pos != m_view_labels.end())
+          view->deep_copy_to_buffer( pos->second.data());
+      }
+    }
     
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait() );
     
@@ -79,7 +90,7 @@ namespace KokkosResilience
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
+    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     
@@ -87,7 +98,18 @@ namespace KokkosResilience
     
     VELOC_SAFE_CALL( VELOC_Recover_mem() );
     
-    VELOC_SAFE_CALL( VELOC_Restart_end( status ));
+    VELOC_SAFE_CALL( VELOC_Restart_end( status ) );
+  
+    // Check if we need to copy any views from the backing store back to the view
+    for ( auto &&view : _views )
+    {
+      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      {
+        auto pos = m_view_labels.find( view->label() );
+        if ( pos != m_view_labels.end() )
+          view->deep_copy_from_buffer( pos->second.data() );
+      }
+    }
   }
   
   void
@@ -99,9 +121,23 @@ namespace KokkosResilience
       if ( m_view_labels.find( view->label() ) == m_view_labels.end() )
       {
         int id = static_cast< int >( m_view_labels.size() );
-        VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), view->span(), view->data_type_size() ) );
+        auto type_size = view->data_type_size();
+        auto span = view->span();
         
-        m_view_labels.emplace( view->label() );
+        std::vector< unsigned char > buff;
+        
+        if ( !view->is_hostspace() || !view->span_is_contiguous() )
+        {
+          // Can't reference memory directly, allocate memory for a watch buffer
+          buff.assign( span * type_size, 0x00 );
+          VELOC_SAFE_CALL( VELOC_Mem_protect( id, buff.data(), span, type_size ) );
+        } else {
+          VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), span, type_size ) );
+        }
+        
+        m_view_labels.emplace( std::piecewise_construct,
+          std::forward_as_tuple( view->label() ),
+          std::forward_as_tuple( std::move( buff ) ) );
       }
     }
   }

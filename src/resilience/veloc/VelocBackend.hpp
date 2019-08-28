@@ -6,7 +6,7 @@
 #include <memory>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
-#include <unordered_set>
+#include <unordered_map>
 #include <mpi.h>
 
 namespace KokkosResilience
@@ -36,7 +36,7 @@ namespace KokkosResilience
 
   private:
     
-    std::unordered_set< std::string > m_view_labels;
+    std::unordered_map< std::string, std::vector< unsigned char > > m_view_labels;
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;
