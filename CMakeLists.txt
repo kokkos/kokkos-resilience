@@ -62,9 +62,10 @@ if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 endif()
 
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem)
 
 target_link_libraries(resilience PUBLIC Boost::boost)
+target_link_libraries(resilience PRIVATE Boost::filesystem)
 
 add_subdirectory(src)
 
