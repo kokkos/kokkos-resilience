@@ -19,7 +19,7 @@ target_include_directories(resilience PUBLIC
 
 find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
-target_link_kokkos(resilience PUBLIC)
+target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 
