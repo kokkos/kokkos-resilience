@@ -42,6 +42,7 @@ if (KR_ENABLE_TRACING)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
 endif()
 
+option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )
 option( KR_ENABLE_HDF5 "add HDF5 support" OFF )
 option( KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
 
