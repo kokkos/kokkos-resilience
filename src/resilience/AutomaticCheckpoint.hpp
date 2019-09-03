@@ -10,7 +10,7 @@
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
-#include "util/trace.hpp"
+#include "util/Trace.hpp"
 #include <sstream>
 #endif
 

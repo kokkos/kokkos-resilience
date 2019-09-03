@@ -8,7 +8,7 @@
 #include "../Context.hpp"
 
 #ifdef KR_ENABLE_TRACING
-   #include "../util/trace.hpp"
+   #include "../util/Trace.hpp"
 #endif
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
