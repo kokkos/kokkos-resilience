@@ -110,4 +110,6 @@ namespace KokkosResilience
   }
 }
 
+namespace kr = KokkosResilience;
+
 #endif  // INC_RESILIENCE_AUTOMATICCHECKPOINT_HPP
