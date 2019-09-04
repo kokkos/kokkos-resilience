@@ -83,7 +83,7 @@ namespace KokkosResilience
     int latest = VELOC_Restart_test( label.c_str(), 0 );
     
     // res is < 0 if no versions available, else it is the latest version
-    return version <= latest;
+    return version == latest;
   }
   
   int
