@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "../Context.hpp"
+#include "../AutomaticCheckpoint.hpp"
 
 #ifdef KR_ENABLE_TRACING
    #include "../util/Trace.hpp"
@@ -59,8 +60,8 @@ namespace KokkosResilience
     {
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_labels.find( view->label());
-        if ( pos != m_view_labels.end())
+        auto pos = m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) );
+        if ( pos != m_view_registry.end())
         {
           view->deep_copy_to_buffer( pos->second.data());
           assert( pos->second.size() == view->data_type_size() * view->span() );
@@ -82,6 +83,8 @@ namespace KokkosResilience
   {
     int latest = VELOC_Restart_test( label.c_str(), 0 );
     
+    std::cerr << "latest version: " << latest << " ?= current version: " << version << '\n';
+    
     // res is < 0 if no versions available, else it is the latest version
     return version == latest;
   }
@@ -96,6 +99,7 @@ namespace KokkosResilience
   VeloCMemoryBackend::restart( const std::string &label, int version,
     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
+    std::cerr << "restart version: " << version << '\n';
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     
     bool status = true;
@@ -109,8 +113,8 @@ namespace KokkosResilience
     {
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_labels.find( view->label() );
-        if ( pos != m_view_labels.end() )
+        auto pos = m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) );
+        if ( pos != m_view_registry.end() )
         {
           assert( pos->second.size() == view->data_type_size() * view->span() );
           view->deep_copy_from_buffer( pos->second.data() );
@@ -122,22 +126,28 @@ namespace KokkosResilience
   void
   VeloCMemoryBackend::reset()
   {
-    m_view_labels.clear();
+    m_view_registry.clear();
   }
   
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
+  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+                                       const std::vector< detail::cref_impl > &crefs  )
   {
+    std::cerr << "registering " << views.size() << " views\n";
     for ( auto &&view : views )
     {
+      if ( !view->data() )  // uninitialized view
+        continue;
       // If we haven't already register, register with VeloC
-      if ( m_view_labels.find( view->label() ) == m_view_labels.end() )
+      if ( m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) ) == m_view_registry.end() )
       {
-        int id = static_cast< int >( m_view_labels.size() );
+        int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size() );
         auto type_size = view->data_type_size();
         auto span = view->span();
         
         std::vector< unsigned char > buff;
+        
+        std::cerr << "register hash " << id << " for view " << view->label() << '\n';
         
         if ( !view->is_hostspace() || !view->span_is_contiguous() )
         {
@@ -147,10 +157,29 @@ namespace KokkosResilience
         } else {
           VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), span, type_size ) );
         }
-        
-        m_view_labels.emplace( std::piecewise_construct,
-          std::forward_as_tuple( view->label() ),
+  
+        m_view_registry.emplace( std::piecewise_construct,
+          std::forward_as_tuple( reinterpret_cast< std::uintptr_t >( view->data() ) ),
           std::forward_as_tuple( std::move( buff ) ) );
+      } else {
+        std::cerr << view->label() << "(" << reinterpret_cast< std::uintptr_t >( view->data() ) << ") already registered\n";
+      }
+    }
+    
+    // Register crefs
+    std::cerr << "registering " << crefs.size() << " crefs\n";
+    for ( auto &&cref : crefs )
+    {
+      if ( !cref.ptr )  // uninitialized view
+        continue;
+      // If we haven't already register, register with VeloC
+      if ( m_cref_registry.find( cref.ptr ) == m_cref_registry.end())
+      {
+        int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size());
+  
+        VELOC_SAFE_CALL( VELOC_Mem_protect( id, cref.ptr, cref.num, cref.sz ) );
+        
+        m_cref_registry.emplace( cref.ptr );
       }
     }
   }

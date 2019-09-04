@@ -14,6 +14,10 @@
 #include <sstream>
 #endif
 
+// Workaround for C++ < 17
+#define KR_CHECKPOINT_THIS _kr_self = *this
+#define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref< int >( x )
+
 namespace KokkosResilience
 {
   namespace filter
@@ -35,6 +39,39 @@ namespace KokkosResilience
   int latest_version(Context &ctx, const std::string &label) {
 
     return ctx.backend().latest_version(label);
+  }
+  
+  namespace detail
+  {
+    struct cref_impl
+    {
+      cref_impl( void *p, std::size_t s, std::size_t n )
+        : ptr( p ), sz( s ), num( n )
+      {}
+      
+      void        *ptr;
+      std::size_t sz;
+      std::size_t num;
+    };
+    
+    struct cref : public cref_impl
+    {
+      using cref_impl::cref_impl;
+      cref( const cref &_other )
+        : cref_impl( _other.ptr, _other.sz, _other.num )
+      {
+        if ( check_ref_list )
+          check_ref_list->emplace_back( ptr, sz, num );
+      }
+      
+      static std::vector< cref_impl > *check_ref_list;
+    };
+  }
+  
+  template< typename T >
+  auto check_ref( T &_t )
+  {
+    return detail::cref{ reinterpret_cast< void * >( &_t ), sizeof( T ), 1 };
   }
   
   template< typename Context, typename F, typename FilterFunc = filter::default_filter >
@@ -61,16 +98,21 @@ namespace KokkosResilience
       views.emplace_back( view.clone() );
     }, []( Kokkos::ConstViewHolderBase & ) {} );
     
+    std::vector< detail::cref_impl > crefs;
+    detail::cref::check_ref_list = &crefs;
+    
     fun_type f = fun;
+  
+    detail::cref::check_ref_list = nullptr;
     
     Kokkos::ViewHooks::clear();
+  
+    // Register any views that haven't already been registered
+    ctx.backend().register_hashes( views, crefs );
 
 #ifdef KR_ENABLE_TRACING
     overhead_trace.end();
 #endif
-    
-    // Register any views that haven't already been registered
-    ctx.backend().register_hashes( views );
     
     if ( ctx.backend().restart_available( label, iteration ) )
     {
