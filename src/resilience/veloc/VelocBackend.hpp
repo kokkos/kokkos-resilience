@@ -50,6 +50,8 @@ namespace KokkosResilience
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;
+    
+    int m_latest_version;
   };
   
   class VeloCFileBackend
