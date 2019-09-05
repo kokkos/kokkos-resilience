@@ -107,14 +107,24 @@ namespace KokkosResilience
     
     Kokkos::ViewHooks::clear();
   
+#ifdef KR_ENABLE_TRACING
+    auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
+#endif
     // Register any views that haven't already been registered
     ctx.backend().register_hashes( views, crefs );
 
 #ifdef KR_ENABLE_TRACING
+    reg_hashes.end();
+    auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
+#endif
+  
+    bool restart_available = ctx.backend().restart_available( label, iteration );
+#ifdef KR_ENABLE_TRACING
+    check_restart.end();
     overhead_trace.end();
 #endif
     
-    if ( ctx.backend().restart_available( label, iteration ) )
+    if ( restart_available )
     {
       // Load views with data
 #ifdef KR_ENABLE_TRACING
