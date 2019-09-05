@@ -47,6 +47,7 @@ namespace KokkosResilience
   
   VeloCMemoryBackend::~VeloCMemoryBackend()
   {
+    VELOC_Checkpoint_wait();
     VELOC_Finalize( false );
   }
   
