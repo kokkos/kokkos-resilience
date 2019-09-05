@@ -83,8 +83,6 @@ namespace KokkosResilience
   {
     int latest = VELOC_Restart_test( label.c_str(), 0 );
     
-    std::cerr << "latest version: " << latest << " ?= current version: " << version << '\n';
-    
     // res is < 0 if no versions available, else it is the latest version
     return version == latest;
   }
@@ -99,7 +97,6 @@ namespace KokkosResilience
   VeloCMemoryBackend::restart( const std::string &label, int version,
     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
-    std::cerr << "restart version: " << version << '\n';
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     
     bool status = true;
@@ -133,7 +130,6 @@ namespace KokkosResilience
   VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
                                        const std::vector< detail::cref_impl > &crefs  )
   {
-    std::cerr << "registering " << views.size() << " views\n";
     for ( auto &&view : views )
     {
       if ( !view->data() )  // uninitialized view
@@ -147,8 +143,6 @@ namespace KokkosResilience
         
         std::vector< unsigned char > buff;
         
-        std::cerr << "register hash " << id << " for view " << view->label() << '\n';
-        
         if ( !view->is_hostspace() || !view->span_is_contiguous() )
         {
           // Can't reference memory directly, allocate memory for a watch buffer
@@ -161,13 +155,10 @@ namespace KokkosResilience
         m_view_registry.emplace( std::piecewise_construct,
           std::forward_as_tuple( reinterpret_cast< std::uintptr_t >( view->data() ) ),
           std::forward_as_tuple( std::move( buff ) ) );
-      } else {
-        std::cerr << view->label() << "(" << reinterpret_cast< std::uintptr_t >( view->data() ) << ") already registered\n";
       }
     }
     
     // Register crefs
-    std::cerr << "registering " << crefs.size() << " crefs\n";
     for ( auto &&cref : crefs )
     {
       if ( !cref.ptr )  // uninitialized view
