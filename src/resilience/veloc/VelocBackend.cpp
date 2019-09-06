@@ -91,10 +91,10 @@ namespace KokkosResilience
   int
   VeloCMemoryBackend::latest_version( const std::string &label )
   {
-    if ( m_latest_version > -2 )
-      return m_latest_version;
-    else
-      return VELOC_Restart_test( label.c_str(), 0 );
+    if ( m_latest_version < -1 )
+      m_latest_version = VELOC_Restart_test( label.c_str(), 0 );
+    
+    return m_latest_version;
   }
   
   void
