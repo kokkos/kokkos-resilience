@@ -155,6 +155,7 @@ namespace KokkosResilience
       }
     } else {  // Iteration is filtered, just execute
 #ifdef KR_ENABLE_TRACING
+      overhead_trace.end();
       auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
 #endif
       fun();
