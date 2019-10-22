@@ -38,6 +38,7 @@ namespace {
       fileSystemSpace fs;
       typedef Kokkos::View<double**, Layout, defaultMemSpace> local_view_type;
       
+      printf("loading views...\n"); fflush(stdout);
       std::string viewAName = view_prefix;
       viewAName += (std::string)"_A";
       std::string viewBName = view_prefix;
@@ -60,7 +61,7 @@ namespace {
       auto F_B = Kokkos::create_chkpt_mirror(fs, h_B);
       
       if ( iter == 0 ) {
-        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(const int i) {
+        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(int i) {
           for (int j=0; j< dim1; j++) {
             A(i,j) = 0;  B(i,j) = 0;
           }
@@ -73,7 +74,7 @@ namespace {
       for ( int r = 0; r < N; r++ ) {
         Kokkos::deep_copy(A, h_A);  Kokkos::deep_copy(B, h_B);
         
-        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(const int i) {
+        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(int i) {
           for (int j=0; j< dim1; j++) {
             A(i,j) += 1;  B(i,j) += 1;
           }
@@ -115,7 +116,7 @@ namespace {
       cp_file_space_type::set_default_path("./data");
       Kokkos::View<char**,cp_file_space_type> cp_view(file_name, dim0, dim1);
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = i * dim0 + j;
         }
@@ -129,7 +130,7 @@ namespace {
       Kokkos::deep_copy( cp_view, h_view_2 );
       Kokkos::fence();
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = 0;
         }
@@ -172,7 +173,7 @@ namespace {
       typedef CpFileSpace cp_file_space_type;
       Kokkos::View<double**,cp_file_space_type> cp_view(file_name, dim0, dim1);
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = i + j;
         }
@@ -183,7 +184,7 @@ namespace {
       Kokkos::deep_copy( cp_view, h_view_2 );
       Kokkos::fence();
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = 0;
         }
@@ -209,12 +210,14 @@ namespace {
 } // namespace
 
 
-TYPED_TEST_SUITE( TestViewCheckpoint, enabled_exec_spaces );
+//TYPED_TEST_SUITE( TestViewCheckpoint, enabled_exec_spaces );
 
-TYPED_TEST( TestViewCheckpoint, stdio )
+TEST( TestViewCheckpoint, stdio )
 {
-  using exec_space = typename TestFixture::exec_space;
+  using exec_space = typename Kokkos::DefaultExecutionSpace;
   
+  printf("testing fs deep copy \n"); fflush(stdout);
+
   mkdir("./data", 0777);
   TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data//cp_view.bin",10,10);
   remove("./data/cp_view.bin");
@@ -223,18 +226,21 @@ TYPED_TEST( TestViewCheckpoint, stdio )
   TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data/cp_view.bin",10000,10000);
   remove("./data/cp_view.bin");
   
+  printf("testing view checkpoint \n"); fflush(stdout);
+/*
   mkdir("./data/stdfile", 0777);
   remove("./data/stdfile/view_A");
   remove("./data/stdfile/view_B");
   for (int n = 0; n < 10; n++) {
     TestCheckPointView< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt(n, "view", 10,10,"./data/stdfile/");
   }
+*/
 }
 
 
 #ifdef KR_ENABLE_HDF5
 
-TYPED_TEST( TestViewCheckpoint, hdf5 )
+TEST( TestViewCheckpoint, hdf5 )
 {
   using exec_space = typename TestFixture::exec_space;
   

@@ -1,5 +1,7 @@
-#include "TestCommon.hpp"
+// This is only needed for gtest...
+// #include "TestCommon.hpp"  
 
+#if defined(KR_ENABLE_VELOC)
 #include <resilience/veloc/VelocBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
 #include <resilience/Context.hpp>
@@ -9,6 +11,7 @@
 
 #include <random>
 
+/* this is only needed for gtest
 template< typename ExecSpace >
 class TestVelocMemoryBackend : public ::testing::Test
 {
@@ -74,6 +77,7 @@ public:
     }
   }
 };
+*/
 
 
 TYPED_TEST_SUITE( TestVelocMemoryBackend, enabled_exec_spaces );
@@ -99,3 +103,4 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   }
   
 }
+#endif

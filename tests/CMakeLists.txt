@@ -4,8 +4,15 @@ find_package(GTest REQUIRED)
 add_executable(resilience_tests
                TestMain.cpp
                TestResilience.cpp
-               TestVelocMemoryBackend.cpp
                )
+add_test(NAME resilience_tests COMMAND resilience_tests)
+
+if (KR_ENABLE_VELOC)
+   add_executable(veloc_test
+                  TestVelocMemoryBackend.cpp
+                  )
+   add_test(NAME veloc_test COMMAND veloc_test)
+endif()
 
 if (KR_ENABLE_STDIO)
   target_sources(resilience_tests PRIVATE

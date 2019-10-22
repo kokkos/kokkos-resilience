@@ -6,10 +6,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
 
-# Require C++14
-if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
-  target_compile_features(resilience PUBLIC cxx_std_14)
-endif()
+target_compile_features(resilience PUBLIC cxx_std_14)
 
 target_include_directories(resilience PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -76,7 +73,7 @@ export(TARGETS resilience
        FILE resilienceTargets.cmake
        )
 
-if (Kokkos_ENABLE_Cuda)
+if (Kokkos_ENABLE_CUDA)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 

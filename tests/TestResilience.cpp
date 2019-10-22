@@ -104,13 +104,10 @@ struct TestResilientRange {
 
 KR_DECLARE_RESILIENCE_OBJECTS(int,int)
 
-
-TYPED_TEST_SUITE( TestResilience, enabled_exec_spaces );
-
-TYPED_TEST( TestResilience, range )
+TEST( TestResilience, range )
 {
   
-  using exec_space = typename TestFixture::exec_space;
+  using exec_space = typename Kokkos::DefaultExecutionSpace;
   
   KR_ADD_RESILIENCE_OBJECTS(int,int);
   
