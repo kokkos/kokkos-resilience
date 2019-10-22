@@ -7,7 +7,7 @@ int
 main( int argc, char **argv )
 {
   ::testing::InitGoogleTest( &argc, argv );
-#ifdef KR_ENABLE_HDF5_PARALLEL
+#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC)
   MPI_Init( &argc, &argv );
 #endif
   
@@ -17,7 +17,7 @@ main( int argc, char **argv )
   
   Kokkos::finalize();
 
-#ifdef KR_ENABLE_HDF5_PARALLEL
+#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC)
   MPI_Finalize();
 #endif
   

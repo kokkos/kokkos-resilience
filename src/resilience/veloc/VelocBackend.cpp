@@ -3,11 +3,13 @@
 #include <sstream>
 #include <fstream>
 #include <veloc.h>
+#include <cassert>
 
 #include "../Context.hpp"
+#include "../AutomaticCheckpoint.hpp"
 
 #ifdef KR_ENABLE_TRACING
-   #include "../util/trace.hpp"
+   #include "../util/Trace.hpp"
 #endif
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
@@ -38,20 +40,35 @@ namespace KokkosResilience
   
   VeloCMemoryBackend::VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm,
                                           const std::string &veloc_config )
-    : m_mpi_comm( mpi_comm ), m_context( &ctx )
+    : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_latest_version( -2 )
   {
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str() ) );
   }
   
   VeloCMemoryBackend::~VeloCMemoryBackend()
   {
+    VELOC_Checkpoint_wait();
     VELOC_Finalize( false );
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > & )
+                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
     bool status = true;
+    
+    // Check if we need to copy any views to backing store
+    for ( auto &&view : _views )
+    {
+      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      {
+        auto pos = m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) );
+        if ( pos != m_view_registry.end())
+        {
+          view->deep_copy_to_buffer( pos->second.data());
+          assert( pos->second.size() == view->data_type_size() * view->span() );
+        }
+      }
+    }
     
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait() );
     
@@ -60,26 +77,29 @@ namespace KokkosResilience
     VELOC_SAFE_CALL( VELOC_Checkpoint_mem() );
   
     VELOC_SAFE_CALL( VELOC_Checkpoint_end( status ));
+  
+    m_latest_version = version;
   }
   
   bool
   VeloCMemoryBackend::restart_available( const std::string &label, int version )
   {
-    int latest = VELOC_Restart_test( label.c_str(), 0 );
-    
     // res is < 0 if no versions available, else it is the latest version
-    return version <= latest;
+    return version == latest_version( label );
   }
   
   int
   VeloCMemoryBackend::latest_version( const std::string &label )
   {
-    return VELOC_Restart_test( label.c_str(), 0 );
+    if ( m_latest_version < -1 )
+      m_latest_version = VELOC_Restart_test( label.c_str(), 0 );
+    
+    return m_latest_version;
   }
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
+    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     
@@ -87,21 +107,74 @@ namespace KokkosResilience
     
     VELOC_SAFE_CALL( VELOC_Recover_mem() );
     
-    VELOC_SAFE_CALL( VELOC_Restart_end( status ));
+    VELOC_SAFE_CALL( VELOC_Restart_end( status ) );
+  
+    // Check if we need to copy any views from the backing store back to the view
+    for ( auto &&view : _views )
+    {
+      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      {
+        auto pos = m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) );
+        if ( pos != m_view_registry.end() )
+        {
+          assert( pos->second.size() == view->data_type_size() * view->span() );
+          view->deep_copy_from_buffer( pos->second.data() );
+        }
+      }
+    }
+  }
+
+  void
+  VeloCMemoryBackend::reset()
+  {
+    m_view_registry.clear();
   }
   
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
+  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+                                       const std::vector< detail::cref_impl > &crefs  )
   {
     for ( auto &&view : views )
     {
+      if ( !view->data() )  // uninitialized view
+        continue;
       // If we haven't already register, register with VeloC
-      if ( m_view_labels.find( view->label() ) == m_view_labels.end() )
+      if ( m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) ) == m_view_registry.end() )
       {
-        int id = static_cast< int >( m_view_labels.size() );
-        VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), view->span(), view->data_type_size() ) );
+        int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size() );
+        auto type_size = view->data_type_size();
+        auto span = view->span();
         
-        m_view_labels.emplace( view->label() );
+        std::vector< unsigned char > buff;
+        
+        if ( !view->is_hostspace() || !view->span_is_contiguous() )
+        {
+          // Can't reference memory directly, allocate memory for a watch buffer
+          buff.assign( span * type_size, 0x00 );
+          VELOC_SAFE_CALL( VELOC_Mem_protect( id, buff.data(), span, type_size ) );
+        } else {
+          VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), span, type_size ) );
+        }
+  
+        m_view_registry.emplace( std::piecewise_construct,
+          std::forward_as_tuple( reinterpret_cast< std::uintptr_t >( view->data() ) ),
+          std::forward_as_tuple( std::move( buff ) ) );
+      }
+    }
+    
+    // Register crefs
+    for ( auto &&cref : crefs )
+    {
+      if ( !cref.ptr )  // uninitialized view
+        continue;
+      // If we haven't already register, register with VeloC
+      if ( m_cref_registry.find( cref.ptr ) == m_cref_registry.end())
+      {
+        int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size());
+  
+        VELOC_SAFE_CALL( VELOC_Mem_protect( id, cref.ptr, cref.num, cref.sz ) );
+        
+        m_cref_registry.emplace( cref.ptr );
       }
     }
   }

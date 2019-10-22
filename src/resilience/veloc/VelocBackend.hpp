@@ -6,11 +6,17 @@
 #include <memory>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
+#include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
 
 namespace KokkosResilience
 {
+  namespace detail
+  {
+    struct cref_impl;
+  }
+  
   template< typename Backend >
   class Context;
   
@@ -32,14 +38,20 @@ namespace KokkosResilience
     void restart( const std::string &label, int version,
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
   
-    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+      const std::vector< detail::cref_impl > &crefs );
+
+    void reset();
 
   private:
     
-    std::unordered_set< std::string > m_view_labels;
+    std::unordered_set< void * > m_cref_registry;
+    std::unordered_map< std::uintptr_t, std::vector< unsigned char > > m_view_registry;
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;
+    
+    int m_latest_version;
   };
   
   class VeloCFileBackend
