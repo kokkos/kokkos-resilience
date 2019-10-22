@@ -6,10 +6,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
 
-# Require C++14
-if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
-   target_compile_features(resilience PUBLIC cxx_std_14)
-endif()
+target_compile_features(resilience PUBLIC cxx_std_14)
 
 target_include_directories(resilience PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -19,7 +16,7 @@ target_include_directories(resilience PUBLIC
 
 find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
-target_link_kokkos(resilience PUBLIC)
+target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 
@@ -74,7 +71,7 @@ export(TARGETS resilience
        FILE resilienceTargets.cmake
        )
 
-if (Kokkos_ENABLE_Cuda)
+if (Kokkos_ENABLE_CUDA)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 

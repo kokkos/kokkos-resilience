@@ -4,6 +4,11 @@
 #include <utility>
 #ifdef KR_ENABLE_VELOC
 #include <mpi.h>
+#else
+using MPI_Comm = int;
+
+inline void MPI_Comm_rank( MPI_Comm comm, int * rank ) { *rank = 0; }
+inline void MPI_Comm_size( MPI_Comm comm, int * size ) { *size = 1; }
 #endif
 
 // Tracing support

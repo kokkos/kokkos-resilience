@@ -1,9 +1,12 @@
-#include "TestCommon.hpp"
+// This is only needed for gtest...
+// #include "TestCommon.hpp"  
 
+#if defined(KR_ENABLE_VELOC)
 #include <resilience/veloc/VelocBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
 #include <resilience/Context.hpp>
 
+/* this is only needed for gtest
 template< typename ExecSpace >
 class TestVelocMemoryBackend
 {
@@ -11,6 +14,7 @@ public:
   
   using exec_space = ExecSpace;
 };
+*/
 
 int
 main( int argc, char **argv )
@@ -27,3 +31,4 @@ main( int argc, char **argv )
     } );
   } );
 }
+#endif

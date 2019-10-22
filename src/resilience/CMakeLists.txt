@@ -13,7 +13,7 @@ if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
 
-if (Kokkos_ENABLE_Cuda)
+if (Kokkos_ENABLE_CUDA)
   add_subdirectory(cuda)
 endif()
 
