@@ -19,7 +19,7 @@ target_include_directories(resilience PUBLIC
 
 find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
-target_link_kokkos(resilience PUBLIC)
+target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 
@@ -42,6 +42,7 @@ if (KR_ENABLE_TRACING)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
 endif()
 
+option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )
 option( KR_ENABLE_HDF5 "add HDF5 support" OFF )
 option( KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
 
@@ -62,9 +63,10 @@ if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 endif()
 
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem)
 
 target_link_libraries(resilience PUBLIC Boost::boost)
+target_link_libraries(resilience PRIVATE Boost::filesystem)
 
 add_subdirectory(src)
 
