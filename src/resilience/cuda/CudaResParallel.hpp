@@ -24,7 +24,7 @@ namespace KokkosResilience {
       std::map<std::string, Kokkos::Experimental::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
       while ( it != ResCudaSpace::duplicate_map.end() ) {
           Kokkos::Experimental::DuplicateTracker * dt = it->second;
-          printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
+          //printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
           dt->combine_dups();
           it++;
       }
@@ -2022,9 +2022,9 @@ namespace Experimental {
       m_cf.load_ptrs( static_cast<rd_type*>(original_data), static_cast<rd_type*>(dup_list[0]),
                     static_cast<rd_type*>(dup_list[1]), static_cast<rd_type*>(dup_list[2]), N );
 
-      printf("invoking parallel combine operation\n");
+      //printf("invoking parallel combine operation\n");
 
-      printf("retrieving the blocksize\n");
+      //printf("retrieving the blocksize\n");
       const int block_size = 1024;
       const dim3 block(  1 , block_size , 1);
       const dim3 grid( ( N + block.y - 1 ) / block.y , 1 , 1);
@@ -2033,14 +2033,14 @@ namespace Experimental {
       void * args[1];
       args[0] = &m_cf;
 
-      printf("launching kernel: %ld \n", sizeof(m_cf) );
+     // printf("launching kernel: %ld \n", sizeof(m_cf) );
 //      launch_comb_dup_kernel< comb_type >
 //          <<< grid , block , 0 , spc.cuda_stream() >>> ( cf );
       cudaError_t cErr = cudaLaunchKernel(func_ptr, grid, block, args, 0, spc.cuda_stream() );
       
      
 //      cudaError_t cErr = cudaGetLastError();
-      printf("return from kernel: %d \n", (int) cErr );
+     // printf("return from kernel: %d \n", (int) cErr );
 /*
       Kokkos::fence();
       exec_policy rp (0,N);
