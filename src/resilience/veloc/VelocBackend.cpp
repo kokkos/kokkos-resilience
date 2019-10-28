@@ -99,7 +99,8 @@ namespace KokkosResilience
       if ( m_view_labels.find( view->label() ) == m_view_labels.end() )
       {
         int id = static_cast< int >( m_view_labels.size() );
-        VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), view->span(), view->data_type_size() ) );
+        void * lData = const_cast<void*>(view->data());
+        VELOC_SAFE_CALL( VELOC_Mem_protect( id, lData, view->span(), view->data_type_size() ) );
         
         m_view_labels.emplace( view->label() );
       }
@@ -147,7 +148,7 @@ namespace KokkosResilience
 #endif
       for ( auto &&v : views )
       {
-        char        *bytes = static_cast< char * >( v->data());
+        char        *bytes = reinterpret_cast<char*>(const_cast< void * >( v->data()));
         std::size_t len    = v->span() * v->data_type_size();
         
         vfile.write( bytes, len );
@@ -203,7 +204,7 @@ namespace KokkosResilience
 #endif
       for ( auto &&v : views )
       {
-        char        *bytes = static_cast< char * >( v->data());
+        char        *bytes = reinterpret_cast<char*>(const_cast< void * >( v->data()));
         std::size_t len    = v->span() * v->data_type_size();
         
         vfile.read( bytes, len );

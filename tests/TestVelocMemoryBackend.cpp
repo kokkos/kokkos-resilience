@@ -19,6 +19,8 @@ public:
 int
 main( int argc, char **argv )
 {
+MPI_Init(&argc, &argv);
+Kokkos::initialize(argc,argv);
   auto ctx = KokkosResilience::Context< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, "veloc_test.cfg" );
   
   int  dim0 = 5, dim1 = 5;
@@ -30,5 +32,7 @@ main( int argc, char **argv )
         view( i, j ) = 3.0;
     } );
   } );
+Kokkos::finalize();
+MPI_Finalize();
 }
 #endif
