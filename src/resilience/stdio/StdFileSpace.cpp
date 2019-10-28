@@ -42,6 +42,7 @@
 */
 #include "Kokkos_Core.hpp"
 #include "StdFileSpace.hpp"
+#include "impl/MirrorTracker.hpp"
 #include "sys/stat.h"
 
 namespace KokkosResilience {
@@ -174,7 +175,7 @@ namespace KokkosResilience {
   
    void StdFileSpace::restore_all_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
+      KokkosResilience::MirrorTracker * pList = KokkosResilience::MirrorTracker::get_filtered_mirror_list( (std::string)name() );
       if (pList == nullptr)  printf("%s::restore views mirror list returned empty list \n", name());
       while (pList != nullptr) {
          Kokkos::Impl::DeepCopy< Kokkos::HostSpace, KokkosResilience::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
@@ -194,7 +195,7 @@ namespace KokkosResilience {
    
    void StdFileSpace::restore_view(const std::string lbl) {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pRes = base_record::get_filtered_mirror_entry( (std::string)name(), lbl );
+      KokkosResilience::MirrorTracker * pRes = KokkosResilience::MirrorTracker::get_filtered_mirror_entry( (std::string)name(), lbl );
       if (pRes != nullptr) {
          Kokkos::Impl::DeepCopy< Kokkos::HostSpace, KokkosResilience::StdFileSpace, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pRes->src)->data(), ((base_record*)pRes->dst)->data(), ((base_record*)pRes->src)->size());
@@ -204,7 +205,7 @@ namespace KokkosResilience {
   
    void StdFileSpace::checkpoint_create_view_targets() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
+      KokkosResilience::MirrorTracker * pList = KokkosResilience::MirrorTracker::get_filtered_mirror_list( (std::string)name() );
       if (pList == nullptr) {
          printf("memspace %s returned empty list of checkpoint views \n", name());
       }
@@ -223,12 +224,11 @@ namespace KokkosResilience {
    }
    void StdFileSpace::checkpoint_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
+      KokkosResilience::MirrorTracker * pList = KokkosResilience::MirrorTracker::get_filtered_mirror_list( (std::string)name() );
       if (pList == nullptr) {
          printf("memspace %s returned empty list of checkpoint views \n", name());
       }
       while (pList != nullptr) {
- //     typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
          Kokkos::Impl::DeepCopy< KokkosResilience::StdFileSpace, Kokkos::HostSpace, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pList->dst)->data(), ((base_record*)pList->src)->data(), ((base_record*)pList->src)->size());
          // delete the records along the way...

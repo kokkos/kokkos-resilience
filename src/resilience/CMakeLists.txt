@@ -2,6 +2,7 @@ target_sources(resilience PRIVATE
                ${CMAKE_CURRENT_LIST_DIR}/Resilience.cpp
                )
 
+add_subdirectory(impl)
 add_subdirectory(filesystem)
 add_subdirectory(stdio)
 

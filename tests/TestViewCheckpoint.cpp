@@ -211,7 +211,7 @@ namespace {
 
 TEST( TestViewCheckpoint, deep_copy_stdio )
 {
-  using exec_space = typename Kokkos::DefaultExecutionSpace;
+  using exec_space = Kokkos::DefaultExecutionSpace;
   
   mkdir("./data", 0777);
   TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data//cp_view.bin",10,10);
@@ -224,7 +224,7 @@ TEST( TestViewCheckpoint, deep_copy_stdio )
 
 TEST( TestViewCheckpoint, manual_checkpoint_stdio )
 {
-  using exec_space = typename Kokkos::DefaultExecutionSpace;
+  using exec_space = Kokkos::DefaultExecutionSpace;
 
   mkdir("./data/stdfile", 0777);
   remove("./data/stdfile/view_A");
@@ -239,7 +239,7 @@ TEST( TestViewCheckpoint, manual_checkpoint_stdio )
 
 TEST( TestViewCheckpoint, deep_copy_hdf5 )
 {
-  using exec_space = typename Kokkos::DefaultExecutionSpace;
+  using exec_space = Kokkos::DefaultExecutionSpace;
   
   mkdir("./data", 0777);
   std::string file_name = "./data/cp_view.hdf";
@@ -261,7 +261,7 @@ TEST( TestViewCheckpoint, deep_copy_hdf5 )
 
 TEST( TestViewCheckpoint, manual_checkpoint_hdf5 )
 {
-  using exec_space = typename Kokkos::DefaultExecutionSpace;
+  using exec_space = Kokkos::DefaultExecutionSpace;
 
   mkdir("./data/hdf5", 0777);
   remove("./data/hdf5/view_A*");

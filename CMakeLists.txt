@@ -11,6 +11,8 @@ target_compile_features(resilience PUBLIC cxx_std_14)
 target_include_directories(resilience PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/resilience>
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src/resilience>
                            $<INSTALL_INTERFACE:include>
                            )
 
