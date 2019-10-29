@@ -2,6 +2,7 @@
 #define INC_RESILIENCE_CONFIG_HPP
 
 #include <boost/variant.hpp>
+#include <boost/optional.hpp>
 #include <boost/filesystem.hpp>
 #include <unordered_map>
 #include <vector>
@@ -34,7 +35,7 @@ namespace KokkosResilience
     {
     public:
 
-      using variant_type = boost::variant< double, int, std::string, bool >;
+      using variant_type = boost::variant< double, std::string, bool >;
 
       Value() = default;
 
@@ -47,9 +48,6 @@ namespace KokkosResilience
       template< typename T >
       const T &as() const
       {
-        if ( m_variant.which() != 2 )
-          throw ConfigValueError();
-
         auto *val = boost::get< T >( &m_variant );
         if ( !val )
           throw ConfigValueError();
@@ -97,6 +95,20 @@ namespace KokkosResilience
         return pos->second;
       }
 
+      boost::optional< Entry > get( const std::string &key ) const
+      {
+        if ( m_variant.which() != 0 )
+          throw ConfigKeyError( key );
+
+        const auto &map = boost::get< map_type >( m_variant );
+
+        auto pos = map.find( key );
+        if ( pos == map.end() )
+          return boost::none;
+
+        return pos->second;
+      }
+
       template< typename T >
       const T &as() const
       {
@@ -105,6 +117,16 @@ namespace KokkosResilience
 
         auto &val = boost::get< Value >( m_variant );
         return val.as< T >();
+      }
+
+      bool is_value() const noexcept
+      {
+        return m_variant.which() == 2;
+      }
+
+      bool is_object() const noexcept
+      {
+        return m_variant.which() == 0;
       }
 
     private:
@@ -121,6 +143,12 @@ namespace KokkosResilience
     const Entry &operator[]( const std::string &key ) const
     {
       return m_root[key];
+    }
+
+    auto
+    get( const std::string &key ) const
+    {
+      return m_root.get( key );
     }
 
   private:

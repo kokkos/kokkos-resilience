@@ -16,6 +16,8 @@ namespace KokkosResilience
         } else if ( entry.second.is< std::string >() )
         {
           e.emplace( entry.first, Config::Value( entry.second.get< std::string >() ) );
+        } else if ( entry.second.is< double >() ) {
+          e.emplace( entry.first, Config::Value( entry.second.get< double >() ) );
         }
       }
 

@@ -4,11 +4,13 @@
 #include <string>
 #include <utility>
 #include <memory>
+#include <functional>
 #ifdef KR_ENABLE_VELOC
 #include <mpi.h>
 #endif
 #include "Config.hpp"
 #include "Cref.hpp"
+#include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
 
@@ -27,11 +29,7 @@ namespace KokkosResilience
   {
   public:
 
-    explicit ContextBase( Config cfg )
-      : m_config( std::move( cfg ) )
-    {
-
-    }
+    explicit ContextBase( Config cfg );
 
     virtual ~ContextBase() = default;
 
@@ -43,9 +41,13 @@ namespace KokkosResilience
     virtual void checkpoint( const std::string &label, int version,
                              const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
 
+    std::function< bool( int ) > default_filter() const noexcept { return m_default_filter; }
+
   private:
 
     Config m_config;
+
+    std::function< bool( int ) > m_default_filter;
   };
   
   template< typename Backend >
