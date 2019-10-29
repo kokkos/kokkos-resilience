@@ -9,14 +9,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
+#include "../Cref.hpp"
 
 namespace KokkosResilience
 {
-  namespace detail
-  {
-    struct cref_impl;
-  }
-  
   template< typename Backend >
   class Context;
   
@@ -39,7 +35,7 @@ namespace KokkosResilience
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
   
     void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
-      const std::vector< detail::cref_impl > &crefs );
+      const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
 

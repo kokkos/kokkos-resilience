@@ -1,6 +1,9 @@
 target_sources(resilience PRIVATE
                ${CMAKE_CURRENT_LIST_DIR}/Resilience.cpp
                ${CMAKE_CURRENT_LIST_DIR}/AutomaticCheckpoint.cpp
+               ${CMAKE_CURRENT_LIST_DIR}/Context.cpp
+               ${CMAKE_CURRENT_LIST_DIR}/Config.cpp
+               ${CMAKE_CURRENT_LIST_DIR}/Cref.cpp
                )
 
 add_subdirectory(filesystem)

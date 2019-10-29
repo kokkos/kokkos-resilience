@@ -8,6 +8,8 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
 
+#include "Cref.hpp"
+
 // Tracing support
 #ifdef KR_ENABLE_TRACING
 #include "util/Trace.hpp"
@@ -41,39 +43,6 @@ namespace KokkosResilience
     return ctx.backend().latest_version(label);
   }
   
-  namespace detail
-  {
-    struct cref_impl
-    {
-      cref_impl( void *p, std::size_t s, std::size_t n )
-        : ptr( p ), sz( s ), num( n )
-      {}
-      
-      void        *ptr;
-      std::size_t sz;
-      std::size_t num;
-    };
-    
-    struct cref : public cref_impl
-    {
-      using cref_impl::cref_impl;
-      cref( const cref &_other )
-        : cref_impl( _other.ptr, _other.sz, _other.num )
-      {
-        if ( check_ref_list )
-          check_ref_list->emplace_back( ptr, sz, num );
-      }
-      
-      static std::vector< cref_impl > *check_ref_list;
-    };
-  }
-  
-  template< typename T >
-  auto check_ref( T &_t )
-  {
-    return detail::cref{ reinterpret_cast< void * >( &_t ), sizeof( T ), 1 };
-  }
-  
   template< typename Context, typename F, typename FilterFunc = filter::default_filter >
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter = filter::default_filter{} )
   {
@@ -100,12 +69,12 @@ namespace KokkosResilience
         views.emplace_back( view.clone());
       }, []( Kokkos::ConstViewHolderBase & ) {} );
   
-      std::vector< detail::cref_impl > crefs;
-      detail::cref::check_ref_list = &crefs;
+      std::vector< Detail::CrefImpl > crefs;
+      Detail::Cref::check_ref_list = &crefs;
   
       fun_type f = fun;
-  
-      detail::cref::check_ref_list = nullptr;
+
+      Detail::Cref::check_ref_list = nullptr;
   
       Kokkos::ViewHooks::clear();
 
@@ -113,14 +82,14 @@ namespace KokkosResilience
       auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
 #endif
       // Register any views that haven't already been registered
-      ctx.backend().register_hashes( views, crefs );
+      ctx.register_hashes( views, crefs );
 
 #ifdef KR_ENABLE_TRACING
       reg_hashes.end();
       auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
 #endif
   
-      bool restart_available = ctx.backend().restart_available( label, iteration );
+      bool restart_available = ctx.restart_available( label, iteration );
 #ifdef KR_ENABLE_TRACING
       check_restart.end();
       overhead_trace.end();
@@ -132,7 +101,7 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
         auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
 #endif
-        ctx.backend().restart( label, iteration, views );
+        ctx.restart( label, iteration, views );
       }
       else
       {
@@ -150,7 +119,7 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
           auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
 #endif
-          ctx.backend().checkpoint( label, iteration, views );
+          ctx.checkpoint( label, iteration, views );
         }
       }
     } else {  // Iteration is filtered, just execute
