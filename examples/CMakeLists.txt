@@ -1,17 +1,20 @@
-macro(add_example _target)
-  message(STATUS "example args: ${ARGN}")
-  add_executable(${_target} ${ARGN})
+
+include(../cmake/utility.cmake)
+include(CMakePrintHelpers)
+
+function(add_example _target)
+  cmake_parse_arguments(ARG
+      ""
+      ""
+      "RESOURCES;SOURCES"
+      ${ARGN})
+
+  add_executable(${_target} ${ARG_SOURCES})
+  target_resources(${_target} PRIVATE ${ARG_RESOURCES})
   target_link_libraries(${_target} PRIVATE Kokkos::resilience)
-  set_property(TARGET ${_target} PROPERTY CXX_STANDARD 14)
-endmacro()
+endfunction()
 
 if (KR_ENABLE_VELOC)
-  add_custom_command(OUTPUT config.json
-      COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/config.json" "${CMAKE_CURRENT_BINARY_DIR}/config.json"
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/config.json)
-
-   add_example(simple_checkpoint SimpleCheckpoint.cpp "${CMAKE_CURRENT_BINARY_DIR}/config.json")
-
-   add_custom_command(TARGET simple_checkpoint POST_BUILD
-       COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/veloc_test.cfg ${CMAKE_CURRENT_BINARY_DIR}/veloc_test.cfg)
+   add_example(simple_checkpoint SOURCES SimpleCheckpoint.cpp
+       RESOURCES config.json veloc_test.cfg)
 endif()
