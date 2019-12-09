@@ -8,7 +8,7 @@ add_library(Kokkos::resilience ALIAS resilience)
 
 # Require C++14
 if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
-   target_compile_features(resilience PUBLIC cxx_std_14)
+  target_compile_features(resilience PUBLIC cxx_std_14)
 endif()
 
 target_include_directories(resilience PUBLIC

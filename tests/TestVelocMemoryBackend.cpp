@@ -5,6 +5,8 @@
 #include <resilience/Context.hpp>
 #include <resilience/filesystem/Filesystem.hpp>
 
+#include <string>
+
 #include <random>
 
 template< typename ExecSpace >
@@ -78,7 +80,11 @@ TYPED_TEST_SUITE( TestVelocMemoryBackend, enabled_exec_spaces );
 
 TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
 {
-  auto ctx = KokkosResilience::Context< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, "data/veloc_test.cfg" );
+  using namespace std::string_literals;
+  KokkosResilience::Config cfg;
+  cfg["backend"].set( "veloc"s );
+  cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
+  auto ctx = KokkosResilience::Context< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, cfg );
   
   using exec_space = typename TestFixture::exec_space;
   using memory_space = typename exec_space::memory_space;
