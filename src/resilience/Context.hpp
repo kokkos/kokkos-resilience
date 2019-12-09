@@ -41,6 +41,8 @@ namespace KokkosResilience
     virtual void checkpoint( const std::string &label, int version,
                              const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
 
+    virtual void reset() = 0;
+
     std::function< bool( int ) > default_filter() const noexcept { return m_default_filter; }
 
   private:
@@ -119,6 +121,11 @@ namespace KokkosResilience
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) override
     {
       m_backend.checkpoint( label, version, views );
+    }
+
+    void reset() override
+    {
+      m_backend.reset();
     }
     
 #ifdef KR_ENABLE_TRACING

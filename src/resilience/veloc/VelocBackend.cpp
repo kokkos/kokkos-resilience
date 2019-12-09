@@ -61,11 +61,11 @@ namespace KokkosResilience
     {
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) );
+        auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
         if ( pos != m_view_registry.end())
         {
-          view->deep_copy_to_buffer( pos->second.data());
-          assert( pos->second.size() == view->data_type_size() * view->span() );
+          view->deep_copy_to_buffer( pos->second.buff.data() );
+          assert( pos->second.buff.size() == view->data_type_size() * view->span() );
         }
       }
     }
@@ -114,11 +114,11 @@ namespace KokkosResilience
     {
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) );
+        auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
         if ( pos != m_view_registry.end() )
         {
-          assert( pos->second.size() == view->data_type_size() * view->span() );
-          view->deep_copy_from_buffer( pos->second.data() );
+          assert( pos->second.buff.size() == view->data_type_size() * view->span() );
+          view->deep_copy_from_buffer( pos->second.buff.data() );
         }
       }
     }
@@ -127,7 +127,20 @@ namespace KokkosResilience
   void
   VeloCMemoryBackend::reset()
   {
+    for ( auto &&vr : m_view_registry )
+    {
+      VELOC_Mem_unprotect( vr.second.id );
+    }
+
+    for ( auto &&cr : m_cref_registry )
+    {
+      VELOC_Mem_unprotect( cr.second.id );
+    }
+
     m_view_registry.clear();
+    m_cref_registry.clear();
+
+    m_latest_version = -2;
   }
   
   void
@@ -139,7 +152,7 @@ namespace KokkosResilience
       if ( !view->data() )  // uninitialized view
         continue;
       // If we haven't already register, register with VeloC
-      if ( m_view_registry.find( reinterpret_cast< std::uintptr_t >( view->data() ) ) == m_view_registry.end() )
+      if ( m_view_registry.find( Detail::MemProtectKey{ view->data() } ) == m_view_registry.end() )
       {
         int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size() );
         auto type_size = view->data_type_size();
@@ -157,8 +170,8 @@ namespace KokkosResilience
         }
   
         m_view_registry.emplace( std::piecewise_construct,
-          std::forward_as_tuple( reinterpret_cast< std::uintptr_t >( view->data() ) ),
-          std::forward_as_tuple( std::move( buff ) ) );
+          std::forward_as_tuple( view->data() ),
+          std::forward_as_tuple( id, std::move( buff ) ) );
       }
     }
     
@@ -168,13 +181,15 @@ namespace KokkosResilience
       if ( !cref.ptr )  // uninitialized view
         continue;
       // If we haven't already register, register with VeloC
-      if ( m_cref_registry.find( cref.ptr ) == m_cref_registry.end())
+      if ( m_cref_registry.find( Detail::MemProtectKey{ cref.ptr } ) == m_cref_registry.end())
       {
         int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size());
   
         VELOC_SAFE_CALL( VELOC_Mem_protect( id, cref.ptr, cref.num, cref.sz ) );
         
-        m_cref_registry.emplace( cref.ptr );
+        m_cref_registry.emplace( std::piecewise_construct,
+            std::forward_as_tuple( cref.ptr ),
+            std::forward_as_tuple( id ) );
       }
     }
   }
