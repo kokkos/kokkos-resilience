@@ -45,6 +45,9 @@ namespace KokkosResilience
 
     std::function< bool( int ) > default_filter() const noexcept { return m_default_filter; }
 
+    Config &config() noexcept { return m_config; }
+    const Config &config() const noexcept { return m_config; }
+
   private:
 
     Config m_config;
@@ -58,7 +61,7 @@ namespace KokkosResilience
   public:
     
     explicit Context( MPI_Comm comm, Config &cfg )
-      : ContextBase( cfg ), m_backend( *this, comm, cfg["backends"]["veloc"]["config"].as< std::string >() ), m_comm( comm )
+      : ContextBase( cfg ), m_backend( *this, comm ), m_comm( comm )
     {
     
     }

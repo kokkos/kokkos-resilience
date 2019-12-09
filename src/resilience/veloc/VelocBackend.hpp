@@ -80,7 +80,7 @@ namespace KokkosResilience
     
     using context_type = Context< VeloCMemoryBackend >;
     
-    VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm, const std::string &veloc_config );
+    VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm );
     ~VeloCMemoryBackend();
   
     void checkpoint( const std::string &label, int version,
