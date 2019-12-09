@@ -55,6 +55,12 @@ namespace KokkosResilience
         return *val;
       }
 
+      template< typename T >
+      void set( T &&_value )
+      {
+        m_variant = std::forward< T >( _value );
+      }
+
     private:
 
       variant_type m_variant;
@@ -95,6 +101,16 @@ namespace KokkosResilience
         return pos->second;
       }
 
+      Entry &operator[]( const std::string &key )
+      {
+        if ( m_variant.which() != 0 )
+          m_variant = map_type{};
+
+        auto &map = boost::get< map_type >( m_variant );
+
+        return map[key];
+      }
+
       boost::optional< Entry > get( const std::string &key ) const
       {
         if ( m_variant.which() != 0 )
@@ -110,12 +126,18 @@ namespace KokkosResilience
       }
 
       template< typename T >
+      void set( T &&val )
+      {
+        m_variant = Value( std::forward< T >( val ) );
+      }
+
+      template< typename T >
       const T &as() const
       {
         if ( m_variant.which() != 2 )
           throw ConfigValueError();
 
-        auto &val = boost::get< Value >( m_variant );
+        const auto &val = boost::get< Value >( m_variant );
         return val.as< T >();
       }
 
@@ -138,9 +160,15 @@ namespace KokkosResilience
                       boost::recursive_wrapper< array_type >, Value > m_variant;
     };
 
+    Config() = default;
     explicit Config( const boost::filesystem::path &p );
 
     const Entry &operator[]( const std::string &key ) const
+    {
+      return m_root[key];
+    }
+
+    Entry &operator[]( const std::string &key )
     {
       return m_root[key];
     }
@@ -149,6 +177,11 @@ namespace KokkosResilience
     get( const std::string &key ) const
     {
       return m_root.get( key );
+    }
+    template< typename T >
+    void set( const std::string &key, T &&val )
+    {
+      m_root.set( key, std::forward< T >( val ) );
     }
 
   private:
