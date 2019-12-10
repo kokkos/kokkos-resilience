@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <ctime>
+#include <iomanip>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
@@ -108,6 +110,8 @@ namespace KokkosResilience
   #ifdef KR_ENABLE_TRACING
             auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
   #endif
+            auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
+            std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
             ctx.checkpoint( label, iteration, views );
           }
         }
