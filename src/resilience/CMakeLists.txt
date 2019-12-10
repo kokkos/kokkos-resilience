@@ -17,7 +17,9 @@ if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
 
-if (Kokkos_ENABLE_Cuda)
+list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
+
+if (${_cuda_found} GREATER "-1")
   add_subdirectory(cuda)
 endif()
 
