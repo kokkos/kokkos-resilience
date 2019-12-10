@@ -41,6 +41,8 @@ namespace KokkosResilience
     virtual void checkpoint( const std::string &label, int version,
                              const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
 
+    virtual int latest_version( const std::string &label ) const noexcept = 0;
+
     virtual void reset() = 0;
 
     std::function< bool( int ) > default_filter() const noexcept { return m_default_filter; }
@@ -124,6 +126,11 @@ namespace KokkosResilience
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) override
     {
       m_backend.checkpoint( label, version, views );
+    }
+
+    int latest_version( const std::string &label ) const noexcept override
+    {
+      return m_backend.latest_version( label );
     }
 
     void reset() override

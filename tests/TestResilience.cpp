@@ -3,6 +3,7 @@
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
 #include <resilience/cuda/ResCudaSpace.hpp>
+#include <resilience/cuda/ResCuda.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
 
