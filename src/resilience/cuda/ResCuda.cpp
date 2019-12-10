@@ -1,30 +1,14 @@
 #include <Kokkos_Macros.hpp>
 #ifdef KOKKOS_ENABLE_CUDA
 
-#include <Kokkos_Core.hpp>
+#include "ResCuda.hpp"
 
-#include <Cuda/Kokkos_Cuda_Error.hpp>
 #include <Cuda/Kokkos_Cuda_Instance.hpp>
-#include <Cuda/Kokkos_Cuda_Locks.hpp>
-#include <impl/Kokkos_Error.hpp>
 #include <impl/Kokkos_Profiling_Interface.hpp>
-#include "../Resilience.hpp"
 
-/*--------------------------------------------------------------------------*/
-/* Standard 'C' libraries */
 #include <cstdlib>
-
-/* Standard 'C++' libraries */
 #include <vector>
-#include <iostream>
-#include <sstream>
 #include <string>
-
-
-/*--------------------------------------------------------------------------*/
-
-
-//----------------------------------------------------------------------------
 
 namespace KokkosResilience {
 
