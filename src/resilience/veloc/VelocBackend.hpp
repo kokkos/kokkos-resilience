@@ -87,7 +87,7 @@ namespace KokkosResilience
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
   
     bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label);
+    int latest_version (const std::string &label) const noexcept;
   
     void restart( const std::string &label, int version,
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
@@ -107,7 +107,7 @@ namespace KokkosResilience
     MPI_Comm m_mpi_comm;
     context_type *m_context;
     
-    int m_latest_version;
+    mutable int m_latest_version;
   };
   
   class VeloCFileBackend
@@ -121,7 +121,7 @@ namespace KokkosResilience
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
   
     bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label);
+    int latest_version (const std::string &label) const noexcept;
   
     void restart( const std::string &label, int version,
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );

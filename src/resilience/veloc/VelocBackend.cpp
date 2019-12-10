@@ -89,7 +89,7 @@ namespace KokkosResilience
   }
   
   int
-  VeloCMemoryBackend::latest_version( const std::string &label )
+  VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
   {
     if ( m_latest_version < -1 )
       m_latest_version = VELOC_Restart_test( label.c_str(), 0 );
@@ -257,7 +257,7 @@ namespace KokkosResilience
     return version <= latest;
   }
   
-  int VeloCFileBackend::latest_version( const std::string &label )
+  int VeloCFileBackend::latest_version( const std::string &label ) const noexcept
   {
     return VELOC_Restart_test( label.c_str(), 0 );
   }
