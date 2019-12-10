@@ -28,7 +28,7 @@ namespace KokkosResilience
   int latest_version( Context &ctx, const std::string &label )
   {
 
-    return ctx.backend().latest_version( label );
+    return ctx.latest_version( label );
   }
 
   namespace Detail
