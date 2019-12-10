@@ -9,24 +9,78 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
+#include "../Cref.hpp"
 
 namespace KokkosResilience
 {
-  namespace detail
-  {
-    struct cref_impl;
-  }
-  
   template< typename Backend >
   class Context;
-  
+
+  namespace Detail
+  {
+    struct MemProtectKey
+    {
+      explicit MemProtectKey( void *maddr )
+          : addr( reinterpret_cast< std::uintptr_t >( maddr ) )
+      {}
+
+      std::uintptr_t addr;
+
+      friend bool operator==( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
+      {
+        return _lhs.addr == _rhs.addr;
+      }
+
+      friend bool operator!=( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
+      {
+        return !( _lhs == _rhs );
+      }
+
+      friend bool operator<( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
+      {
+        return _lhs.addr < _rhs.addr;
+      }
+    };
+
+    struct MemProtectBlock
+    {
+      explicit MemProtectBlock( int mid )
+          : id( mid )
+      {}
+
+      explicit MemProtectBlock( int mid, std::vector< unsigned char > &&mbuff )
+          : id( mid ), buff( std::move( mbuff ) )
+      {}
+
+      int id;
+      std::vector< unsigned char > buff;
+    };
+  }
+}
+
+
+
+namespace std
+{
+  template<>
+  struct hash< KokkosResilience::Detail::MemProtectKey >
+  {
+    std::size_t operator()( const KokkosResilience::Detail::MemProtectKey &_mem ) const noexcept
+    {
+      return std::hash< std::uintptr_t >{}( _mem.addr );
+    }
+  };
+}
+
+namespace KokkosResilience
+{
   class VeloCMemoryBackend
   {
   public:
     
     using context_type = Context< VeloCMemoryBackend >;
     
-    VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm, const std::string &veloc_config );
+    VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm );
     ~VeloCMemoryBackend();
   
     void checkpoint( const std::string &label, int version,
@@ -37,16 +91,18 @@ namespace KokkosResilience
   
     void restart( const std::string &label, int version,
                   const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+
+    void clear_checkpoints();
   
     void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
-      const std::vector< detail::cref_impl > &crefs );
+      const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
 
   private:
     
-    std::unordered_set< void * > m_cref_registry;
-    std::unordered_map< std::uintptr_t, std::vector< unsigned char > > m_view_registry;
+    std::unordered_map< Detail::MemProtectKey, Detail::MemProtectBlock > m_cref_registry;
+    std::unordered_map< Detail::MemProtectKey, Detail::MemProtectBlock > m_view_registry;
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;

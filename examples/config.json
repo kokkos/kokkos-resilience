@@ -1,0 +1,12 @@
+{
+  "backend": "veloc",
+  "backends": {
+    "veloc": {
+      "config": "veloc_test.cfg"
+    }
+  },
+  "filter": {
+    "type": "time",
+    "interval": 10
+  }
+}

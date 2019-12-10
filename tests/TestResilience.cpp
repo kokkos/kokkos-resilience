@@ -2,6 +2,7 @@
 #include "TestCommon.hpp"
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
+#include <resilience/cuda/ResCudaSpace.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
 
