@@ -5,6 +5,7 @@
 #include <utility>
 #include <memory>
 #include <functional>
+#include <chrono>
 #ifdef KR_ENABLE_VELOC
 #include <mpi.h>
 #endif
@@ -45,7 +46,7 @@ namespace KokkosResilience
 
     virtual void reset() = 0;
 
-    std::function< bool( int ) > default_filter() const noexcept { return m_default_filter; }
+    const std::function< bool( int ) > &default_filter() const noexcept { return m_default_filter; }
 
     Config &config() noexcept { return m_config; }
     const Config &config() const noexcept { return m_config; }

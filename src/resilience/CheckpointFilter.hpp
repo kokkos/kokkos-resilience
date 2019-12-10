@@ -48,8 +48,10 @@ namespace KokkosResilience
 
       bool operator()( int ) const
       {
-        bool ret = ( clock_type::now() - start ) > checkpoint_interval;
-        start = clock_type::now();
+        auto now = clock_type::now();
+        bool ret = ( now - start ) > checkpoint_interval;
+        if ( ret )
+          start = now;
 
         return ret;
       }
