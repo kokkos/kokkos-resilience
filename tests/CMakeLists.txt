@@ -20,7 +20,6 @@ if (KR_ENABLE_STDIO)
                  )
 endif()
 
-
 target_link_libraries(resilience_tests PRIVATE GTest::GTest)
 target_link_libraries(resilience_tests PRIVATE resilience)
 
