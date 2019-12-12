@@ -59,7 +59,7 @@ namespace KokkosResilience
         // Don't do anything with const views since they can never be checkpointed in this context
         Kokkos::ViewHooks::set( [&views]( Kokkos::ViewHolderBase &view ) {
           views.emplace_back( view.clone() );
-        }, []( Kokkos::ConstViewHolderBase & ) {} );
+        }, []( Kokkos::ViewHolderBase & ) {} );
 
         std::vector< Detail::CrefImpl > crefs;
         Detail::Cref::check_ref_list = &crefs;

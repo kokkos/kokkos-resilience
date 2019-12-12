@@ -1,7 +1,9 @@
 #include "Context.hpp"
 #include <fstream>
 #include <chrono>
-#include "veloc/VelocBackend.hpp"
+#if defined(KR_ENABLE_VELOC)
+   #include "veloc/VelocBackend.hpp"
+#endif
 
 namespace KokkosResilience
 {
@@ -29,7 +31,11 @@ namespace KokkosResilience
     // Check backend
     if ( cfg["backend"].as< std::string >() == "veloc" )
     {
+#if defined(KR_ENABLE_VELOC)
       return std::make_unique< Context< VeloCMemoryBackend > >( comm, cfg );
+#else
+      return std::unique_ptr< ContextBase >{};
+#endif
     } else {
       return std::unique_ptr< ContextBase >{};
     }

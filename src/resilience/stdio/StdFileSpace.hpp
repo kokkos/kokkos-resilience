@@ -80,7 +80,7 @@ public:
 class StdFileSpace {
 public:
   //! Tag this class as a kokkos memory space
-  typedef KokkosResilience::StdFileSpace  file_space;   // used to uniquely identify file spaces
+  typedef KokkosResilience::StdFileSpace  indirect_memory_space;   // used to uniquely identify indirect memory spaces
   typedef KokkosResilience::StdFileSpace  memory_space;
   typedef size_t     size_type;
 
