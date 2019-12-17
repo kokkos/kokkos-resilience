@@ -13,6 +13,7 @@
 #include <Kokkos_Parallel.hpp>
 #include <Cuda/Kokkos_Cuda_Parallel.hpp>
 #include <impl/Kokkos_TrackDuplicates.hpp>
+#include <Kokkos_ViewHooks.hpp>
 
 
 //----------------------------------------------------------------------------
@@ -33,6 +34,19 @@ namespace KokkosResilience {
 
 namespace Kokkos {
 namespace Impl {
+
+/*
+ * Create a duplicate data record, copy the original 
+ * to the duplicate, and then assign the duplicate
+ * to the tracking element for the original.
+ * afterwards, update the view record to point to the
+ * duplicate.
+ */ 
+template<class ViewType>
+duplicate_shared ( ViewType & view ) {
+
+}
+
 
 template< class FunctorType , class ... Traits >
 class ParallelFor< FunctorType
@@ -60,7 +74,6 @@ public:
   inline
   void execute() const
     {
-        Kokkos::Impl::shared_allocation_enable_duplicates();
         typedef Kokkos::RangePolicy<Kokkos::Cuda, WorkTag, LaunchBounds> surrogate_policy;
 
         surrogate_policy lPolicy[3];
@@ -71,14 +84,25 @@ public:
            new (&lPolicy[i]) surrogate_policy(cuda_inst, m_policy.begin(), m_policy.end());
         }
 
+        // Setup ViewHooks to capture non-const views and pass to duplicate_shared
+        // Don't do anything with const views since they don't need to be duplicated
+        Kokkos::Impl::shared_allocation_tracking_enable();  // re-enable tracker for duplicates
+        Kokkos::ViewHooks::set( []( Kokkos::ViewHolderBase &view ) {
+          duplicate_shared( view );
+        }, []( Kokkos::ViewHolderBase & ) {} );
+
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureI( m_functor , lPolicy[0] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureII( m_functor , lPolicy[1] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureIII( m_functor , lPolicy[2] );
-        Kokkos::Impl::shared_allocation_disable_duplicates();
+
+        Kokkos::ViewHooks::clear();
+        Kokkos::Impl::shared_allocation_tracking_disable();  // disable tracking (way it was before)
+
         closureI.execute();
         closureII.execute();
         closureIII.execute();
         Kokkos::fence();
+
         //printf("Combining duplicates \n");
         KokkosResilience::combine_res_duplicates();
     }
