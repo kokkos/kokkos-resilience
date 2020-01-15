@@ -12,6 +12,7 @@ if (KR_ENABLE_VELOC)
                   TestVelocMemoryBackend.cpp
                   )
    add_test(NAME veloc_test COMMAND veloc_test)
+   target_link_libraries(veloc_test PRIVATE resilience)
 endif()
 
 if (KR_ENABLE_STDIO)

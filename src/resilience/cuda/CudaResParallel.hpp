@@ -12,8 +12,8 @@
 #include <utility>
 #include <Kokkos_Parallel.hpp>
 #include <Cuda/Kokkos_Cuda_Parallel.hpp>
-#include <impl/Kokkos_TrackDuplicates.hpp>
-#include <Kokkos_ViewHooks.hpp>
+#include <impl/TrackDuplicates.hpp>
+#include <impl/ViewHookSpecialization.hpp>
 
 
 //----------------------------------------------------------------------------
@@ -22,19 +22,16 @@
 namespace KokkosResilience {
 
    static void combine_res_duplicates() {
-      std::map<std::string, Kokkos::Experimental::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
+      std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
       while ( it != ResCudaSpace::duplicate_map.end() ) {
-          Kokkos::Experimental::DuplicateTracker * dt = it->second;
+          KokkosResilience::DuplicateTracker * dt = it->second;
           //printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
           dt->combine_dups();
           it++;
       }
    }
-} // namespace KokkosResilience
 
-namespace Kokkos {
-namespace Impl {
-
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
 /*
  * Create a duplicate data record, copy the original 
  * to the duplicate, and then assign the duplicate
@@ -42,11 +39,22 @@ namespace Impl {
  * afterwards, update the view record to point to the
  * duplicate.
  */ 
-template<class ViewType>
-duplicate_shared ( ViewType & view ) {
+inline void 
+duplicate_shared ( Kokkos::ViewHolderBase & dst, Kokkos::ViewHolderBase & src  ) {
+
+   // need to assign the new record to the view map / handle no init is necessary
+   dst.update_view( src.rec_ptr()  );
+   
+   // copy the data from the original
+   dst.deep_copy_from_buffer( (unsigned char *)src.data() );
 
 }
+#endif
 
+} // namespace KokkosResilience
+
+namespace Kokkos {
+namespace Impl {
 
 template< class FunctorType , class ... Traits >
 class ParallelFor< FunctorType
@@ -87,15 +95,22 @@ public:
         // Setup ViewHooks to capture non-const views and pass to duplicate_shared
         // Don't do anything with const views since they don't need to be duplicated
         Kokkos::Impl::shared_allocation_tracking_enable();  // re-enable tracker for duplicates
-        Kokkos::ViewHooks::set( []( Kokkos::ViewHolderBase &view ) {
-          duplicate_shared( view );
-        }, []( Kokkos::ViewHolderBase & ) {} );
+
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+        Kokkos::ViewHooks::set_cp(
+           [](Kokkos::ViewHolderBase &dst, Kokkos::ViewHolderBase &src) {
+             KokkosResilience::duplicate_shared(dst, src);
+           },
+           [](Kokkos::ViewHolderBase &, Kokkos::ViewHolderBase &) {});
+#endif
 
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureI( m_functor , lPolicy[0] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureII( m_functor , lPolicy[1] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureIII( m_functor , lPolicy[2] );
 
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
         Kokkos::ViewHooks::clear();
+#endif
         Kokkos::Impl::shared_allocation_tracking_disable();  // disable tracking (way it was before)
 
         closureI.execute();
@@ -2031,8 +2046,7 @@ public:
 } // namespace Impl
 } // namespace Kokkos
 
-namespace Kokkos {
-namespace Experimental {
+namespace KokkosResilience {
 
    template<class Type, class ExecutionSpace>
    void SpecDuplicateTracker<Type, ExecutionSpace>::combine_dups() {
@@ -2076,8 +2090,7 @@ namespace Experimental {
       Kokkos::fence();
 
    }
-} // namespace Experimental
-} // namespace Kokkos
+} // namespace KokkosResilience
 
 
 #endif /* defined( __CUDACC__ ) */

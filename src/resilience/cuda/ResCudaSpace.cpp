@@ -109,12 +109,12 @@ ResCudaSpace::ResCudaSpace()
 }
 
 
-std::map<std::string, Kokkos::Experimental::DuplicateTracker * > ResCudaSpace::duplicate_map;
+std::map<std::string, KokkosResilience::DuplicateTracker * > ResCudaSpace::duplicate_map;
 
 void ResCudaSpace::clear_duplicates_list() {
-   std::map<std::string, Kokkos::Experimental::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
+   std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
    while ( it != ResCudaSpace::duplicate_map.end() ) {
-       Kokkos::Experimental::DuplicateTracker* dt = static_cast<Kokkos::Experimental::DuplicateTracker*>(it->second);
+       KokkosResilience::DuplicateTracker* dt = static_cast<KokkosResilience::DuplicateTracker*>(it->second);
        delete dt;
        duplicate_map.erase(it);
    }
