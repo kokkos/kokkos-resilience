@@ -1,5 +1,11 @@
 
-find_package(GTest REQUIRED)
+include(FetchContent)
+FetchContent_Declare(googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG 10b1902d893ea8cc43c69541d70868f91af3646b
+    )
+
+FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
@@ -14,7 +20,7 @@ if (KR_ENABLE_STDIO)
 endif()
 
 
-target_link_libraries(resilience_tests PRIVATE GTest::GTest)
+target_link_libraries(resilience_tests PRIVATE gtest)
 target_link_libraries(resilience_tests PRIVATE resilience)
 
 configure_file(data/hdf5_test_config.json data/hdf5_test_config.json COPYONLY)
