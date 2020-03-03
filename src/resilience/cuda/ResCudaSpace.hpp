@@ -270,7 +270,7 @@ struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResCudaSpace , Kok
 /** Running in CudaSpace attempting to access an unknown space: error */
 template< class OtherSpace >
 struct VerifyExecutionCanAccessMemorySpace<
-  typename enable_if< ! is_same<KokkosResilience::ResCudaSpace,OtherSpace>::value , KokkosResilience::ResCudaSpace >::type ,
+  typename std::enable_if< ! std::is_same<KokkosResilience::ResCudaSpace,OtherSpace>::value , KokkosResilience::ResCudaSpace >::type ,
   OtherSpace >
 {
   enum { value = false };
