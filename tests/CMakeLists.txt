@@ -10,8 +10,12 @@ FetchContent_MakeAvailable(googletest)
 add_executable(resilience_tests
                TestMain.cpp
                TestResilience.cpp
-               TestVelocMemoryBackend.cpp
                )
+
+if (KR_ENABLE_VELOC)
+  target_sources(resilience_tests PRIVATE
+      TestVelocMemoryBackend.cpp)
+endif()
 
 if (KR_ENABLE_STDIO)
   target_sources(resilience_tests PRIVATE
