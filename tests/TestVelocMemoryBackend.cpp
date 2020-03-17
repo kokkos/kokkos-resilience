@@ -2,7 +2,7 @@
 
 #include <resilience/veloc/VelocBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/Context.hpp>
+#include <resilience/MPIContext.hpp>
 #include <resilience/filesystem/Filesystem.hpp>
 
 #include <string>
@@ -84,7 +84,7 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   KokkosResilience::Config cfg;
   cfg["backend"].set( "veloc"s );
   cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
-  auto ctx = KokkosResilience::Context< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, cfg );
+  auto ctx = KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, cfg );
   
   using exec_space = typename TestFixture::exec_space;
   using memory_space = typename exec_space::memory_space;

@@ -6,14 +6,14 @@
 #include <memory>
 #include <functional>
 #include <chrono>
-#ifdef KR_ENABLE_VELOC
-#include <mpi.h>
-#endif
 #include "Config.hpp"
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
+#ifdef KR_ENABLE_MPI_BACKENDS
+#include <mpi.h>
+#endif
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
@@ -65,95 +65,11 @@ namespace KokkosResilience
     Util::detail::TraceStack  m_trace;
 #endif
   };
-  
-  template< typename Backend >
-  class Context : public ContextBase
-  {
-  public:
-    
-    explicit Context( MPI_Comm comm, Config &cfg )
-      : ContextBase( cfg ), m_backend( *this, comm ), m_comm( comm )
-    {
-    
-    }
-    
-    Context( const Context & ) = delete;
-    Context( Context && ) = default;
-    
-    Context &operator=( const Context & ) = delete;
-    Context &operator=( Context && ) = default;
 
-    virtual ~Context()
-    {
-#ifdef KR_ENABLE_TRACING
-      int rank = -1;
-      MPI_Comm_rank( m_comm, &rank );
-      int size = -1;
-      MPI_Comm_size( m_comm, &size );
-
-      std::ostringstream fname;
-      fname << "trace" << rank << ".json";
-
-      std::ofstream out( fname.str() );
-
-      std::cout << "writing trace to " << fname.str() << '\n';
-
-      trace().write( out );
-
-      // Metafile
-      picojson::object root;
-      root["num_ranks"] = picojson::value( static_cast< double >( size ) );
-
-      std::ofstream meta_out( "meta.json" );
-      picojson::value( root ).serialize( std::ostream_iterator< char >( meta_out ), true );
-#endif
-    }
-    
-    MPI_Comm comm() const noexcept { return m_comm; }
-  
-    Backend &backend() { return m_backend; }
-
-
-    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
-                          const std::vector< Detail::CrefImpl > &crefs ) override
-    {
-      m_backend.register_hashes( views, crefs );
-    }
-
-    bool restart_available( const std::string &label, int version ) override
-    {
-      return m_backend.restart_available( label, version );
-    }
-
-    void restart( const std::string &label, int version,
-                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) override
-    {
-      m_backend.restart( label, version, views );
-    }
-
-    void checkpoint( const std::string &label, int version,
-                     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) override
-    {
-      m_backend.checkpoint( label, version, views );
-    }
-
-    int latest_version( const std::string &label ) const noexcept override
-    {
-      return m_backend.latest_version( label );
-    }
-
-    void reset() override
-    {
-      m_backend.reset();
-    }
-  
-  private:
-    
-    MPI_Comm  m_comm;
-    Backend m_backend;
-  };
-
+  std::unique_ptr< ContextBase > make_context( const std::string &config );
+#ifdef KR_ENABLE_MPI_BACKENDS
   std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
+#endif
 }
 
 #endif  // INC_RESILIENCE_CONTEXT_HPP
