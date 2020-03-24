@@ -48,7 +48,7 @@ make -j8
 
 For a more detailed summary of compiler switches please see below.
 
-### CMake paths
+#### CMake paths
 
 | Path        | Description                                             |
 | ----------- | ------------------------------------------------------- |
@@ -57,7 +57,7 @@ For a more detailed summary of compiler switches please see below.
 | HDF5_ROOT   | Path to the root of HDF5 if HDF5 is enabled (see below) |
 
 
-### Supported CMake Options
+#### Supported CMake Options
 
 | Variable                | Default | Description                                        |
 | ----------------------- | ------- | -------------------------------------------------- |
@@ -69,3 +69,18 @@ For a more detailed summary of compiler switches please see below.
 | KR_ENABLE_HDF5_PARALLEL | OFF     | Use parallel version of HDF5 for manual checkpoint |
 | KR_ENABLE_TESTS         | ON      | Enable tests in the build                          |
 | KR_ENABLE_EXAMPLES      | ON      | Enable examples in the build                       |
+
+## Usage
+
+*Kokkos Resilience* is designed to work with CMake projects, so using CMake is typically much easier. In your own
+project, call:
+
+```cmake
+find_package(resilience)
+target_link_libraries(target PRIVATE Kokkos::resilience) 
+```
+
+Ensure that the build or install directory of *Kokkos Resilience* is in `CMAKE_PREFIX_PATH`, or the variable
+`resilience_ROOT` points to the build/install directory, or the variable `resilience_DIR` points to the location of
+the *Kokkos Resilience* `resilienceConfig.cmake` file. This file is located in the root build directory of *Kokkos
+Resilience* or the path `<install directory>/share/resilience/cmake`.
