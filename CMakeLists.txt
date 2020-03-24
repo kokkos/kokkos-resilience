@@ -112,7 +112,7 @@ install(EXPORT resilienceTargets
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/resilience/cmake )
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
