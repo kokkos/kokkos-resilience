@@ -35,7 +35,7 @@ It is recommended to install the "barebone" variant/branch of VeloC since it has
 
 ### CMake Invocation
 
-Typically, invoking CMake involves the creation of a build directory. From the build directory, invoke CMake as (for example) follows:
+Typically, invoking CMake involves the creation of a build directory. A typical CMake invocation may look like this:
 
 ```sh
 cmake -DCMAKE_BUILD_TYPE=Release \
@@ -43,6 +43,7 @@ cmake -DCMAKE_BUILD_TYPE=Release \
       -DVeloC_ROOT=/path/to/veloc/install \
       -DVELOC_BAREBONE=ON \
       path/to/source/dir
+make -j8
 ```
 
 For a more detailed summary of compiler switches please see below.
