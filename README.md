@@ -83,4 +83,5 @@ target_link_libraries(target PRIVATE Kokkos::resilience)
 Ensure that the build or install directory of *Kokkos Resilience* is in `CMAKE_PREFIX_PATH`, or the variable
 `resilience_ROOT` points to the build/install directory, or the variable `resilience_DIR` points to the location of
 the *Kokkos Resilience* `resilienceConfig.cmake` file. This file is located in the root build directory of *Kokkos
-Resilience* or the path `<install directory>/share/resilience/cmake`.
+Resilience* or the path `<install directory>/share/resilience/cmake`. See the [CMake documentation](https://cmake.org/cmake/help/latest/command/find_package.html)
+for more details on how packages are found.
