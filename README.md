@@ -14,6 +14,9 @@ may vary.
 First and foremost, *Kokkos Resilience* requires an install of *Kokkos*. This can be compiled or a version bundled with
 other software (such as Trilinos) or as a package on a machine.
 
+**Note:** *Kokkos Resilience* currently requires some internal changes to Kokkos that are not yet merged in. Use the
+[kokkos-fork](https://gitlab-ex.sandia.gov/kokkos-resilience/kokkos) repository (altdev branch) in the meantime.
+
 Additionally, *Kokkos Resilience* uses the [Veloc](https://github.com/ECP-VeloC/VELOC) library for efficient asynchronous
 checkpointing. If you desire automatic checkpointing to be available this library (and additionally MPI) must be installed.
 
@@ -35,7 +38,8 @@ It is recommended to install the "barebone" variant/branch of VeloC since it has
 Typically, invoking CMake involves the creation of a build directory. From the build directory, invoke CMake as (for example) follows:
 
 ```sh
-cmake -DKokkos_ROOT=/path/to/kokkos/install/install \
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DKokkos_ROOT=/path/to/kokkos/install/install \
       -DVeloC_ROOT=/path/to/veloc/install \
       -DVELOC_BAREBONE=ON \
       path/to/source/dir
