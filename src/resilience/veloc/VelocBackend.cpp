@@ -5,7 +5,7 @@
 #include <veloc.h>
 #include <cassert>
 
-#include "../Context.hpp"
+#include "../MPIContext.hpp"
 #include "../AutomaticCheckpoint.hpp"
 
 #ifdef KR_ENABLE_TRACING
@@ -194,7 +194,7 @@ namespace KokkosResilience
     }
   }
   
-  VeloCFileBackend::VeloCFileBackend( Context< VeloCFileBackend > &ctx, MPI_Comm mpi_comm,
+  VeloCFileBackend::VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm,
                                       const std::string &veloc_config )
     : m_mpi_comm( mpi_comm ), m_context( &ctx )
   {

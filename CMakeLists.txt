@@ -29,12 +29,16 @@ if (KR_ENABLE_VELOC)
   find_package(VeloC REQUIRED)
   target_link_libraries(resilience PRIVATE veloc::veloc)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
+  set(KR_ENABLE_MPI_BACKENDS ON)
 
   if (VELOC_BAREBONE)
     target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
   endif()
 endif()
 
+if (KR_ENABLE_MPI_BACKENDS)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_MPI_BACKENDS)
+endif()
 
 # Library options
 option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)

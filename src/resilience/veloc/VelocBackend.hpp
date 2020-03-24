@@ -14,7 +14,7 @@
 namespace KokkosResilience
 {
   template< typename Backend >
-  class Context;
+  class MPIContext;
 
   namespace Detail
   {
@@ -78,7 +78,7 @@ namespace KokkosResilience
   {
   public:
     
-    using context_type = Context< VeloCMemoryBackend >;
+    using context_type = MPIContext< VeloCMemoryBackend >;
     
     VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm );
     ~VeloCMemoryBackend();
@@ -114,7 +114,7 @@ namespace KokkosResilience
   {
   public:
   
-    VeloCFileBackend( Context< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
+    VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
     ~VeloCFileBackend();
   
     void checkpoint( const std::string &label, int version,
@@ -131,7 +131,7 @@ namespace KokkosResilience
   private:
   
     MPI_Comm m_mpi_comm;
-    Context< VeloCFileBackend > *m_context;
+    MPIContext< VeloCFileBackend > *m_context;
   };
 }
 
