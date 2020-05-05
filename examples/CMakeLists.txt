@@ -1,5 +1,5 @@
 
-include(../cmake/utility.cmake)
+include(utility)
 include(CMakePrintHelpers)
 
 function(add_example _target)
