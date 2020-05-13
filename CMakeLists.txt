@@ -106,7 +106,7 @@ install(TARGETS resilience EXPORT resilienceTargets
 install(EXPORT resilienceTargets
         FILE resilienceTargets.cmake
         NAMESPACE Kokkos::
-        DESTINATION cmake
+        DESTINATION share/resilience/cmake
         )
 
 
@@ -120,7 +120,7 @@ install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.h
 if (KR_ENABLE_VELOC)
    install(FILES
         "${CMAKE_MODULE_PATH}/FindVeloC.cmake"
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake/Modules" )
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/resilience/cmake/Modules" )
 
    # Need to install/export VeloC find module for downstream dependencies
    configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
@@ -130,7 +130,7 @@ endif()
 if (KR_ENABLE_HDF5)
   install(FILES
           "${CMAKE_MODULE_PATH}/FindHDF5.cmake"
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake/Modules" )
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/share/resilience/cmake/Modules" )
 
   # Need to install/export HDF5 find module for downstream dependencies
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
