@@ -106,21 +106,21 @@ install(TARGETS resilience EXPORT resilienceTargets
 install(EXPORT resilienceTargets
         FILE resilienceTargets.cmake
         NAMESPACE Kokkos::
-        DESTINATION cmake
+        DESTINATION share/resilience/cmake
         )
 
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/resilience/cmake )
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake"
+              "${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/resilience/cmake" )
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
 
 if (KR_ENABLE_VELOC)
    install(FILES
-        ${CMAKE_MODULE_PATH}/FindVeloC.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+        "${CMAKE_MODULE_PATH}/FindVeloC.cmake"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/resilience/cmake/Modules" )
 
    # Need to install/export VeloC find module for downstream dependencies
    configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
@@ -129,15 +129,16 @@ endif()
 
 if (KR_ENABLE_HDF5)
   install(FILES
-          ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+          "${CMAKE_MODULE_PATH}/FindHDF5.cmake"
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/share/resilience/cmake/Modules" )
 
   # Need to install/export HDF5 find module for downstream dependencies
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
 endif()
 
 configure_file(src/resilience/config/Config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp DESTINATION include/resilience/config)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/include/resilience/config")
 
 # Add subdirectories for examples and tests if they are enabled
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
