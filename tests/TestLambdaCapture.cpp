@@ -24,8 +24,6 @@ auto get_view_list( F &&_fun )
 template< typename View >
 bool capture_list_contains( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_list, View &&_v )
 {
-  auto *vdat = _v.data();
-  auto *tmp = _list[0]->data();
   auto pos = std::find_if( _list.begin(), _list.end(), [&_v]( auto &&_hold ){ return _hold->data() == _v.data(); } );
   return pos != _list.end();
 }
@@ -48,7 +46,7 @@ TEST(LambdaCapture, value)
 
   auto captures = get_view_list( [=]() mutable { dat.work(); } );
 
-  EXPECT_TRUE( dat.y );
+  EXPECT_FALSE( dat.y );
   EXPECT_TRUE( capture_list_contains( captures, dat.x ) );
 }
 
@@ -60,7 +58,7 @@ TEST(LambdaCapture, reference)
   auto captures = get_view_list( [&]() mutable { ref.work(); } );
 
   EXPECT_TRUE( dat.y );
-  EXPECT_TRUE( capture_list_contains( captures, dat.x ) );
+  EXPECT_FALSE( capture_list_contains( captures, dat.x ) );
 }
 
 TEST(LambdaCapture, clone_holder)
