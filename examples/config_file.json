@@ -1,0 +1,12 @@
+{
+  "backend": "stdfile",
+  "backends": {
+    "veloc": {
+      "config": "file_test.cfg"
+    }
+  },
+  "filter": {
+    "type": "time",
+    "interval": 10
+  }
+}

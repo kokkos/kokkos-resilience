@@ -74,6 +74,9 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_MPI_BACKENDS
   std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
 #endif
+#ifdef KR_ENABLE_STDFILE
+  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
+#endif
 }
 
 #endif  // INC_RESILIENCE_CONTEXT_HPP
