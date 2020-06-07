@@ -1,6 +1,10 @@
 #ifndef INC_TEST_COMMON_HPP
 #define INC_TEST_COMMON_HPP
 
+#include <Kokkos_Macros.hpp>
+#if defined(KOKKOS_ENABLE_HPX)
+#include <hpx/config.hpp>
+#endif
 #include <gtest/gtest.h>
 #include <Kokkos_Core.hpp>
 

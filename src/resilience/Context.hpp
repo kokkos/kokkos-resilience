@@ -1,6 +1,10 @@
 #ifndef INC_RESILIENCE_CONTEXT_HPP
 #define INC_RESILIENCE_CONTEXT_HPP
 
+#include <Kokkos_Macros.hpp>
+#if defined(KOKKOS_ENABLE_HPX)
+#include <hpx/config.hpp>
+#endif
 #include <string>
 #include <utility>
 #include <memory>
