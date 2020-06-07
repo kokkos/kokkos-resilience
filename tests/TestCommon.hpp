@@ -25,6 +25,9 @@ namespace detail
 #ifdef KOKKOS_ENABLE_CUDA
     , Kokkos::Cuda
 #endif
+#ifdef KOKKOS_ENABLE_HPX
+    , Kokkos::Experimental::HPX
+#endif  
   >;
 }
 

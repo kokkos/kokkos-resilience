@@ -17,6 +17,11 @@ if (KR_ENABLE_VELOC)
   add_subdirectory(veloc)
 endif()
 
+if (KR_ENABLE_STDFILE)
+  target_sources(resilience PRIVATE StdFileContext.cpp)
+  add_subdirectory(stdfile)
+endif()
+
 if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
