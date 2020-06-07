@@ -119,7 +119,7 @@ install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.h
 
 if (KR_ENABLE_VELOC)
    install(FILES
-        ${CMAKE_MODULE_PATH}/FindVeloC.cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
 
    # Need to install/export VeloC find module for downstream dependencies
