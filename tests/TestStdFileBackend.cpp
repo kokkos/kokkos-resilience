@@ -42,10 +42,8 @@ public:
     
     Kokkos::fence();
     
-    KokkosResilience::remove_all( "data/scratch" );
-    KokkosResilience::remove_all( "data/persistent" );
-    KokkosResilience::create_directory( "data/scratch" );
-    KokkosResilience::create_directory( "data/persistent" );
+    KokkosResilience::remove_all( "data/stdfile" );
+    KokkosResilience::create_directory( "data/stdfile" );
     
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
@@ -84,7 +82,7 @@ TYPED_TEST( TestStdFileBackend, veloc_mem )
   KokkosResilience::Config cfg;
   cfg["backend"].set( "stdfile"s );
   //cfg["backends"]["stdfile"]["config"].set( "data/stdfile_test.cfg"s );
-  auto ctx = KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend >( "data/stdfile_test"s, cfg );
+  auto ctx = KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend >( "data/stdfile/stdfile_test"s, cfg );
   
   using exec_space = typename TestFixture::exec_space;
   using memory_space = typename exec_space::memory_space;
