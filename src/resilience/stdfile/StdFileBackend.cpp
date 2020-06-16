@@ -3,6 +3,7 @@
 #include <cassert>
 #include <fstream>
 #include <string>
+#include "../filesystem/Filesystem.hpp"
 
 #include "../AutomaticCheckpoint.hpp"
 
@@ -53,15 +54,8 @@ void StdFileBackend::checkpoint(
 }
 
 bool StdFileBackend::restart_available(const std::string &label, int version) {
-  bool result = false;
-  try {
-    std::string filename = detail::full_filename(m_filename, label, version);
-    std::ofstream file(filename, std::ios::binary);
-    result = file.is_open();
-  } catch (...) {
-    ;
-  }
-  return result;
+  std::string filename = detail::full_filename(m_filename, label, version);
+  return file_exists( filename );
 }
 
 int StdFileBackend::latest_version(const std::string &label) const noexcept {
