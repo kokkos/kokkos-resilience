@@ -53,9 +53,25 @@ public:
           main_view( i, j ) -= 1.0;
       } );
     } );
+
+    // Clobber main_view, should be reloaded at checkpoint
+    Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
+      for ( int j = 0; j < dimy; ++j )
+        main_view( i, j ) = 0.0;
+    } );
+
+    // Clobber host view just in case
+
+    for ( std::size_t x = 0; x < dimx; ++x )
+    {
+      for ( std::size_t y = 0; y < dimy; ++y )
+      {
+        host_mirror( x, y ) = 0.0;
+      }
+    }
     
     // The lambda shouldn't be executed, instead recovery should start
-    KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
+    KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [main_view]() {
       ASSERT_TRUE( false );
     } );
     

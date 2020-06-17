@@ -13,4 +13,9 @@ namespace KokkosResilience
   {
     return boost::filesystem::create_directory( _path );
   }
+
+  bool file_exists( const std::string &_path )
+  {
+    return boost::filesystem::exists( _path );
+  }
 }
