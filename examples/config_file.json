@@ -1,11 +1,7 @@
 {
   "backend": "stdfile",
   "backends": {
-<<<<<<< HEAD
     "stdfile": {
-=======
-    "veloc": {
->>>>>>> 940a3a18ac83c4c2fadad6365ced26ecc3dace94
       "config": "file_test.cfg"
     }
   },
