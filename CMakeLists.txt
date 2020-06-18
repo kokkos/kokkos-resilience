@@ -22,6 +22,7 @@ find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
+option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
 
 
 # VeloC backend
@@ -34,6 +35,11 @@ if (KR_ENABLE_VELOC)
   if (VELOC_BAREBONE)
     target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
   endif()
+endif()
+
+# StdFile backend
+if (KR_ENABLE_STDFILE)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_STDFILE)
 endif()
 
 if (KR_ENABLE_MPI_BACKENDS)
@@ -119,7 +125,7 @@ install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.h
 
 if (KR_ENABLE_VELOC)
    install(FILES
-        ${CMAKE_MODULE_PATH}/FindVeloC.cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
 
    # Need to install/export VeloC find module for downstream dependencies

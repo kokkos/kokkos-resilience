@@ -1,8 +1,8 @@
 #include "TestCommon.hpp"
 
-#include <resilience/veloc/VelocBackend.hpp>
+#include <resilience/stdfile/StdFileBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/MPIContext.hpp>
+#include <resilience/StdFileContext.hpp>
 #include <resilience/filesystem/Filesystem.hpp>
 
 #include <string>
@@ -10,7 +10,7 @@
 #include <random>
 
 template< typename ExecSpace >
-class TestVelocMemoryBackend : public ::testing::Test
+class TestStdFileBackend : public ::testing::Test
 {
 public:
   
@@ -42,10 +42,8 @@ public:
     
     Kokkos::fence();
     
-    KokkosResilience::remove_all( "data/scratch" );
-    KokkosResilience::remove_all( "data/persistent" );
-    KokkosResilience::create_directory( "data/scratch" );
-    KokkosResilience::create_directory( "data/persistent" );
+    KokkosResilience::remove_all( "data/stdfile" );
+    KokkosResilience::create_directory( "data/stdfile" );
     
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
@@ -92,15 +90,15 @@ public:
 };
 
 
-TYPED_TEST_SUITE( TestVelocMemoryBackend, enabled_exec_spaces );
+TYPED_TEST_SUITE( TestStdFileBackend, enabled_exec_spaces );
 
-TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
+TYPED_TEST( TestStdFileBackend, veloc_mem )
 {
   using namespace std::string_literals;
   KokkosResilience::Config cfg;
-  cfg["backend"].set( "veloc"s );
-  cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
-  auto ctx = KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, cfg );
+  cfg["backend"].set( "stdfile"s );
+  //cfg["backends"]["stdfile"]["config"].set( "data/stdfile_test.cfg"s );
+  auto ctx = KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend >( "data/stdfile/stdfile_test"s, cfg );
   
   using exec_space = typename TestFixture::exec_space;
   using memory_space = typename exec_space::memory_space;
