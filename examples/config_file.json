@@ -1,0 +1,12 @@
+{
+  "backend": "stdfile",
+  "backends": {
+    "stdfile": {
+      "config": "file_test.cfg"
+    }
+  },
+  "filter": {
+    "type": "time",
+    "interval": 10
+  }
+}

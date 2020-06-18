@@ -15,6 +15,12 @@ add_executable(resilience_tests
 if (KR_ENABLE_VELOC)
   target_sources(resilience_tests PRIVATE
       TestVelocMemoryBackend.cpp)
+  target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
+endif()
+
+if (KR_ENABLE_STDFILE)
+  target_sources(resilience_tests PRIVATE
+      TestStdFileBackend.cpp)
 endif()
 
 if (KR_ENABLE_STDIO)

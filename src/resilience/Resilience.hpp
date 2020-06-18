@@ -11,6 +11,11 @@
 #include "AutomaticCheckpoint.hpp"
 #endif
 
+#ifdef KR_ENABLE_STDFILE
+#include "stdfile/StdFileBackend.hpp"
+#include "AutomaticCheckpoint.hpp"
+#endif
+
 #ifdef KR_ENABLE_CUDA
    #include "cuda/ResCuda.hpp"
    #include "cuda/ResCudaSpace.hpp"
