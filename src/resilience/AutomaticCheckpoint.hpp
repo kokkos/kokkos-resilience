@@ -12,6 +12,7 @@
 
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
+#include "CheckpointData.hpp"
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
@@ -35,8 +36,8 @@ namespace KokkosResilience
 
   namespace Detail
   {
-    template< typename Context, typename F, typename FilterFunc >
-    void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
+    template< typename Context, typename F, typename FilterFunc, typename... Ts >
+    void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Ts& ... ts )
     {
   #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
 
@@ -93,6 +94,10 @@ namespace KokkosResilience
   #ifdef KR_ENABLE_TRACING
           auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
   #endif
+          // Make sure that all additional data items will be check-pointed as well
+          RestoreData data(label, ts...);
+          views.emplace_back(std::move(data));
+
           ctx.restart( label, iteration, views );
         } else
         {
@@ -105,6 +110,10 @@ namespace KokkosResilience
           Kokkos::fence();  // Get accurate measurements for function_trace end
           function_trace.end();
   #endif
+
+          // Make sure that all additional data items will be check-pointed as well
+          CheckpointData data(label, ts...);
+          views.emplace_back(std::move(data));
 
           {
   #ifdef KR_ENABLE_TRACING
@@ -139,10 +148,10 @@ namespace KokkosResilience
     }
   }
 
-  template< typename Context, typename F, typename FilterFunc >
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
+  template< typename Context, typename F, typename FilterFunc, typename... Ts >
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Ts&... ts )
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ) );
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), ts );
   }
 
   template< typename Context, typename F >
