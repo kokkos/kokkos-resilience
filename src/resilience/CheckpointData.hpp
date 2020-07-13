@@ -23,21 +23,20 @@ template <typename... Ts>
 class CheckpointData : public Kokkos::ViewHolderBase {
  public:
   CheckpointData(std::string const& label, Ts const&... ts)
-      : label(label), checkpoint_data() {
-    hpx::util::save_checkpoint_data(checkpoint_data, ts...);
+      : label_(label), checkpoint_data_() {
+    hpx::util::save_checkpoint_data(checkpoint_data_, ts...);
   }
 
-  std::size_t span() const override { return checkpoint_data.size(); }
+  std::size_t span() const override { return checkpoint_data_.size(); }
 
   bool span_is_contiguous() const override { return true; }
 
-  void const* data() const override { return checkpoint_data.data(); }
-
-  void* data() override { return checkpoint_data.data(); }
+  void const* data() const override { return checkpoint_data_.data(); }
+  void* data() override { return checkpoint_data_.data(); }
 
   CheckpointData* clone() const override { return new CheckpointData(*this); }
 
-  std::string label() const noexcept override { return label; }
+  std::string label() const noexcept override { return label_; }
   std::size_t data_type_size() const noexcept override { return sizeof(char); }
 
   bool is_hostspace() const noexcept override { return true; }
@@ -51,8 +50,8 @@ class CheckpointData : public Kokkos::ViewHolderBase {
   }
 
  private:
-  std::string label;
-  std::vector<char> checkpoint_data;
+  std::string label_;
+  std::vector<char> checkpoint_data_;
 };
 
 template <typename... Ts>
@@ -62,24 +61,27 @@ CheckpointData(std::string const&, Ts const&...) -> CheckpointData<Ts...>;
 // pointing
 
 template <typename... Ts>
-class RestoreData : public Kokkos::ConstViewHolderBase {
+class RestoreData : public Kokkos::ViewHolderBase {
  public:
   RestoreData(std::string const& label, Ts&... ts)
-      : label(label),
-        data(std::forward_as_tuple(ts...)),
-        checkpoint_data(hpx::util::prepare_checkpoint_data(ts...)) {}
+      : label_(label),
+        data_(std::forward_as_tuple(ts...)),
+        checkpoint_data_(hpx::util::prepare_checkpoint_data(ts...)) {}
 
   ~RestoreData() {
     restore_checkpoint(std::make_index_sequence<sizeof...(Ts)>{});
   }
 
-  std::size_t span() const override { return checkpoint_data.size(); }
+  std::size_t span() const override { return checkpoint_data_.size(); }
 
   bool span_is_contiguous() const override { return true; }
 
-  void* data() override { return checkpoint_data.data(); }
+  void const* data() const override { return checkpoint_data_.data(); }
+  void* data() override { return checkpoint_data_.data(); }
 
-  std::string label() const noexcept override { return label; }
+  RestoreData* clone() const override { return new RestoreData(*this); }
+
+  std::string label() const noexcept override { return label_; }
   std::size_t data_type_size() const noexcept override { return sizeof(char); }
 
   bool is_hostspace() const noexcept override { return true; }
@@ -88,16 +90,20 @@ class RestoreData : public Kokkos::ConstViewHolderBase {
     // TODO: implement
   }
 
- private:
-  template <std::size_t... Is>
-  void restore_checkpoint(std::index_sequence<Is...>) {
-    hpx::util::restore_checkpoint_data(checkpoint_data, std::get<Is>(data)...);
+  void deep_copy_from_buffer(unsigned char* buff) override {
+    // TODO: implement
   }
 
  private:
-  std::string label;
-  std::tuple<Ts&> data;
-  std::vector<char> checkpoint_data;
+  template <std::size_t... Is>
+  void restore_checkpoint(std::index_sequence<Is...>) {
+    hpx::util::restore_checkpoint_data(checkpoint_data_, std::get<Is>(data_)...);
+  }
+
+ private:
+  std::string label_;
+  std::tuple<Ts&...> data_;
+  std::vector<char> checkpoint_data_;
 };
 
 template <typename... Ts>
