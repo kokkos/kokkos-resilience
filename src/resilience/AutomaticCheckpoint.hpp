@@ -6,13 +6,17 @@
 #include <memory>
 #include <ctime>
 #include <iomanip>
+#include <type_traits>
+#include <utility>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ViewHooks.hpp>
 
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
+#if defined(KR_ENABLE_CHECKPOINT_DATA) || defined(KOKKOS_ENABLE_HPX)
 #include "CheckpointData.hpp"
+#endif
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
@@ -94,9 +98,10 @@ namespace KokkosResilience
   #ifdef KR_ENABLE_TRACING
           auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
   #endif
+  #if defined(KR_ENABLE_CHECKPOINT_DATA) || defined(KOKKOS_ENABLE_HPX)
           // Make sure that all additional data items will be check-pointed as well
-          RestoreData data(label, ts...);
-          views.emplace_back(std::move(data));
+          views.emplace_back(new RestoreData(label, ts...));
+  #endif
 
           ctx.restart( label, iteration, views );
         } else
@@ -111,10 +116,10 @@ namespace KokkosResilience
           function_trace.end();
   #endif
 
+  #if defined(KR_ENABLE_CHECKPOINT_DATA) || defined(KOKKOS_ENABLE_HPX)
           // Make sure that all additional data items will be check-pointed as well
-          CheckpointData data(label, ts...);
-          views.emplace_back(std::move(data));
-
+          views.emplace_back(new CheckpointData(label, ts...));
+  #endif
           {
   #ifdef KR_ENABLE_TRACING
             auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
@@ -148,11 +153,30 @@ namespace KokkosResilience
     }
   }
 
+#if defined(KR_ENABLE_CHECKPOINT_DATA) || defined(KOKKOS_ENABLE_HPX)
   template< typename Context, typename F, typename FilterFunc, typename... Ts >
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Ts&... ts )
+  typename std::enable_if<std::is_invocable<typename std::decay<FilterFunc>::type, int>::value>::type 
+  checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Ts&... ts )
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), ts );
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), 
+      std::forward< FilterFunc >( filter ), ts... );
   }
+
+  template< typename Context, typename F, typename FilterFunc, typename... Ts >
+  typename std::enable_if<!std::is_invocable<FilterFunc, int>::value>::type 
+  checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc& filter, Ts&... ts )
+  {
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), 
+      ctx.default_filter(), std::forward< FilterFunc >( filter ), ts... );
+  }
+#else
+  template< typename Context, typename F, typename FilterFunc >
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc& filter )
+  {
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), 
+      ctx.default_filter(), std::forward< FilterFunc >( filter ), ts... );
+  }
+#endif
 
   template< typename Context, typename F >
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun )

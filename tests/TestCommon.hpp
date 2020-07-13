@@ -2,7 +2,7 @@
 #define INC_TEST_COMMON_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_HPX)
+#if defined(KR_ENABLE_CHECKPOINT_DATA) || defined(KOKKOS_ENABLE_HPX)
 #include <hpx/config.hpp>
 #endif
 #include <gtest/gtest.h>
