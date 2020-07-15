@@ -30,7 +30,7 @@ StdFileBackend::~StdFileBackend() = default;
 
 void StdFileBackend::checkpoint(
     const std::string &label, int version,
-    const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views) {
+    const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>> &views) {
   bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
@@ -73,7 +73,7 @@ int StdFileBackend::latest_version(const std::string &label) const noexcept {
 
 void StdFileBackend::restart(
     const std::string &label, int version,
-    const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views) {
+    const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>> &views) {
   bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);

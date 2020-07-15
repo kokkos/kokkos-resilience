@@ -84,17 +84,17 @@ namespace KokkosResilience
     ~VeloCMemoryBackend();
   
     void checkpoint( const std::string &label, int version,
-                     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+                     const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views );
   
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
   
     void restart( const std::string &label, int version,
-                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+                  const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views );
 
     void clear_checkpoints();
   
-    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+    void register_hashes( const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views,
       const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
@@ -118,15 +118,15 @@ namespace KokkosResilience
     ~VeloCFileBackend();
   
     void checkpoint( const std::string &label, int version,
-                     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+                     const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views );
   
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
   
     void restart( const std::string &label, int version,
-                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+                  const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views );
   
-    void register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > & ) {} // Do nothing
+    void register_hashes( const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > & ) {} // Do nothing
 
   private:
   

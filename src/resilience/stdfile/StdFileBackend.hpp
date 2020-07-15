@@ -22,19 +22,19 @@ class StdFileBackend {
 
   void checkpoint(
       const std::string &label, int version,
-      const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views);
+      const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>> &views);
 
   bool restart_available(const std::string &label, int version);
   int latest_version(const std::string &label) const noexcept;
 
   void restart(
       const std::string &label, int version,
-      const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views);
+      const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>> &views);
 
   void reset() {}
 
   void register_hashes(
-      const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views,
+      const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>> &views,
       const std::vector<Detail::CrefImpl> &crefs) {}
 
  private:

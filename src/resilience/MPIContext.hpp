@@ -49,7 +49,7 @@ public:
   Backend &backend() { return m_backend; }
 
   void register_hashes(
-      const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views,
+      const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>> &views,
       const std::vector<Detail::CrefImpl> &crefs) override {
     m_backend.register_hashes(views, crefs);
   }
@@ -59,13 +59,13 @@ public:
   }
 
   void restart(const std::string &label, int version,
-               const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>>
+               const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>>
                    &views) override {
     m_backend.restart(label, version, views);
   }
 
   void checkpoint(const std::string &label, int version,
-                  const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>>
+                  const std::vector<std::unique_ptr<Kokkos::Experimental::ViewHolderBase>>
                       &views) override {
     m_backend.checkpoint(label, version, views);
   }

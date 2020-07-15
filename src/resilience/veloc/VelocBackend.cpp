@@ -52,7 +52,7 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
+                                       const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &_views )
   {
     bool status = true;
     
@@ -99,7 +99,7 @@ namespace KokkosResilience
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
+    const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &_views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     
@@ -144,7 +144,7 @@ namespace KokkosResilience
   }
   
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views,
                                        const std::vector< Detail::CrefImpl > &crefs  )
   {
     for ( auto &&view : views )
@@ -208,7 +208,7 @@ namespace KokkosResilience
   
   void
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
+                                const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > &views )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait());
@@ -263,7 +263,7 @@ namespace KokkosResilience
   }
   
   void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
+                                  const std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase>> &views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     
