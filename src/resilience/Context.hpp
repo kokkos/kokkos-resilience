@@ -46,6 +46,10 @@ namespace KokkosResilience
 
     virtual void reset() = 0;
 
+#ifdef KR_ENABLE_MPI_BACKENDS
+    virtual void reset(MPI_Comm newcomm) = 0;
+#endif
+    
     const std::function< bool( int ) > &default_filter() const noexcept { return m_default_filter; }
 
     Config &config() noexcept { return m_config; }

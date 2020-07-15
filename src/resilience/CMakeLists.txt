@@ -7,7 +7,7 @@ target_sources(resilience PRIVATE
                )
 
 if (KR_ENABLE_MPI_BACKENDS)
-  target_sources(resilience PRIVATE MPIContext.cpp)
+    target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/MPIContext.cpp)
 endif()
 
 add_subdirectory(filesystem)

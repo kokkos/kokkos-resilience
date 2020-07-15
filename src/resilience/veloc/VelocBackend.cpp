@@ -42,7 +42,27 @@ namespace KokkosResilience
     : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_latest_version( -2 )
   {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    VELOC_SAFE_CALL( VELOC_Init( mpi_comm, vconf.c_str() ) );
+    
+    std::string mode;
+    try{
+        mode = m_context->config()["backends"]["veloc"]["mode"].as< std::string >();
+    } catch (KokkosResilience::ConfigValueError e){
+        //Default value if not specified.
+        mode = "global";
+    }
+    
+    if(mode == "single"){
+        single_mode = true;
+    } else {
+        single_mode = false;
+    }
+
+    MPI_Comm_rank(m_mpi_comm, &mpi_rank);
+    if(single_mode){
+        VELOC_SAFE_CALL( VELOC_Init_single( mpi_rank, vconf.c_str() ) );
+    } else {
+        VELOC_SAFE_CALL( VELOC_Init( mpi_comm, vconf.c_str() ) );
+    }
   }
   
   VeloCMemoryBackend::~VeloCMemoryBackend()
@@ -91,8 +111,13 @@ namespace KokkosResilience
   int
   VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
   {
-    if ( m_latest_version < -1 )
+    if ( m_latest_version < -1 ){
       m_latest_version = VELOC_Restart_test( label.c_str(), 0 );
+      if(single_mode){
+        //In single mode VELOC can't check for global consensus on latest version 
+        MPI_Allreduce(MPI_IN_PLACE, &m_latest_version, 1, MPI_INT, MPI_MIN, m_mpi_comm);
+      }
+    }
     
     return m_latest_version;
   }
@@ -122,6 +147,15 @@ namespace KokkosResilience
         }
       }
     }
+  }
+
+  
+  void
+  VeloCMemoryBackend::reset(MPI_Comm newcomm)
+  {
+    m_mpi_comm = newcomm;
+    MPI_Comm_rank(newcomm, &mpi_rank);
+    reset();
   }
 
   void

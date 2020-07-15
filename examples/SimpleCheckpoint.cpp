@@ -12,7 +12,7 @@ main( int argc, char **argv )
   
   Kokkos::initialize( argc, argv );
   {
-    auto ctx = KokkosResilience::make_context( MPI_COMM_WORLD, "config.json" );
+    auto ctx = KokkosResilience::make_context( (int)MPI_COMM_WORLD, "config.json" );
     
     int  dim0 = 5, dim1 = 5;
     auto view = Kokkos::View< double ** >( "test_view", dim0, dim1 );

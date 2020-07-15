@@ -98,6 +98,7 @@ namespace KokkosResilience
       const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
+    void reset(MPI_Comm newcomm);
 
   private:
     
@@ -106,6 +107,8 @@ namespace KokkosResilience
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;
+    bool single_mode;
+    int mpi_rank;
     
     mutable int m_latest_version;
   };
@@ -132,6 +135,8 @@ namespace KokkosResilience
   
     MPI_Comm m_mpi_comm;
     MPIContext< VeloCFileBackend > *m_context;
+    bool single_mode;
+    int mpi_rank;
   };
 }
 

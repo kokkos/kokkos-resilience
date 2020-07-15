@@ -106,7 +106,7 @@ install(TARGETS resilience EXPORT resilienceTargets
 install(EXPORT resilienceTargets
         FILE resilienceTargets.cmake
         NAMESPACE Kokkos::
-        DESTINATION cmake
+        DESTINATION share/resilience/cmake
         )
 
 

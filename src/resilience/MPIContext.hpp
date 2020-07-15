@@ -75,6 +75,7 @@ public:
   }
 
   void reset() override { m_backend.reset(); }
+  void reset(MPI_Comm newcomm) override { m_backend.reset(newcomm); }
 
 private:
   MPI_Comm m_comm;
