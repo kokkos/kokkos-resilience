@@ -8,6 +8,7 @@
 #include <Kokkos_ViewHooks.hpp>
 
 #include <cstddef>
+#include <cstring>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -42,11 +43,11 @@ class CheckpointData : public Kokkos::ViewHolderBase {
   bool is_hostspace() const noexcept override { return true; }
 
   void deep_copy_to_buffer(unsigned char* buff) override {
-    // TODO: implement
+    std::memcpy(checkpoint_data_.data(), buff, checkpoint_data_.size())
   }
 
   void deep_copy_from_buffer(unsigned char* buff) override {
-    // TODO: implement
+    std::memcpy(buff, checkpoint_data_.data(), checkpoint_data_.size())
   }
 
  private:
@@ -87,11 +88,11 @@ class RestoreData : public Kokkos::ViewHolderBase {
   bool is_hostspace() const noexcept override { return true; }
 
   void deep_copy_to_buffer(unsigned char* buff) override {
-    // TODO: implement
+    std::memcpy(checkpoint_data_.data(), buff, checkpoint_data_.size())
   }
 
   void deep_copy_from_buffer(unsigned char* buff) override {
-    // TODO: implement
+    std::memcpy(buff, checkpoint_data_.data(), checkpoint_data_.size())
   }
 
  private:
