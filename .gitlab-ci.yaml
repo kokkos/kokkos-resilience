@@ -1,0 +1,48 @@
+
+## ************************************************************************
+##     Kokkos Resilience Extension
+##     by Sandia National Laboratories
+##
+## Sandia National Laboratories is a multimission laboratory managed
+## and operated by National Technology and Engineering Solutions of Sandia,
+## LLC, a wholly owned subsidiary of Honeywell International, Inc., for the
+## U.S. Department of Energy's National Nuclear Security Administration under
+## contract DE-NA0003525.
+##
+## Copyright 2020 National Technology & Engineering Solutions of Sandia, LLC
+## (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+## Government retains certain rights in this software.
+## ************************************************************************
+
+stages:
+   - build_and_test
+
+linux-openmp:
+   except:
+    - schedules
+   stage: build_and_test
+   tags:
+      - linux
+   script:
+      - export http_proxy=http://wwwproxy.sandia.gov:80
+      - export https_proxy=http://wwwproxy.sandia.gov:80
+      - cd ..
+      - git clone https://gitlab-ex.sandia.gov/kokkos-resilience/kokkos.git
+      - rm -rf build
+      - mkdir build
+      - cd build
+      - cmake  -DKokkos_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX install  ../kokkos
+      - make -j
+      - make install
+      - cd ..
+      - cd kokos-resilience
+      - rm -rf build_linux_openmp
+      - cd build_linux_openmp
+      - cmake  -DKokkos_ROOT=~/kokkos/build/install  -DKR_ENABLE_VELOC=OFF ../. 
+      - make -j
+      - export OMP_PROC_BIND=spread
+      - export OMP_PLACES=threads
+   only:
+      - master
+
+
