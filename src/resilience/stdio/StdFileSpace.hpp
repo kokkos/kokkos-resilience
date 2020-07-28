@@ -80,7 +80,7 @@ public:
 class StdFileSpace {
 public:
   //! Tag this class as a kokkos memory space
-  typedef KokkosResilience::StdFileSpace  file_space;   // used to uniquely identify file spaces
+  typedef KokkosResilience::StdFileSpace  indirect_memory_space;   // used to uniquely identify indirect memory spaces
   typedef KokkosResilience::StdFileSpace  memory_space;
   typedef size_t     size_type;
 
@@ -94,14 +94,10 @@ public:
   typedef Kokkos::OpenMP    execution_space;
 #elif defined( KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_THREADS )
   typedef Kokkos::Threads   execution_space;
-//#elif defined( KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_QTHREADS )
-//  typedef Kokkos::Qthreads  execution_space;
 #elif defined( KOKKOS_ENABLE_OPENMP )
   typedef Kokkos::OpenMP    execution_space;
 #elif defined( KOKKOS_ENABLE_THREADS )
   typedef Kokkos::Threads   execution_space;
-//#elif defined( KOKKOS_ENABLE_QTHREADS )
-//  typedef Kokkos::Qthreads  execution_space;
 #elif defined( KOKKOS_ENABLE_SERIAL )
   typedef Kokkos::Serial    execution_space;
 #else

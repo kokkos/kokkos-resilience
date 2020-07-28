@@ -12,7 +12,8 @@
 #include <utility>
 #include <Kokkos_Parallel.hpp>
 #include <Cuda/Kokkos_Cuda_Parallel.hpp>
-#include <impl/Kokkos_TrackDuplicates.hpp>
+#include <impl/TrackDuplicates.hpp>
+#include <impl/ViewHookSpecialization.hpp>
 
 
 //----------------------------------------------------------------------------
@@ -21,14 +22,35 @@
 namespace KokkosResilience {
 
    static void combine_res_duplicates() {
-      std::map<std::string, Kokkos::Experimental::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
+      std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it = ResCudaSpace::duplicate_map.begin();
       while ( it != ResCudaSpace::duplicate_map.end() ) {
-          Kokkos::Experimental::DuplicateTracker * dt = it->second;
-          printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
+          KokkosResilience::DuplicateTracker * dt = it->second;
+          //printf("combine duplicates: %s, %d \n", it->first.c_str(), dt->data_len );
           dt->combine_dups();
           it++;
       }
    }
+
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+/*
+ * Create a duplicate data record, copy the original 
+ * to the duplicate, and then assign the duplicate
+ * to the tracking element for the original.
+ * afterwards, update the view record to point to the
+ * duplicate.
+ */ 
+inline void 
+duplicate_shared ( Kokkos::ViewHolderBase & dst, Kokkos::ViewHolderBase & src  ) {
+
+   // need to assign the new record to the view map / handle no init is necessary
+   dst.update_view( src.rec_ptr()  );
+   
+   // copy the data from the original
+   dst.deep_copy_from_buffer( (unsigned char *)src.data() );
+
+}
+#endif
+
 } // namespace KokkosResilience
 
 namespace Kokkos {
@@ -60,7 +82,6 @@ public:
   inline
   void execute() const
     {
-        Kokkos::Impl::shared_allocation_enable_duplicates();
         typedef Kokkos::RangePolicy<Kokkos::Cuda, WorkTag, LaunchBounds> surrogate_policy;
 
         surrogate_policy lPolicy[3];
@@ -71,14 +92,32 @@ public:
            new (&lPolicy[i]) surrogate_policy(cuda_inst, m_policy.begin(), m_policy.end());
         }
 
+        // Setup ViewHooks to capture non-const views and pass to duplicate_shared
+        // Don't do anything with const views since they don't need to be duplicated
+        Kokkos::Impl::shared_allocation_tracking_enable();  // re-enable tracker for duplicates
+
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+        Kokkos::ViewHooks::set_cp(
+           [](Kokkos::ViewHolderBase &dst, Kokkos::ViewHolderBase &src) {
+             KokkosResilience::duplicate_shared(dst, src);
+           },
+           [](Kokkos::ViewHolderBase &, Kokkos::ViewHolderBase &) {});
+#endif
+
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureI( m_functor , lPolicy[0] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureII( m_functor , lPolicy[1] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureIII( m_functor , lPolicy[2] );
-        Kokkos::Impl::shared_allocation_disable_duplicates();
+
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+        Kokkos::ViewHooks::clear();
+#endif
+        Kokkos::Impl::shared_allocation_tracking_disable();  // disable tracking (way it was before)
+
         closureI.execute();
         closureII.execute();
         closureIII.execute();
         Kokkos::fence();
+
         //printf("Combining duplicates \n");
         KokkosResilience::combine_res_duplicates();
     }
@@ -2007,8 +2046,7 @@ public:
 } // namespace Impl
 } // namespace Kokkos
 
-namespace Kokkos {
-namespace Experimental {
+namespace KokkosResilience {
 
    template<class Type, class ExecutionSpace>
    void SpecDuplicateTracker<Type, ExecutionSpace>::combine_dups() {
@@ -2022,9 +2060,9 @@ namespace Experimental {
       m_cf.load_ptrs( static_cast<rd_type*>(original_data), static_cast<rd_type*>(dup_list[0]),
                     static_cast<rd_type*>(dup_list[1]), static_cast<rd_type*>(dup_list[2]), N );
 
-      printf("invoking parallel combine operation\n");
+      //printf("invoking parallel combine operation\n");
 
-      printf("retrieving the blocksize\n");
+      //printf("retrieving the blocksize\n");
       const int block_size = 1024;
       const dim3 block(  1 , block_size , 1);
       const dim3 grid( ( N + block.y - 1 ) / block.y , 1 , 1);
@@ -2033,14 +2071,14 @@ namespace Experimental {
       void * args[1];
       args[0] = &m_cf;
 
-      printf("launching kernel: %ld \n", sizeof(m_cf) );
+     // printf("launching kernel: %ld \n", sizeof(m_cf) );
 //      launch_comb_dup_kernel< comb_type >
 //          <<< grid , block , 0 , spc.cuda_stream() >>> ( cf );
       cudaError_t cErr = cudaLaunchKernel(func_ptr, grid, block, args, 0, spc.cuda_stream() );
       
      
 //      cudaError_t cErr = cudaGetLastError();
-      printf("return from kernel: %d \n", (int) cErr );
+     // printf("return from kernel: %d \n", (int) cErr );
 /*
       Kokkos::fence();
       exec_policy rp (0,N);
@@ -2052,8 +2090,7 @@ namespace Experimental {
       Kokkos::fence();
 
    }
-} // namespace Experimental
-} // namespace Kokkos
+} // namespace KokkosResilience
 
 
 #endif /* defined( __CUDACC__ ) */

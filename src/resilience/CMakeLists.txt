@@ -11,6 +11,7 @@ if (KR_ENABLE_MPI_BACKENDS)
   target_sources(resilience PRIVATE MPIContext.cpp)
 endif()
 
+add_subdirectory(impl)
 add_subdirectory(filesystem)
 add_subdirectory(stdio)
 
@@ -27,9 +28,7 @@ if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
 
-list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
-
-if (${_cuda_found} GREATER "-1")
+if (Kokkos_ENABLE_CUDA)
   add_subdirectory(cuda)
 endif()
 

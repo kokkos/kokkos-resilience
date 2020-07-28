@@ -23,6 +23,9 @@
 #define KR_CHECKPOINT_THIS _kr_self = *this
 #define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref< int >( x )
 
+
+
+
 namespace KokkosResilience
 {
 

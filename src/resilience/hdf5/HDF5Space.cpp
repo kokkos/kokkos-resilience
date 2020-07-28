@@ -1,6 +1,7 @@
 #include "Kokkos_Core.hpp"
 #include "HDF5Space.hpp"
 #include "Kokkos_Macros.hpp"
+#include "impl/MirrorTracker.hpp"
 
 #ifdef KR_ENABLE_HDF5_PARALLEL
    #include "mpi.h"
@@ -432,7 +433,7 @@ namespace KokkosResilience {
    
    void HDF5Space::restore_all_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
+      KokkosResilience::MirrorTracker * pList = KokkosResilience::MirrorTracker::get_filtered_mirror_list( (std::string)name() );
       while (pList != nullptr) {
          Kokkos::Impl::DeepCopy< Kokkos::HostSpace, KokkosResilience::HDF5Space, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pList->src)->data(), ((base_record*)pList->dst)->data(), ((base_record*)pList->src)->size());
@@ -449,7 +450,7 @@ namespace KokkosResilience {
    
    void HDF5Space::restore_view(const std::string lbl) {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pRes = base_record::get_filtered_mirror_entry( (std::string)name(), lbl );
+      KokkosResilience::MirrorTracker * pRes = KokkosResilience::MirrorTracker::get_filtered_mirror_entry( (std::string)name(), lbl );
       if (pRes != nullptr) {
          Kokkos::Impl::DeepCopy< Kokkos::HostSpace, KokkosResilience::HDF5Space, Kokkos::DefaultHostExecutionSpace >
                         (((base_record*)pRes->src)->data(), ((base_record*)pRes->dst)->data(), ((base_record*)pRes->src)->size());
@@ -465,7 +466,7 @@ namespace KokkosResilience {
        MPI_Comm_rank( MPI_COMM_WORLD, &mpi_rank);
 #endif
        typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-       Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
+       KokkosResilience::MirrorTracker * pList = KokkosResilience::MirrorTracker::get_filtered_mirror_list( (std::string)name() );
        if (pList == nullptr) {
           printf("memspace %s returned empty list of checkpoint views \n", name());
        }
@@ -491,7 +492,7 @@ namespace KokkosResilience {
 
    void HDF5Space::checkpoint_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
-      Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
+      KokkosResilience::MirrorTracker * pList = KokkosResilience::MirrorTracker::get_filtered_mirror_list( (std::string)name() );
       if (pList == nullptr) {
          printf("memspace %s returned empty list of checkpoint views \n", name());
       }

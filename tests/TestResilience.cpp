@@ -23,7 +23,7 @@ struct ResSurrogate {
   
   KOKKOS_INLINE_FUNCTION
   ResSurrogate(const ViewType & vt_) : vt(vt_) {
-    printf("inside functor constructor\n");
+    //printf("inside functor constructor\n");
   }
   
   KOKKOS_INLINE_FUNCTION
@@ -36,11 +36,11 @@ struct ResSurrogate {
 struct testCopy {
   
   testCopy() {
-    printf("test copy original\n");
+    //printf("test copy original\n");
   }
   
   testCopy(const testCopy &) {
-    printf("test copy const\n");
+   // printf("test copy const\n");
   }
   
   void callme() const {
@@ -78,7 +78,7 @@ struct TestResilientRange {
 //      Kokkos::deep_copy( m_data, v );
 
 //      ResSurrogate f(m_data);
-    printf("calling parallel_for\n");
+//    printf("calling parallel_for\n");
 //      Kokkos::parallel_for(N, f);
     Kokkos::RangePolicy<KokkosResilience::ResCuda> rp (0,N);
 /*      auto ml = KOKKOS_LAMBDA(const int i){
@@ -104,13 +104,10 @@ struct TestResilientRange {
 
 KR_DECLARE_RESILIENCE_OBJECTS(int,int)
 
-
-TYPED_TEST_SUITE( TestResilience, enabled_exec_spaces );
-
-TYPED_TEST( TestResilience, range )
+TEST( TestResilience, range )
 {
   
-  using exec_space = typename TestFixture::exec_space;
+  using exec_space = typename Kokkos::DefaultExecutionSpace;
   
   KR_ADD_RESILIENCE_OBJECTS(int,int);
   

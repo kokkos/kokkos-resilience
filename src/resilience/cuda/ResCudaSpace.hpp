@@ -4,7 +4,7 @@
 #include <Kokkos_Macros.hpp>
 #if defined( KOKKOS_ENABLE_CUDA )
 
-#include <impl/Kokkos_TrackDuplicates.hpp>
+#include <impl/TrackDuplicates.hpp>
 #include <Kokkos_CudaSpace.hpp>
 #include <cmath>
 #include <map>
@@ -38,7 +38,7 @@ public:
   
   static void clear_duplicates_list();
 
-  static std::map<std::string, Kokkos::Experimental::DuplicateTracker * > duplicate_map;
+  static std::map<std::string, KokkosResilience::DuplicateTracker * > duplicate_map;
 
 private:
 
@@ -270,7 +270,7 @@ struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResCudaSpace , Kok
 /** Running in CudaSpace attempting to access an unknown space: error */
 template< class OtherSpace >
 struct VerifyExecutionCanAccessMemorySpace<
-  typename enable_if< ! is_same<KokkosResilience::ResCudaSpace,OtherSpace>::value , KokkosResilience::ResCudaSpace >::type ,
+  typename std::enable_if< ! std::is_same<KokkosResilience::ResCudaSpace,OtherSpace>::value , KokkosResilience::ResCudaSpace >::type ,
   OtherSpace >
 {
   enum { value = false };
@@ -413,12 +413,12 @@ namespace KokkosResilience {
 #define KR_MAKE_RESILIENCE_FUNC_NAME( id ) id##_resilience_func
 
 #define KR_DECLARE_RESILIENCE_OBJECTS(data_type, id) \
-   template __global__ void KokkosResilience::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, KokkosResilience::ResCuda> >( \
-                                                                Kokkos::Experimental::CombineFunctor<data_type, KokkosResilience::ResCuda> ); \
-   void * KR_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&KokkosResilience::launch_comb_dup_kernel<Kokkos::Experimental::CombineFunctor<data_type, KokkosResilience::ResCuda> >;
+   template __global__ void KokkosResilience::launch_comb_dup_kernel<KokkosResilience::CombineFunctor<data_type, KokkosResilience::ResCuda> >( \
+                                                                KokkosResilience::CombineFunctor<data_type, KokkosResilience::ResCuda> ); \
+   void * KR_MAKE_RESILIENCE_FUNC_NAME(id) = (void*)&KokkosResilience::launch_comb_dup_kernel<KokkosResilience::CombineFunctor<data_type, KokkosResilience::ResCuda> >;
 
 #define KR_ADD_RESILIENCE_OBJECTS(data_type, id) \
-   Kokkos::Experimental::DuplicateTracker::add_kernel_func( typeid(data_type).name(), KR_MAKE_RESILIENCE_FUNC_NAME( id ));
+   KokkosResilience::DuplicateTracker::add_kernel_func( typeid(data_type).name(), KR_MAKE_RESILIENCE_FUNC_NAME( id ));
 
 
 //----------------------------------------------------------------------------

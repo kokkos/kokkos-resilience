@@ -30,13 +30,11 @@ namespace {
     
     static void test_view_chkpt( int iter, std::string view_prefix, int dim0, int dim1, std::string default_path ) {
       int N = 1;
-      typedef Kokkos::LayoutLeft       Layout;
-      typedef Kokkos::HostSpace        defaultMemSpace;  // default device
       typedef CpFileSpace              fileSystemSpace;  // file system
       
       fileSystemSpace::set_default_path(default_path );
       fileSystemSpace fs;
-      typedef Kokkos::View<double**, Layout, defaultMemSpace> local_view_type;
+      typedef Kokkos::View<double**> local_view_type;
       
       std::string viewAName = view_prefix;
       viewAName += (std::string)"_A";
@@ -60,7 +58,7 @@ namespace {
       auto F_B = Kokkos::create_chkpt_mirror(fs, h_B);
       
       if ( iter == 0 ) {
-        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(const int i) {
+        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(int i) {
           for (int j=0; j< dim1; j++) {
             A(i,j) = 0;  B(i,j) = 0;
           }
@@ -73,7 +71,7 @@ namespace {
       for ( int r = 0; r < N; r++ ) {
         Kokkos::deep_copy(A, h_A);  Kokkos::deep_copy(B, h_B);
         
-        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(const int i) {
+        Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA(int i) {
           for (int j=0; j< dim1; j++) {
             A(i,j) += 1;  B(i,j) += 1;
           }
@@ -90,8 +88,8 @@ namespace {
       
       for ( int i = 0; i < dim0; i++ ) {
         for (int j = 0; j < dim1; j++) {
-          ASSERT_EQ( A(i,j), iter+1 );
-          ASSERT_EQ( B(i,j), iter+1 );
+          ASSERT_EQ( h_A(i,j), iter+1 );
+          ASSERT_EQ( h_B(i,j), iter+1 );
         }
       }
     }
@@ -115,7 +113,7 @@ namespace {
       cp_file_space_type::set_default_path("./data");
       Kokkos::View<char**,cp_file_space_type> cp_view(file_name, dim0, dim1);
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = i * dim0 + j;
         }
@@ -129,7 +127,7 @@ namespace {
       Kokkos::deep_copy( cp_view, h_view_2 );
       Kokkos::fence();
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = 0;
         }
@@ -170,9 +168,9 @@ namespace {
       typename Rank2ViewType::HostMirror h_view_2 = Kokkos::create_mirror(view_2);
       
       typedef CpFileSpace cp_file_space_type;
-      Kokkos::View<double**,cp_file_space_type> cp_view(file_name, dim0, dim1);
+      Kokkos::View<double**,typename Rank2ViewType::HostMirror::array_layout,cp_file_space_type> cp_view(file_name, dim0, dim1);
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = i + j;
         }
@@ -183,7 +181,7 @@ namespace {
       Kokkos::deep_copy( cp_view, h_view_2 );
       Kokkos::fence();
       
-      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (const int i) {
+      Kokkos::parallel_for (Kokkos::RangePolicy<ExecSpace>(0, dim0), KOKKOS_LAMBDA (int i) {
         for (int j = 0; j < dim1; j++) {
           view_2(i,j) = 0;
         }
@@ -209,11 +207,11 @@ namespace {
 } // namespace
 
 
-TYPED_TEST_SUITE( TestViewCheckpoint, enabled_exec_spaces );
+//TYPED_TEST_SUITE( TestViewCheckpoint, enabled_exec_spaces );
 
-TYPED_TEST( TestViewCheckpoint, stdio )
+TEST( TestViewCheckpoint, deep_copy_stdio )
 {
-  using exec_space = typename TestFixture::exec_space;
+  using exec_space = Kokkos::DefaultExecutionSpace;
   
   mkdir("./data", 0777);
   TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data//cp_view.bin",10,10);
@@ -222,7 +220,12 @@ TYPED_TEST( TestViewCheckpoint, stdio )
   remove("./data/cp_view.bin");
   TestFSDeepCopy< exec_space, KokkosResilience::StdFileSpace >::test_view_chkpt("./data/cp_view.bin",10000,10000);
   remove("./data/cp_view.bin");
-  
+}
+
+TEST( TestViewCheckpoint, manual_checkpoint_stdio )
+{
+  using exec_space = Kokkos::DefaultExecutionSpace;
+
   mkdir("./data/stdfile", 0777);
   remove("./data/stdfile/view_A");
   remove("./data/stdfile/view_B");
@@ -234,9 +237,9 @@ TYPED_TEST( TestViewCheckpoint, stdio )
 
 #ifdef KR_ENABLE_HDF5
 
-TYPED_TEST( TestViewCheckpoint, hdf5 )
+TEST( TestViewCheckpoint, deep_copy_hdf5 )
 {
-  using exec_space = typename TestFixture::exec_space;
+  using exec_space = Kokkos::DefaultExecutionSpace;
   
   mkdir("./data", 0777);
   std::string file_name = "./data/cp_view.hdf";
@@ -254,6 +257,11 @@ TYPED_TEST( TestViewCheckpoint, hdf5 )
   TestFSDeepCopy< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt("./data/cp_view.hdf",10000,10000);
   remove("./data/cp_view.hdf*");
   TestFSConfig< exec_space, KokkosResilience::HDF5Space >::test_view_chkpt("1D_regular_test",10,10);
+}
+
+TEST( TestViewCheckpoint, manual_checkpoint_hdf5 )
+{
+  using exec_space = Kokkos::DefaultExecutionSpace;
 
   mkdir("./data/hdf5", 0777);
   remove("./data/hdf5/view_A*");
