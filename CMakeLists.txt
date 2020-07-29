@@ -78,6 +78,13 @@ find_package(Boost REQUIRED COMPONENTS filesystem)
 target_link_libraries(resilience PUBLIC Boost::boost)
 target_link_libraries(resilience PRIVATE Boost::filesystem)
 
+option(KR_ENABLE_HPX "Enable use of HPX for checkpointing arbitrary data" OFF)
+if (KR_ENABLE_HPX)
+  find_package(HPX REQUIRED)
+  target_link_libraries(resilience PUBLIC HPX::hpx)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_CHECKPOINT_DATA)
+endif()
+
 add_subdirectory(src)
 
 # Export targets for in-tree linking

@@ -1,4 +1,8 @@
 
+#if defined(KR_ENABLE_CHECKPOINT_DATA) || defined(KOKKOS_ENABLE_HPX)
+#include <hpx/hpx_main.hpp>
+#endif
+
 #include <gtest/gtest.h>
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
