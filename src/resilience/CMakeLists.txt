@@ -27,9 +27,11 @@ if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
 
-list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
+if (KR_ENABLE_RESILIENT_EXECUTION_SPACE)
+  list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
 
-if (${_cuda_found} GREATER "-1")
-  add_subdirectory(cuda)
+  if (${_cuda_found} GREATER "-1")
+    add_subdirectory(cuda)
+  endif()
 endif()
 

@@ -9,9 +9,12 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestResilience.cpp
                TestLambdaCapture.cpp
                )
+
+if (KR_ENABLE_RESILIENT_EXECUTION_SPACE)
+  target_sources(resilient_tests PRIVATE TestResilience.cpp)
+endif()
 
 if (KR_ENABLE_VELOC)
   target_sources(resilience_tests PRIVATE
