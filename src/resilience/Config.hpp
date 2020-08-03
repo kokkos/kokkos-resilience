@@ -119,8 +119,9 @@ namespace KokkosResilience
         const auto &map = boost::get< map_type >( m_variant );
 
         auto pos = map.find( key );
-        if ( pos == map.end() )
-          return boost::none;
+        if ( pos == map.end() ) {
+          return boost::optional< Entry >();
+        }
 
         return pos->second;
       }

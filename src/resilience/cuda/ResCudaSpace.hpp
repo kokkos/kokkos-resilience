@@ -21,7 +21,6 @@ class ResCudaSpace : public Kokkos::CudaSpace {
 public:
   //! Tag this class as a kokkos memory space
   typedef ResCudaSpace             memory_space ;
-  typedef ResCudaSpace          resilient_space ;
   typedef Kokkos::Cuda          execution_space ;
   typedef Kokkos::Device<execution_space,memory_space> device_type;
 
@@ -407,6 +406,25 @@ namespace KokkosResilience {
           cf.exec(iwork);
   }
  
+  template <class Type>
+  class SpecDuplicateTracker<Type, Kokkos::Cuda> : public DuplicateTracker {
+   public:
+    typedef typename std::remove_reference<Type>::type nr_type;
+    typedef typename std::remove_pointer<nr_type>::type np_type;
+    typedef typename std::remove_extent<np_type>::type ne_type;
+    typedef typename std::remove_const<ne_type>::type rd_type;
+    typedef CombineFunctor<rd_type, Kokkos::Cuda> comb_type;
+
+    comb_type m_cf;
+
+    inline SpecDuplicateTracker() : DuplicateTracker(), m_cf() {}
+
+    inline SpecDuplicateTracker(const SpecDuplicateTracker& rhs)
+        : DuplicateTracker(rhs), m_cf(rhs.m_cf) {}
+
+     virtual void combine_dups();
+     virtual void set_func_ptr();
+  };
 } // namespace KokkosResilience
 
 

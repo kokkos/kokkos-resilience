@@ -82,6 +82,7 @@ class DuplicateTracker {
   }
 
   inline virtual void combine_dups() {}
+  inline virtual void set_func_ptr() {}
 };
 
 template <class DType, class ExecSpace>
@@ -142,23 +143,8 @@ class CombineFunctor {
 };
 
 template <class Type, class ExecutionSpace>
-class SpecDuplicateTracker : public DuplicateTracker {
- public:
-  typedef typename std::remove_reference<Type>::type nr_type;
-  typedef typename std::remove_pointer<nr_type>::type np_type;
-  typedef typename std::remove_extent<np_type>::type ne_type;
-  typedef typename std::remove_const<ne_type>::type rd_type;
-  typedef CombineFunctor<rd_type, ExecutionSpace> comb_type;
+class SpecDuplicateTracker;
 
-  comb_type m_cf;
-
-  inline SpecDuplicateTracker() : DuplicateTracker(), m_cf() {}
-
-  inline SpecDuplicateTracker(const SpecDuplicateTracker& rhs)
-      : DuplicateTracker(rhs), m_cf(rhs.m_cf) {}
-
-  virtual void combine_dups();
-};
 
 template <class Type, class MemorySpace>
 static void track_duplicate(
@@ -183,7 +169,7 @@ static void track_duplicate(
     dt = new dt_type();
     // printf("dup_kernel ptr = %08x \n", comb_type::s_dup_kernel);
     // dt->func_ptr = (void*)pLaunch; // comb_type::s_dup_kernel;
-    dt->func_ptr      = DuplicateTracker::get_kernel_func(typeid(Type).name());
+    dt->set_func_ptr();
     dt->data_len      = orig->size();
     dt->original_data = orig->data();
     MemorySpace::duplicate_map[SP->get_label()] =

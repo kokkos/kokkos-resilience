@@ -3,13 +3,13 @@
 
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
 
 namespace Kokkos {
+namespace Experimental {
 namespace Impl {
 
 template <class ViewType>
-class ViewHookSpecialization<
+class ViewHookUpdate<
     ViewType, typename std::enable_if<
                   (std::is_const<ViewType>::value &&
                    !std::is_same<Kokkos::AnonymousSpace,
@@ -19,23 +19,11 @@ class ViewHookSpecialization<
   using view_type = ViewType;
 
   static inline void update_view(ViewType &view, const void *src_rec) {}
-
-  // can copy from const view, not too
-  static void deep_copy(unsigned char *buff, view_type &view) {
-    using memory_space = typename view_type::memory_space;
-    using exec_space   = typename memory_space::execution_space;
-    Kokkos::Impl::DeepCopy<Kokkos::HostSpace, memory_space, exec_space>(
-        buff, view.data(),
-        view.span() * sizeof(typename view_type::value_type));
-  }
-
-  static void deep_copy(view_type &, unsigned char *) {}
-
   static constexpr const char *m_name = "ConstImpl";
 };
 
 template <class ViewType>
-class ViewHookSpecialization<
+class ViewHookUpdate<
     ViewType, typename std::enable_if<
                   (!std::is_const<ViewType>::value &&
                    !std::is_same<Kokkos::AnonymousSpace,
@@ -83,24 +71,11 @@ class ViewHookSpecialization<
 
   }
 
-  static void deep_copy(unsigned char *buff, view_type &view) {
-    using memory_space = typename view_type::memory_space;
-    using exec_space   = typename memory_space::execution_space;
-    Kokkos::Impl::DeepCopy<Kokkos::HostSpace, memory_space, exec_space>(
-        buff, view.data(),
-        view.span() * sizeof(typename view_type::value_type));
-  }
-  static void deep_copy(view_type &view, unsigned char *buff) {
-    using memory_space = typename view_type::memory_space;
-    using exec_space   = typename memory_space::execution_space;
-    Kokkos::Impl::DeepCopy<Kokkos::HostSpace, memory_space, exec_space>(
-        view.data(), buff,
-        view.span() * sizeof(typename view_type::value_type));
-  }
   static constexpr const char *m_name = "Non-ConstImpl";
 };
 
 }  // namespace Impl
+}  // namespace Experimental
 }  // namespace Kokkos
 
 #endif // __VIEW_HOOK_SPECIALIZATION_

@@ -18,50 +18,26 @@ ResCuda::size_type ResCuda::detect_device_count()
 int ResCuda::concurrency()
 { return Cuda::concurrency();}
 
-#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
-   int ResCuda::is_initialized()
-   { return Kokkos::Impl::CudaInternal::singleton().is_initialized(); }
+//! Has been initialized
+int ResCuda::impl_is_initialized() {
+   return Kokkos::Impl::CudaInternal::singleton().is_initialized();
+}
 
-   void ResCuda::finalize()
-   {
-      Kokkos::Impl::CudaInternal::singleton().finalize();
+void ResCuda::impl_finalize() {
+    Kokkos::Impl::CudaInternal::singleton().finalize();
 
-      #if defined(KOKKOS_ENABLE_PROFILING)
-        Kokkos::Profiling::finalize();
-      #endif
-   }
+    #if defined(KOKKOS_ENABLE_PROFILING)
+       Kokkos::Profiling::finalize();
+    #endif
+}
 
-   void ResCuda::initialize( const Cuda::SelectDevice config , size_t num_instances )
-   {
-     Kokkos::Impl::CudaInternal::singleton().initialize( config , 0 );
+void ResCuda::impl_initialize( const SelectDevice config, const size_t num_instances ) {
+   Kokkos::Impl::CudaInternal::singleton().initialize( config.cuda_device_id , 0 );
 
-      #if defined(KOKKOS_ENABLE_PROFILING)
-        Kokkos::Profiling::initialize();
-      #endif
-   }
-#else
-  //! Has been initialized
-  int ResCuda::impl_is_initialized() {
-     return Kokkos::Impl::CudaInternal::singleton().is_initialized();
-  }
-
-  void ResCuda::impl_finalize() {
-      Kokkos::Impl::CudaInternal::singleton().finalize();
-
-      #if defined(KOKKOS_ENABLE_PROFILING)
-        Kokkos::Profiling::finalize();
-      #endif
-  }
-
-  void ResCuda::impl_initialize( const SelectDevice config, const size_t num_instances ) {
-     Kokkos::Impl::CudaInternal::singleton().initialize( config.cuda_device_id , 0 );
-
-      #if defined(KOKKOS_ENABLE_PROFILING)
-        Kokkos::Profiling::initialize();
-      #endif
-  }
-#endif
-
+   #if defined(KOKKOS_ENABLE_PROFILING)
+      Kokkos::Profiling::initialize();
+   #endif
+}
 
 std::vector<unsigned>
 ResCuda::detect_device_arch()
@@ -73,7 +49,6 @@ ResCuda::size_type ResCuda::device_arch()
 {
   return Cuda::device_arch() ;
 }
-
 
 ResCuda::ResCuda()
   : Cuda() {

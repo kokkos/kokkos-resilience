@@ -64,6 +64,7 @@ namespace KokkosResilience
         auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
         if ( pos != m_view_registry.end())
         {
+          printf("calling view deep copy \n");
           view->deep_copy_to_buffer( pos->second.buff.data() );
           assert( pos->second.buff.size() == view->data_type_size() * view->span() );
         }
@@ -118,7 +119,11 @@ namespace KokkosResilience
         if ( pos != m_view_registry.end() )
         {
           assert( pos->second.buff.size() == view->data_type_size() * view->span() );
-          view->deep_copy_from_buffer( pos->second.buff.data() );
+          if (!view->span_is_contiguous()) {
+             view->copy_view_from_buffer( pos->second.buff.data() );
+          } else {
+             view->deep_copy_from_buffer( pos->second.buff.data() );
+          }
         }
       }
     }

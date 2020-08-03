@@ -2,8 +2,6 @@
 #include "TestCommon.hpp"
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
-#include <resilience/cuda/ResCudaSpace.hpp>
-#include <resilience/cuda/ResCuda.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
 
@@ -18,12 +16,10 @@ public:
 
 struct ResSurrogate {
   typedef Kokkos::View< int*, Kokkos::CudaSpace > ViewType;
-//   typedef Kokkos::View< int*, Kokkos::HostSpace > ViewType;
   ViewType vt;
   
   KOKKOS_INLINE_FUNCTION
   ResSurrogate(const ViewType & vt_) : vt(vt_) {
-    //printf("inside functor constructor\n");
   }
   
   KOKKOS_INLINE_FUNCTION
@@ -36,11 +32,9 @@ struct ResSurrogate {
 struct testCopy {
   
   testCopy() {
-    //printf("test copy original\n");
   }
   
   testCopy(const testCopy &) {
-   // printf("test copy const\n");
   }
   
   void callme() const {

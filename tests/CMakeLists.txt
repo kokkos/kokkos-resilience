@@ -9,16 +9,18 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestResilience.cpp
                TestLambdaCapture.cpp
                )
 add_test(NAME resilience_tests COMMAND resilience_tests)
+include(GoogleTest)
 
 if (KR_ENABLE_VELOC)
    add_executable(veloc_test
+                  TestMain.cpp
                   TestVelocMemoryBackend.cpp
                   )
    add_test(NAME veloc_test COMMAND veloc_test)
+   target_link_libraries(veloc_test PRIVATE gtest)
    target_link_libraries(veloc_test PRIVATE resilience)
 endif()
 
@@ -27,6 +29,7 @@ if (KR_ENABLE_VELOC)
       TestVelocMemoryBackend.cpp)
   target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
 endif()
+
 
 if (KR_ENABLE_STDFILE)
   target_sources(resilience_tests PRIVATE
@@ -39,13 +42,13 @@ if (KR_ENABLE_STDIO)
                  )
 endif()
 
+  target_sources(resilience_tests PRIVATE
+                 TestResilience.cpp
+                )
+gtest_discover_tests(resilience_tests)
 
 target_link_libraries(resilience_tests PRIVATE gtest)
 target_link_libraries(resilience_tests PRIVATE resilience)
-
-include(GoogleTest)
-gtest_discover_tests(resilience_tests)
-
 ##target_link_libraries(resilience_tests PUBLIC Boost::boost)
 ##target_link_libraries(resilience_tests PRIVATE Boost::filesystem)
 

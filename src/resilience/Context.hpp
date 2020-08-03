@@ -14,7 +14,6 @@
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
 #ifdef KR_ENABLE_MPI_BACKENDS
 #include <mpi.h>
 #endif

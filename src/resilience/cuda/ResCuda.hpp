@@ -39,7 +39,7 @@ namespace KokkosResilience {
 /// extensions, and the Serial execution space executes "parallel" kernels
 /// sequentially.  The ResCuda execution space uses NVIDIA's CUDA programming
 /// model to execute kernels in parallel on GPUs.
-class ResCuda : Kokkos::Cuda {
+class ResCuda : public Kokkos::Cuda {
 public:
   //! \name Type declarations that all Kokkos execution spaces must provide.
   //@{
@@ -114,18 +114,6 @@ public:
   //! \name Device-specific functions
   //@{
 
-
-#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
-  //! Free any resources being consumed by the device.
-  static void finalize();
-
-  //! Has been initialized
-  static int is_initialized();
-
-  //! Initialize, telling the CUDA run-time library which device to use.
-  static void initialize( const SelectDevice = SelectDevice()
-                        , const size_t num_instances = 1 );
-#else
   //! Free any resources being consumed by the device.
   static void impl_finalize();
 
@@ -135,7 +123,6 @@ public:
   //! Initialize, telling the CUDA run-time library which device to use.
   static void impl_initialize( const SelectDevice = SelectDevice()
                         , const size_t num_instances = 1 );
-#endif
 
   /// \brief ResCuda device architecture of the selected device.
   ///
@@ -160,8 +147,19 @@ public:
 
 };
 
-} // namespace Kokkos
+} // namespace KokkosResilience
 
+namespace Kokkos {
+namespace Tools {
+namespace Experimental {
+template <>
+struct DeviceTypeTraits<::KokkosResilience::ResCuda> {
+  static constexpr DeviceType id = 
+        ::Kokkos::Profiling::Experimental::DeviceType::Cuda;
+};
+}  // namespace Experimental
+}  // namespace Tools
+}  // namespace Kokkos
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 

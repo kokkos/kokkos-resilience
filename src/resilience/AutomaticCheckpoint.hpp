@@ -8,10 +8,10 @@
 #include <iomanip>
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
 
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
+#include "impl/ViewCopySpecialization.hpp"
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
@@ -41,8 +41,6 @@ namespace KokkosResilience
     template< typename Context, typename F, typename FilterFunc >
     void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
     {
-  #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
-
       // Trace if enabled
   #ifdef KR_ENABLE_TRACING
       std::ostringstream oss;
@@ -60,10 +58,10 @@ namespace KokkosResilience
         std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > views;
 
         // Don't do anything with const views since they can never be checkpointed in this context
-        Kokkos::Experimental::ViewHooks::set( [&views]( Kokkos::Experimental::ViewHolderBase &view ) {
+        auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_caller( [&views]( Kokkos::Experimental::ViewHolderBase &view ) {
           views.emplace_back( view.clone() );
         }, []( Kokkos::Experimental::ViewHolderBase & ) {} );
-
+        Kokkos::Experimental::ViewHooks::set("veloc_capture", vhc); 
         std::vector< Detail::CrefImpl > crefs;
         Detail::Cref::check_ref_list = &crefs;
 
@@ -71,7 +69,7 @@ namespace KokkosResilience
 
         Detail::Cref::check_ref_list = nullptr;
 
-        Kokkos::Experimental::ViewHooks::clear();
+        Kokkos::Experimental::ViewHooks::clear("veloc_capture", vhc);
 
   #ifdef KR_ENABLE_TRACING
         auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
@@ -130,15 +128,6 @@ namespace KokkosResilience
         function_trace.end();
   #endif
       }
-  #else
-  #ifdef KR_ENABLE_TRACING
-      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "function" );
-  #endif
-    fun();
-  #ifdef KR_ENABLE_TRACING
-      function_trace.end();
-  #endif
-  #endif
     }
   }
 

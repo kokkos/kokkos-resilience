@@ -43,8 +43,20 @@ void StdFileBackend::checkpoint(
     for (auto &&v : views) {
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
-
+      if ( !v->is_hostspace() || !v->span_is_contiguous() ) {
+         bytes = (char*)Kokkos::kokkos_malloc<Kokkos::HostSpace>(len);
+         if ( v->span_is_contiguous() ) {
+            v->deep_copy_to_buffer((unsigned char*)bytes); 
+         } else {
+            v->copy_view_to_buffer((unsigned char*)bytes);
+         }
+      }
+      Kokkos::fence();
       file.write(bytes, len);
+
+      if ( !v->is_hostspace() || !v->span_is_contiguous() ) {
+         Kokkos::kokkos_free<Kokkos::HostSpace>((void*)bytes);
+      }
     }
 #ifdef KR_ENABLE_TRACING
     write_trace.end();
@@ -86,8 +98,21 @@ void StdFileBackend::restart(
     for (auto &&v : views) {
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
+      if ( !v->is_hostspace() || !v->span_is_contiguous() ) {
+         bytes = (char*)Kokkos::kokkos_malloc<Kokkos::HostSpace>(len);
+      }
 
       file.read(bytes, len);
+
+      if ( !v->is_hostspace() || !v->span_is_contiguous() ) {
+         if ( v->span_is_contiguous() ) {
+            v->deep_copy_from_buffer((unsigned char*)bytes); 
+         } else {
+            v->copy_view_from_buffer((unsigned char*)bytes);
+         }
+         Kokkos::fence();
+         Kokkos::kokkos_free<Kokkos::HostSpace>((void*)bytes);
+      }
     }
 #ifdef KR_ENABLE_TRACING
     read_trace.end();

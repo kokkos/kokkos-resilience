@@ -5,7 +5,6 @@
 #include <vector>
 #include <memory>
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
