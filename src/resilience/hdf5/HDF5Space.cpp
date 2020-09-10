@@ -8,11 +8,35 @@
 
 namespace KokkosResilience {
 
+   size_t find_ending_parens( const std::string & str, size_t start ) {
+      size_t pos = start;
+      size_t end_pos = str.find_first_of(')',pos);
+      int internal_cnt = 1;
+      while ( (end_pos > 0) && (end_pos < str.size()) && 
+              (internal_cnt > 0)) {
+         internal_cnt = 0;
+         size_t enclosed_exp = str.find_first_of('(', pos);
+         while ( enclosed_exp >= 0 && enclosed_exp < str.size() &&
+              enclosed_exp < end_pos ) {
+             internal_cnt++;
+             enclosed_exp = str.find_first_of('(', enclosed_exp+1);
+         }
+         
+         for ( int i = 0; i < internal_cnt && 
+               end_pos > 0 && end_pos < str.size(); i++) {
+            if (i == internal_cnt - 1) {
+               pos = end_pos + 1;
+            }
+            end_pos = str.find_first_of(')',end_pos+1);
+         }
+      }
+      return end_pos;
+   } 
+
    KokkosHDF5ConfigurationManager::OperationPrimitive * KokkosHDF5ConfigurationManager::resolve_variable(
                       std::string data, std::map<const std::string, size_t> & var_map ) {
    
       size_t val = var_map[data];
-      //printf("variable [%s] returned %d\n", data.c_str(), val);
       return new KokkosHDF5ConfigurationManager::OperationPrimitive(val);
    }
 
@@ -21,7 +45,6 @@ namespace KokkosResilience {
                                                        std::map<const std::string, size_t> & var_map ) {
       KokkosHDF5ConfigurationManager::OperationPrimitive * lhs_op = nullptr;
       for ( size_t n = 0; n< data.length(); ) {
-         //printf(" resolve_arithmetic: %d \n", n);
          char c = data.at(n);
          if ( c >= 0x30 && c <= 0x39 ) {
             std::string cur_num = "";
@@ -35,9 +58,8 @@ namespace KokkosResilience {
             }
             lhs_op = new KokkosHDF5ConfigurationManager::OperationPrimitive((std::atoi(cur_num.c_str())));
          } else if (c == '(') {
-            size_t end_pos = data.find_first_of(')',n);
+            size_t end_pos = find_ending_parens(data,n+1);
             if (end_pos >= 0 && end_pos < data.length()) {
-              // printf("calling resolving arithmetic: %s \n", data.substr(n+1,end_pos-n-1).c_str());
                lhs_op = resolve_arithmetic ( data.substr(n+1,end_pos-n-1), var_map );
             } else {
                printf("syntax error in arithmetic: %s, at %d \n", data.c_str(), n);
@@ -47,7 +69,6 @@ namespace KokkosResilience {
          } else if (c == '{') {
             size_t end_pos = data.find_first_of('}',n);
             if (end_pos >= 0 && end_pos < data.length()) {
-              //  printf("resolving variable: %s \n", data.substr(n+1,end_pos-n-1).c_str());
                lhs_op = resolve_variable( data.substr(n+1,end_pos-n-1), var_map );
             } else {
                printf("syntax error in variable name: %s, at %d \n", data.c_str(), n);
@@ -55,7 +76,6 @@ namespace KokkosResilience {
             }
             n = end_pos+1;
          } else {
-          //  printf("parsing rhs: %s \n", data.substr(n,1).c_str());
             KokkosHDF5ConfigurationManager::OperationPrimitive * op =
                         KokkosHDF5ConfigurationManager::OperationPrimitive::parse_operator(data.substr(n,1),lhs_op);
             n++;
@@ -70,12 +90,10 @@ namespace KokkosResilience {
 
    void KokkosHDF5ConfigurationManager::set_param_list( boost::property_tree::ptree l_config, int data_scope,
                        std::string param_name, hsize_t output [], std::map<const std::string, size_t> & var_map ) {
-    //  printf("set_param_list: %s \n", param_name.c_str());
       for ( auto & param_list : l_config ) {
           if ( param_list.first == param_name ) {
               int n = 0;
               for (auto & param : param_list.second ) {
-                // printf("processing param list: %s\n", param.second.get_value<std::string>().c_str());
                  KokkosHDF5ConfigurationManager::OperationPrimitive * opp = resolve_arithmetic( param.second.get_value<std::string>(), var_map );
                  if (opp != nullptr) {
                      output[n++] = opp->evaluate();
@@ -84,7 +102,6 @@ namespace KokkosResilience {
                      output[n++] = 0;
                  }
               }
-            //  printf("param_list resolved [%s]: %d,%d,%d,%d \n", param_name.c_str(), output[0], output[1], output[2], output[3]);
               break;
           }
       }
@@ -129,10 +146,8 @@ namespace KokkosResilience {
 #ifdef KR_ENABLE_HDF5_PARALLEL
        MPI_Comm_size( MPI_COMM_WORLD, &mpi_size );
        MPI_Comm_rank( MPI_COMM_WORLD, &mpi_rank);
-    //   printf("initializing parallel IO: %d, %d \n", mpi_size, mpi_rank);
        fflush(stdout);
 #endif
-    //   printf("initializing HDF5 Accessor: %d, %d \n", mpi_size, mpi_rank);
        boost::property_tree::ptree l_config = config_.get_config()->get_child("Layout_Config");
        std::map<const std::string, size_t> var_list;
        var_list["DATA_SIZE"] = data_size;
@@ -168,7 +183,6 @@ namespace KokkosResilience {
    }
 
    size_t KokkosHDF5Accessor::OpenFile_impl() {
-    //  printf("HDF5 Accessor calling open_file \n");
       open_file(KokkosIOAccessor::WRITE_FILE);
       close_file();
       return 0;
@@ -186,21 +200,17 @@ namespace KokkosResilience {
        hid_t pid = H5Pcreate(H5P_FILE_ACCESS);
 #ifdef KR_ENABLE_HDF5_PARALLEL
        if (m_layout != KokkosHDF5ConfigurationManager::LAYOUT_DEFAULT) {
-          //printf("[%d] set mpio api ...\n", mpi_rank);
           H5Pset_fapl_mpio( pid, MPI_COMM_WORLD, MPI_INFO_NULL );
        }
 #endif
        // write file will always recreate it...
        if (read_write == KokkosIOAccessor::WRITE_FILE) {
-         // printf("[%d] creating HDF5 file: %s \n", mpi_rank, sFullPath.c_str() );
           m_fid = H5Fcreate( sFullPath.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, pid );
 
           if (m_fid == 0) {
               printf("Error creating HDF5 file\n");
           } else {
  
-//             printf ("creating file set: %s, %d, %d, %d, %d \n", data_set.c_str(), rank,
-//                       data_extents[0], data_extents[1], data_extents[2]);
              hid_t fsid = H5Screate_simple(rank, data_extents, NULL);
              m_did = H5Dcreate(m_fid, data_set.c_str(), H5T_NATIVE_CHAR, fsid,
                                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT );
@@ -212,7 +222,6 @@ namespace KokkosResilience {
              H5Sclose(fsid);
           }
       } else if (read_write == KokkosIOAccessor::READ_FILE) {
-          //printf("[%d] open existing HDF5 file: %s \n", mpi_rank, sFullPath.c_str());
           m_fid = H5Fopen( sFullPath.c_str(), H5F_ACC_RDONLY, pid );
           if (m_fid == 0) {
              printf("Error opening HDF5 file\n");
@@ -225,7 +234,6 @@ namespace KokkosResilience {
                 hid_t dtype  = H5Dget_type(m_did);
                 hid_t dspace = H5Dget_space(m_did);
                 int rank_ = H5Sget_simple_extent_ndims(dspace);
-                //printf("file opened for read: %s, %s, %d \n", sFullPath.c_str(), data_set.c_str(), rank_);
                 if ( H5Tequal(dtype, H5T_NATIVE_CHAR) > 0 && rank_ == rank ) {
                    hsize_t test_dims[4] = {0,0,0,0};
                    herr_t status  = H5Sget_simple_extent_dims(dspace, test_dims, NULL);
@@ -268,22 +276,9 @@ namespace KokkosResilience {
       hsize_t stepSize = dest_size;
       //hsize_t stepSize = min(dest_size, chunk_size);
       if (open_file(KokkosIOAccessor::READ_FILE) == 0 && m_fid != 0) {
-//           printf ("reading data set: %s, %d, %d, %d, %d \n", data_set.c_str(), rank,
-//                     local_extents[0], local_extents[1], local_extents[2]);
             m_mid = H5Screate_simple(rank, local_extents, NULL);
             hid_t  fsid = H5Dget_space(m_did);
             herr_t status = H5Sselect_hyperslab(fsid, H5S_SELECT_SET, file_offset, file_stride, file_count, file_block);
-
-//         printf("[R] hyperslab: %d, %d, %d, %d \n", file_offset[0], file_stride[0], file_count[0], file_block[0] );
-         // for this to work, the unused file count indicies have to be 1.
-//         for (int i = 0; i < file_count[0]; i++) {
-//            for (int j = 0; j < file_count[1]; j++) {
-//               for (int k = 0; k < file_count[2]; k++) {
-//                  for (int l = 0; l < file_count[3]; l++) {
-//                     size_t offset_ = i*file_block[0] + j*file_block[1] + k*file_block[2] + l*file_block[3];
-//                     hsize_t l_off[4] = {i*file_block[0],j*file_block[2],k*file_block[2],l*file_block[3]};
-
-//                     printf("[R] memory: %d, %d, %d, %d \n", local_offset[0], local_stride[0], local_count[0], local_block[0] );
                      status = H5Sselect_hyperslab(m_mid, H5S_SELECT_SET, local_offset, local_stride, local_count, local_block);
                      status = H5Dread(m_did, H5T_NATIVE_CHAR, m_mid, fsid, H5P_DEFAULT, &ptr[view_offset[0]]);
                      if (status == 0) {
@@ -314,10 +309,6 @@ namespace KokkosResilience {
       hsize_t stepSize = src_size;
       char* ptr = (char*)src;
       if (open_file(KokkosIOAccessor::WRITE_FILE) == 0 && m_fid != 0) {
-         //printf ("[%d] creating data set: %s, %d, %d, %d, %d \n", mpi_rank, data_set.c_str(), rank,
-         //          local_extents[0], local_extents[1], local_extents[2]);
-         //printf("[%d] hyperslab: %d, %d, %d, %d \n", mpi_rank, file_offset[0], file_stride[0], file_count[0], file_block[0] );
-         //printf("[%d]            %d, %d, %d, %d \n", mpi_rank, file_offset[1], file_stride[1], file_count[1], file_block[1] );
          m_mid = H5Screate_simple(rank, local_extents, NULL);
          hid_t fsid = H5Dget_space(m_did);
          herr_t status = H5Sselect_hyperslab(fsid, H5S_SELECT_SET, file_offset, file_stride, file_count, file_block);
@@ -326,17 +317,9 @@ namespace KokkosResilience {
              close_file();
              return 0;
          }
-         // for this to work, the unused file count indicies have to be 1.
-//         for (int i = 0; i < file_count[0]; i++) {
-//            for (int j = 0; j < file_count[1]; j++) {
-//               for (int k = 0; k < file_count[2]; k++) {
-//                  for (int l = 0; l < file_count[3]; l++) {
-//                     size_t offset_ = i*file_block[0] + j*file_block[1] + k*file_block[2] + l*file_block[3];
-//                     printf("[%d] write file: %d, %d, %d, %d -- %d \n", mpi_rank, i, j, k, l, offset_);
                      hid_t pid = H5Pcreate(H5P_DATASET_XFER);
 #ifdef KR_ENABLE_HDF5_PARALLEL
                      if ( m_layout != KokkosHDF5ConfigurationManager::LAYOUT_DEFAULT) {
-                         //printf("[%d] writing parallel file: %d, %08x \n", mpi_rank, view_offset[0], &ptr[view_offset[0]] );
                          H5Pset_dxpl_mpio(pid, H5FD_MPIO_COLLECTIVE);
                      }
 #endif
@@ -391,17 +374,13 @@ namespace KokkosResilience {
    /**\brief  Allocate untracked memory in the space */
    void * HDF5Space::allocate( const size_t arg_alloc_size, const std::string & path ) const {
 
-    //  printf("allocating HDF5 file accessor: %d, %s \n", arg_alloc_size, path.c_str());
       KokkosHDF5Accessor acc = m_accessor_map[path];
       if (!acc.is_initialized() ) {
-      //   printf ("creating new accessor \n");
          boost::property_tree::ptree pConfig = KokkosIOConfigurationManager::get_instance()->get_config(path);
          if ( pConfig.size() > 0 ) {
-           //  printf("creating accessor from ptree \n");
              acc.initialize( arg_alloc_size, path, KokkosHDF5ConfigurationManager ( pConfig ) );
          }
          else {
-            //  printf("creating default accessor \n");
              acc.initialize( arg_alloc_size, path, "default_dataset" );
          }
          m_accessor_map[path] = acc;
@@ -470,7 +449,6 @@ namespace KokkosResilience {
           printf("memspace %s returned empty list of checkpoint views \n", name());
        }
        while (pList != nullptr) {
-      //    printf("[%d] creating empty file: %s \n", mpi_rank, pList->label.c_str());
           KokkosIOAccessor::create_empty_file(((base_record*)pList->dst)->data());
           // delete the records along the way...
           if (pList->pNext == nullptr) {
@@ -483,7 +461,6 @@ namespace KokkosResilience {
       }
 #ifdef KR_ENABLE_HDF5_PARALLEL
       if (mpi_size > 1) {
-        // printf("[%d] waiting for barrier \n", mpi_rank);
          MPI_Barrier(MPI_COMM_WORLD);
       }
 #endif

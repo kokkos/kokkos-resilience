@@ -30,6 +30,12 @@ if (KR_ENABLE_STDIO)
                  )
 endif()
 
+if (KR_ENABLE_HDF5)
+  target_sources(resilience_tests PRIVATE
+                 TestHDF5Configuration.cpp
+                 )
+endif()
+
 
 target_link_libraries(resilience_tests PRIVATE gtest)
 target_link_libraries(resilience_tests PRIVATE resilience)
