@@ -50,6 +50,18 @@
          "count":["{DATA_SIZE}","1"],
          "block":["1","1"]
       }
+   },
+   {
+      "name":"parser_test",
+      "Layout_Config":{
+         "layout":"DEFAULT",
+         "simple_var":["{SIMPLE_VAR}"],
+         "two_var":["{VAR_A}+{VAR_B}"],
+         "var_comb":["{VAR_B}*({VAR_A}+2)"],
+         "inner_comb_two":["(({VAR_A}*2)*{VAR_B})+2"],
+         "inner_comb_three":["((({VAR_A}*2)*{VAR_B})+2)*{VAR_C}"],
+         "inner_comb_three_adv":["((({VAR_A}*2)*{VAR_B})+2)*({VAR_C}+2)"],
+         "inner_comb_three_adv2":["(((({VAR_A}*2)*{VAR_B})+2)+({VAR_C}+2))*2"]
+      }
    }
-
 ]
