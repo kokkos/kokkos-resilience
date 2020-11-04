@@ -22,7 +22,7 @@ class StdFileContext : public ContextBase {
   virtual ~StdFileContext() {
 #ifdef KR_ENABLE_TRACING
     std::ostringstream fname;
-    fname << "trace" << rank << ".json";
+    fname << "trace.json";
 
     std::ofstream out(fname.str());
 
@@ -32,7 +32,7 @@ class StdFileContext : public ContextBase {
 
     // Metafile
     picojson::object root;
-    root["num_ranks"] = picojson::value(static_cast<double>(size));
+    root["num_ranks"] = picojson::value( 1.0 );
 
     std::ofstream meta_out("meta.json");
     picojson::value(root).serialize(std::ostream_iterator<char>(meta_out),
