@@ -9,10 +9,9 @@
 #include <vector>
 
 #include "../Cref.hpp"
+#include "../StdFileContext.hpp"
 
 namespace KokkosResilience {
-template <typename Backend>
-class StdFileContext;
 
 class StdFileBackend {
  public:
