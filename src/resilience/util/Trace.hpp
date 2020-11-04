@@ -48,6 +48,8 @@ namespace KokkosResilience
       explicit TraceBase( detail::TraceStack *trace )
         : m_done( false ), m_parent( nullptr ), m_trace_stack( trace )
       {}
+
+      virtual ~TraceBase() = default;
     
       void mark_done()
       {
@@ -214,6 +216,8 @@ namespace KokkosResilience
       {
         m_start_time = std::chrono::system_clock::now();
       }
+
+      virtual ~Trace() = default;
       
       id_type id() const noexcept { return m_id; }
       
