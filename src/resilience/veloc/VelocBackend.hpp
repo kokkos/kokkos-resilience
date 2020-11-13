@@ -82,6 +82,12 @@ namespace KokkosResilience
     
     VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm );
     ~VeloCMemoryBackend();
+
+    VeloCMemoryBackend( const VeloCMemoryBackend & ) = delete;
+    VeloCMemoryBackend( VeloCMemoryBackend && ) noexcept = default;
+
+    VeloCMemoryBackend &operator=( const VeloCMemoryBackend & ) = delete;
+    VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
   
     void checkpoint( const std::string &label, int version,
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );

@@ -13,10 +13,10 @@ public:
       : ContextBase(cfg), m_backend(*this, comm), m_comm(comm) {}
 
   MPIContext(const MPIContext &) = delete;
-  MPIContext(MPIContext &&) = default;
+  MPIContext(MPIContext &&) noexcept = default;
 
   MPIContext &operator=(const MPIContext &) = delete;
-  MPIContext &operator=(MPIContext &&) = default;
+  MPIContext &operator=(MPIContext &&) noexcept = default;
 
   virtual ~MPIContext() {
 #ifdef KR_ENABLE_TRACING
