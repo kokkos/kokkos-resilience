@@ -100,7 +100,7 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   KokkosResilience::Config cfg;
   cfg["backend"].set( "veloc"s );
   cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
-  auto ctx = KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend >( MPI_COMM_WORLD, cfg );
+  KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend > ctx( MPI_COMM_WORLD, cfg );
   
   using exec_space = typename TestFixture::exec_space;
   using memory_space = typename exec_space::memory_space;

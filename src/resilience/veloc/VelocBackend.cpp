@@ -39,7 +39,7 @@ namespace KokkosResilience
   }
   
   VeloCMemoryBackend::VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm )
-    : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_latest_version( -2 )
+    : m_mpi_comm( mpi_comm ), m_context( &ctx )
   {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, vconf.c_str() ) );
@@ -78,7 +78,7 @@ namespace KokkosResilience
   
     VELOC_SAFE_CALL( VELOC_Checkpoint_end( status ));
   
-    m_latest_version = version;
+    m_latest_version[label] = version;
   }
   
   bool
@@ -91,10 +91,15 @@ namespace KokkosResilience
   int
   VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
   {
-    if ( m_latest_version < -1 )
-      m_latest_version = VELOC_Restart_test( label.c_str(), 0 );
-    
-    return m_latest_version;
+    auto latest_iter = m_latest_version.find( label );
+    if ( latest_iter == m_latest_version.end() )
+    {
+      auto test = VELOC_Restart_test(label.c_str(), 0);
+      m_latest_version[label] = test;
+      return test;
+    } else {
+     return latest_iter->second;
+    }
   }
   
   void
@@ -140,7 +145,7 @@ namespace KokkosResilience
     m_view_registry.clear();
     m_cref_registry.clear();
 
-    m_latest_version = -2;
+    m_latest_version.clear();
   }
   
   void
