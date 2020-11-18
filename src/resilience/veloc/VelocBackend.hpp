@@ -113,7 +113,7 @@ namespace KokkosResilience
     MPI_Comm m_mpi_comm;
     context_type *m_context;
     
-    mutable int m_latest_version;
+    mutable std::unordered_map< std::string, int > m_latest_version;
   };
   
   class VeloCFileBackend
