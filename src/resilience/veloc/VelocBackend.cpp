@@ -61,7 +61,7 @@ namespace KokkosResilience
     {
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
+        auto pos = m_view_registry.find( view->label() );
         if ( pos != m_view_registry.end())
         {
           view->deep_copy_to_buffer( pos->second.buff.data() );
@@ -119,7 +119,7 @@ namespace KokkosResilience
     {
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
+        auto pos = m_view_registry.find( view->label() );
         if ( pos != m_view_registry.end() )
         {
           assert( pos->second.buff.size() == view->data_type_size() * view->span() );
@@ -157,7 +157,7 @@ namespace KokkosResilience
       if ( !view->data() )  // uninitialized view
         continue;
       // If we haven't already register, register with VeloC
-      if ( m_view_registry.find( Detail::MemProtectKey{ view->data() } ) == m_view_registry.end() )
+      if ( m_view_registry.find( view->label() ) == m_view_registry.end() )
       {
         int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size() );
         auto type_size = view->data_type_size();
@@ -175,7 +175,7 @@ namespace KokkosResilience
         }
   
         m_view_registry.emplace( std::piecewise_construct,
-          std::forward_as_tuple( view->data() ),
+          std::forward_as_tuple( view->label() ),
           std::forward_as_tuple( id, std::move( buff ) ) );
       }
     }

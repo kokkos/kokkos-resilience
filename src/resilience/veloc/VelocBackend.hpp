@@ -108,7 +108,7 @@ namespace KokkosResilience
   private:
     
     std::unordered_map< Detail::MemProtectKey, Detail::MemProtectBlock > m_cref_registry;
-    std::unordered_map< Detail::MemProtectKey, Detail::MemProtectBlock > m_view_registry;
+    std::unordered_map< std::string, Detail::MemProtectBlock > m_view_registry;
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;
