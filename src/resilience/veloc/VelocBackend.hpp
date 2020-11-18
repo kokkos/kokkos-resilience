@@ -82,6 +82,12 @@ namespace KokkosResilience
     
     VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm );
     ~VeloCMemoryBackend();
+
+    VeloCMemoryBackend( const VeloCMemoryBackend & ) = delete;
+    VeloCMemoryBackend( VeloCMemoryBackend && ) noexcept = default;
+
+    VeloCMemoryBackend &operator=( const VeloCMemoryBackend & ) = delete;
+    VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
   
     void checkpoint( const std::string &label, int version,
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
@@ -107,7 +113,7 @@ namespace KokkosResilience
     MPI_Comm m_mpi_comm;
     context_type *m_context;
     
-    mutable int m_latest_version;
+    mutable std::unordered_map< std::string, int > m_latest_version;
   };
   
   class VeloCFileBackend
