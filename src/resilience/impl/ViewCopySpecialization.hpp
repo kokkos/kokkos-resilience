@@ -33,7 +33,6 @@ make_unmanaged_host_view(const Kokkos::View<DataType, Properties...> &view,
 
 namespace Kokkos {
 namespace Experimental {
-namespace Impl {
 
 template <class ViewType>
 class ViewHookCopyView<
@@ -73,7 +72,6 @@ class ViewHookCopyView<
   static constexpr const char *m_name = "Non-ConstImpl";
 };
 
-}  // namespace Impl
 }  // namespace Experimental
 }  // namespace Kokkos
 

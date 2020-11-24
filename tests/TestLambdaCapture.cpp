@@ -10,15 +10,15 @@ auto get_view_list( F &&_fun )
 {
   std::vector< std::unique_ptr< Kokkos::Experimental::ViewHolderBase > > views;
 
-  auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_caller( [&views]( Kokkos::Experimental::ViewHolderBase &view ) {
-    views.emplace_back( view.clone() );
-  }, []( Kokkos::Experimental::ViewHolderBase & ) {}  );
-  Kokkos::Experimental::ViewHooks::set("lambda", vhc); 
+  Kokkos::Experimental::add_view_hook_caller("lambda",
+                     [&views]( Kokkos::Experimental::ViewHolderBase &view ) {
+                               views.emplace_back( view.clone() );
+                     }, []( Kokkos::Experimental::ViewHolderBase & ) {}  );
 
   auto f = _fun;
 
   KokkosResilience::Detail::Cref::check_ref_list = nullptr;
-  Kokkos::Experimental::ViewHooks::clear("lambda", vhc);
+  Kokkos::Experimental::remove_view_hook_caller("lambda");
 
   f();
 
@@ -69,7 +69,7 @@ TEST(LambdaCapture, clone_holder)
 {
   auto dat = mixed_data();
 
-  auto holder = Kokkos::Experimental::ViewHolderCopy< decltype(dat.x) >( dat.x );
+  auto holder = Kokkos::Experimental::ViewHolder< decltype(dat.x), true >( dat.x );
   auto *h2 = holder.clone();
 
   EXPECT_EQ( holder.data(), dat.x.data() );

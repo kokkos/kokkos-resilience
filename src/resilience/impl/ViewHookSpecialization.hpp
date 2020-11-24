@@ -6,34 +6,36 @@
 
 namespace Kokkos {
 namespace Experimental {
-namespace Impl {
 
-template <class ViewType>
+template <class ViewAttorneyType>
 class ViewHookUpdate<
-    ViewType, typename std::enable_if<
-                  (std::is_const<ViewType>::value &&
-                   !std::is_same<Kokkos::AnonymousSpace,
-                                 typename ViewType::memory_space>::value),
+    ViewAttorneyType, typename std::enable_if<
+                  (std::is_const<typename ViewAttorneyType::view_type>::value ||
+                   std::is_same<Kokkos::AnonymousSpace,
+                                 typename ViewAttorneyType::view_type::memory_space>::value || 
+                   !std::is_same<typename ViewAttorneyType::view_type::memory_space::resilient_space,
+                                 typename ViewAttorneyType::view_type::memory_space>::value),
                   void>::type> {
  public:
-  using view_type = ViewType;
+  using view_att_type = ViewAttorneyType;
 
-  static inline void update_view(ViewType &view, const void *src_rec) {}
+  static inline void update_view(view_att_type &) {}
   static constexpr const char *m_name = "ConstImpl";
 };
 
-template <class ViewType>
+template <class ViewAttorneyType>
 class ViewHookUpdate<
-    ViewType, typename std::enable_if<
-                  (!std::is_const<ViewType>::value &&
-                   !std::is_same<Kokkos::AnonymousSpace,
-                                 typename ViewType::memory_space>::value && 
-                    std::is_same<typename ViewType::memory_space::resilient_space,
-                                 typename ViewType::memory_space>::value),
+    ViewAttorneyType, typename std::enable_if<
+                  !(std::is_const<typename ViewAttorneyType::view_type>::value ||
+                   std::is_same<Kokkos::AnonymousSpace,
+                                 typename ViewAttorneyType::view_type::memory_space>::value || 
+                   !std::is_same<typename ViewAttorneyType::view_type::memory_space::resilient_space,
+                                 typename ViewAttorneyType::view_type::memory_space>::value),
                   void>::type> {
  public:
-  using view_type = ViewType;
-  static inline void update_view(view_type &view, const void *src_rec) {
+  using view_att_type   = ViewAttorneyType;
+  using view_type       = typename view_att_type::view_type;
+  static inline void update_view(view_att_type &view) {
     using mem_space    = typename view_type::memory_space;
     using exec_space   = typename mem_space::execution_space;
     using view_traits  = typename view_type::traits;
@@ -46,7 +48,8 @@ class ViewHookUpdate<
     using record_type =
         Kokkos::Impl::SharedAllocationRecord<mem_space, functor_type>;
  
-    record_type* orig_rec = (record_type*)(src_rec); // get the original ptr
+    record_type *orig_rec =
+        (record_type *)(view.rec_ptr());  // get the original record
  
     std::string label = orig_rec->get_label();
 
@@ -54,19 +57,19 @@ class ViewHookUpdate<
       record_type::allocate(mem_space(), label, orig_rec->size());
     
     // need to assign the new record to the view map / handle
-    view.assign_data_handle(
+    view.update_data_handle(
         handle_type(reinterpret_cast<pointer_type>(record->data())));
 
-    // have to attach the destructor, but don't construct / initialize
     record->m_destroy = functor_type(
-        exec_space(), (value_type *)view.impl_map().m_impl_handle, view.span());
+        exec_space(), reinterpret_cast<value_type *>(record->data()),
+        view.get_view().span(), label);
 
     // This should disconnect the duplicate view from the original record and
-    // attach the duplicated data to the tracker 
-    view.assign_record(record);
+    // attach the duplicated data to the tracker
+    view.assign_view_record(record);
 
     // add records and types to the duplicate list
-    KokkosResilience::template track_duplicate<typename ViewType::traits::value_type,
+    KokkosResilience::template track_duplicate<value_type,
                                                mem_space>(orig_rec, record);
 
   }
@@ -74,7 +77,6 @@ class ViewHookUpdate<
   static constexpr const char *m_name = "Non-ConstImpl";
 };
 
-}  // namespace Impl
 }  // namespace Experimental
 }  // namespace Kokkos
 

@@ -38,12 +38,15 @@ namespace KokkosResilience {
  * duplicate.
  */ 
 inline void 
-duplicate_shared ( Kokkos::Experimental::ViewHolderBase && dst, Kokkos::Experimental::ViewHolderBase && src  ) {
-   // need to assign the new record to the view map / handle no init is necessary
-   dst.update_view( src.rec_ptr()  );
+duplicate_shared ( Kokkos::Experimental::ViewHolderBase & vt ) {
+   // save off original pointer
+   unsigned char * src_ptr = (unsigned char *)vt.data();
+
+   // update view
+   vt.update_view( );
    
    // copy the data from the original
-   dst.deep_copy_from_buffer( (unsigned char *)src.data() );
+   vt.deep_copy_from_buffer( src_ptr );
 
 }
 
@@ -91,18 +94,17 @@ public:
         Kokkos::Impl::shared_allocation_tracking_enable();  // parallel_for turns this off, we need it back on
         // Setup ViewHooks to capture non-const views and pass to duplicate_shared
         // Don't do anything with const views since they don't need to be duplicated
-        auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_copy_caller( 
-                    [](Kokkos::Experimental::ViewHolderBase &dst, Kokkos::Experimental::ViewHolderBase &src) {
+        Kokkos::Experimental::add_view_hook_caller("ResCudaDup",
+                    [](Kokkos::Experimental::ViewHolderBase &vt) {
                           printf("viewhooks duplicate shared\n");
-                          KokkosResilience::duplicate_shared(std::move(dst), std::move(src));
+                          KokkosResilience::duplicate_shared(vt);
                     });
-        Kokkos::Experimental::ViewHooks::set("ResCudaDup", vhc);
 
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureI( m_functor , lPolicy[0] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureII( m_functor , lPolicy[1] );
         Impl::ParallelFor< FunctorType , surrogate_policy, Kokkos::Cuda > closureIII( m_functor , lPolicy[2] );
 
-        Kokkos::Experimental::ViewHooks::clear("ResCudaDup", vhc);
+        Kokkos::Experimental::remove_view_hook_caller("ResCudaDup");
         Kokkos::Impl::shared_allocation_tracking_disable();  // disable tracking (way it was before)
 
         closureI.execute();
