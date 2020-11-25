@@ -46,7 +46,7 @@ duplicate_shared ( Kokkos::Experimental::ViewHolderBase & vt ) {
    vt.update_view( );
    
    // copy the data from the original
-   vt.deep_copy_from_buffer( src_ptr );
+   vt.copy_view_from_buffer( src_ptr );
 
 }
 

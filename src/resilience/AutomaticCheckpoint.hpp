@@ -11,7 +11,6 @@
 
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
-#include "impl/ViewCopySpecialization.hpp"
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
