@@ -9,7 +9,8 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestLambdaCapture.cpp
+               #TestLambdaCapture.cpp
+	       TestResOpenMP.cpp
                )
 add_test(NAME resilience_tests COMMAND resilience_tests)
 include(GoogleTest)
@@ -31,16 +32,16 @@ if (KR_ENABLE_VELOC)
 endif()
 
 
-if (KR_ENABLE_STDFILE)
-  target_sources(resilience_tests PRIVATE
-      TestStdFileBackend.cpp)
-endif()
+#if (KR_ENABLE_STDFILE)
+#  target_sources(resilience_tests PRIVATE
+#      TestStdFileBackend.cpp)
+#endif()
 
-if (KR_ENABLE_STDIO)
-  target_sources(resilience_tests PRIVATE
-                 TestViewCheckpoint.cpp
-                 )
-endif()
+#if (KR_ENABLE_STDIO)
+#  target_sources(resilience_tests PRIVATE
+#                 TestViewCheckpoint.cpp
+#                 )
+#endif()
 
   target_sources(resilience_tests PRIVATE
                  TestResilience.cpp
