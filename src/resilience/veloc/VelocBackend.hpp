@@ -104,8 +104,11 @@ namespace KokkosResilience
       const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
+    void register_alias( const std::string &original, const std::string &alias );
 
   private:
+
+    std::string get_canonical_label( const std::string &_label ) const noexcept;
     
     std::unordered_map< Detail::MemProtectKey, Detail::MemProtectBlock > m_cref_registry;
     std::unordered_map< std::string, Detail::MemProtectBlock > m_view_registry;
@@ -114,6 +117,7 @@ namespace KokkosResilience
     context_type *m_context;
     
     mutable std::unordered_map< std::string, int > m_latest_version;
+    std::unordered_map< std::string, std::string > m_alias_map;
   };
   
   class VeloCFileBackend

@@ -74,6 +74,10 @@ public:
     return m_backend.latest_version(label);
   }
 
+  void register_alias( const std::string &original, const std::string &alias ) override {
+    return m_backend.register_alias( original, alias );
+  }
+
   void reset() override { m_backend.reset(); }
 
 private:
