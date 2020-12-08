@@ -59,9 +59,11 @@ namespace KokkosResilience
     // Check if we need to copy any views to backing store
     for ( auto &&view : _views )
     {
+      std::string label = get_canonical_label( view->label() );
+
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
+        auto pos = m_view_registry.find( label );
         if ( pos != m_view_registry.end())
         {
           view->deep_copy_to_buffer( pos->second.buff.data() );
@@ -91,11 +93,12 @@ namespace KokkosResilience
   int
   VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
   {
-    auto latest_iter = m_latest_version.find( label );
+    auto lab = get_canonical_label( label );
+    auto latest_iter = m_latest_version.find( lab );
     if ( latest_iter == m_latest_version.end() )
     {
-      auto test = VELOC_Restart_test(label.c_str(), 0);
-      m_latest_version[label] = test;
+      auto test = VELOC_Restart_test(lab.c_str(), 0);
+      m_latest_version[lab] = test;
       return test;
     } else {
      return latest_iter->second;
@@ -106,7 +109,8 @@ namespace KokkosResilience
   VeloCMemoryBackend::restart( const std::string &label, int version,
     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
   {
-    VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
+    auto lab = get_canonical_label( label );
+    VELOC_SAFE_CALL( VELOC_Restart_begin( lab.c_str(), version ));
     
     bool status = true;
     
@@ -117,9 +121,10 @@ namespace KokkosResilience
     // Check if we need to copy any views from the backing store back to the view
     for ( auto &&view : _views )
     {
+      auto vl = get_canonical_label( view->label() );
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( Detail::MemProtectKey{ view->data() } );
+        auto pos = m_view_registry.find( vl );
         if ( pos != m_view_registry.end() )
         {
           assert( pos->second.buff.size() == view->data_type_size() * view->span() );
@@ -146,6 +151,7 @@ namespace KokkosResilience
     m_cref_registry.clear();
 
     m_latest_version.clear();
+    m_alias_map.clear();
   }
   
   void
@@ -156,15 +162,19 @@ namespace KokkosResilience
     {
       if ( !view->data() )  // uninitialized view
         continue;
+
+      std::string label = get_canonical_label( view->label() );
+
       // If we haven't already register, register with VeloC
-      if ( m_view_registry.find( Detail::MemProtectKey{ view->data() } ) == m_view_registry.end() )
+      if ( m_view_registry.find( label ) == m_view_registry.end() )
       {
         int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size() );
         auto type_size = view->data_type_size();
         auto span = view->span();
         
         std::vector< unsigned char > buff;
-        
+
+        std::cout << "Protecting memory id " << id << " with label " << label << '\n';
         if ( !view->is_hostspace() || !view->span_is_contiguous() )
         {
           // Can't reference memory directly, allocate memory for a watch buffer
@@ -175,7 +185,7 @@ namespace KokkosResilience
         }
   
         m_view_registry.emplace( std::piecewise_construct,
-          std::forward_as_tuple( view->data() ),
+          std::forward_as_tuple( label ),
           std::forward_as_tuple( id, std::move( buff ) ) );
       }
     }
@@ -196,6 +206,25 @@ namespace KokkosResilience
             std::forward_as_tuple( cref.ptr ),
             std::forward_as_tuple( id ) );
       }
+    }
+  }
+
+  void
+  VeloCMemoryBackend::register_alias( const std::string &original, const std::string &alias )
+  {
+    m_alias_map[alias] = original;
+  }
+
+  std::string
+  VeloCMemoryBackend::get_canonical_label( const std::string &_label ) const noexcept
+  {
+    // Possible the view has an alias. If so, make sure that is registered instead
+    auto pos = m_alias_map.find( _label );
+    if ( m_alias_map.end() != pos )
+    {
+      return pos->second;
+    } else {
+      return _label;
     }
   }
   
