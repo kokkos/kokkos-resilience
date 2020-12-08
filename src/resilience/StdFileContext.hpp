@@ -74,6 +74,10 @@ class StdFileContext : public ContextBase {
     m_backend.reset();
   }
 
+  void register_alias( const std::string &original, const std::string &alias ) override {
+
+  }
+
  private:
   std::string m_filename;
   Backend m_backend;

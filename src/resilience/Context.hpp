@@ -47,6 +47,7 @@ namespace KokkosResilience
                              const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
 
     virtual int latest_version( const std::string &label ) const noexcept = 0;
+    virtual void register_alias( const std::string &original, const std::string &alias ) = 0;
 
     virtual void reset() = 0;
 
