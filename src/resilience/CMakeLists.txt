@@ -28,7 +28,19 @@ if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)
 endif()
 
-if (Kokkos_ENABLE_CUDA)
-  add_subdirectory(cuda)
+# Cuda resilient space
+if (KR_ENABLE_RESILIENT_EXECUTION_SPACE)
+  list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
+
+  if (${_cuda_found} GREATER "-1")
+    add_subdirectory(cuda)
+  endif()
+
+  list(FIND Kokkos_DEVICES "OPENMP" _omp_found)
+
+  if (${_omp_found} GREATER "-1")
+    add_subdirectory(OpenMP)
+  endif()
+
 endif()
 

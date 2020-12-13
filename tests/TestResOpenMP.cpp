@@ -14,7 +14,7 @@
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
-TEST(TestResOpenMP, gTestFunctioning)
+/*TEST(TestResOpenMP, gTestFunctioning)
 {
   printf("Arrived in TestResOpenMP, gTestFunctioning\n");
   int x = 1;
@@ -55,7 +55,7 @@ TEST(TestResOpenMP, TestSpaces)
   printf("\n\n\n");
   fflush(stdout);
 
-}
+}*/
 
 /*********************************
 *********PARALLEL FORS************
@@ -121,10 +121,13 @@ TEST(TestResOpenMP, TestParallelFor)
 
   printf("Got past the Timer in the test.\n");
   fflush(stdout);
+  
+  int set_data_counter = 0;
 
   //Initialize y vector on host using parallel_for
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
+    set_data_counter++; 
   });
 
   Kokkos::fence(); //Is this needed? Fence in resilient parallel_for
@@ -142,6 +145,14 @@ TEST(TestResOpenMP, TestParallelFor)
     ASSERT_EQ(x(i), i);
   }
 
+  printf("Got past the old test-assert, setting data.\n");
+  fflush(stdout);
+
+  printf("Setdatacounter is %d. It should be %d.\n", set_data_counter, N);
+  fflush(stdout);
+
+  ASSERT_EQ(set_data_counter, N);
+
   printf("\n\n\n");
   fflush(stdout);
 }
@@ -149,7 +160,7 @@ TEST(TestResOpenMP, TestParallelFor)
 /**********************************
 ********PARALLEL REDUCES***********
 **********************************/
-
+/*
 // gTest if the ParallelReduce test works with regular Kokkos.
 TEST(TestResOpenMP, TestRegularReduce)
 {
@@ -198,7 +209,7 @@ TEST(TestResOpenMP, TestRegularReduce)
 
   ASSERT_EQ(result, correct);
 
-}
+}*/
 /*
 // gTest if the Resilient parallel_reduce works.
 TEST(TestResOpenMP, TestParallelReduce)
@@ -253,7 +264,7 @@ TEST(TestResOpenMP, TestParallelReduce)
 /**********************************
 **********PARALLEL SCANS***********
 **********************************/
-
+/*
 // gTest if the ParallelScan test works with regular Kokkos.
 TEST(TestResOpenMP, TestRegularScan)
 {
@@ -305,7 +316,7 @@ TEST(TestResOpenMP, TestRegularScan)
   ASSERT_EQ(x(N-1), N);
 
 }
-
+*/
 /*
 // gTest if the parallel_scan test works with resilient Kokkos.
 TEST(TestResOpenMP, TestParallelScan)

@@ -22,5 +22,9 @@
    #include "cuda/CudaResParallel.hpp"
 #endif
 
+#include "OpenMP/ResHostSpace.hpp"
+#include "OpenMP/ResOpenMP.hpp"
+#include "OpenMP/OpenMPResParallel.hpp"
+
 
 #endif  // INC_RESILIENCE_RESILIENCE_HPP
