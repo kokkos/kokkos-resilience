@@ -1,0 +1,148 @@
+[==========] Running 2 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 2 tests from TestResOpenMP
+[ RUN      ] TestResOpenMP.TestRegularFor
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in main Kokkos range-policy ParallelFor
+This is Thread 7 in main Kokkos range-policy ParallelFor
+This is Thread 4 in main Kokkos range-policy ParallelFor
+This is Thread 1 in main Kokkos range-policy ParallelFor
+This is Thread 5 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor
+This is Thread 3 in main Kokkos range-policy ParallelFor
+This is Thread 6 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 1 in main Kokkos range-policy ParallelFor
+This is Thread 6 in main Kokkos range-policy ParallelFor
+This is Thread 7 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor
+This is Thread 2 in main Kokkos range-policy ParallelFor
+This is Thread 4 in main Kokkos range-policy ParallelFor
+This is Thread 3 in main Kokkos range-policy ParallelFor
+This is Thread 5 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos, Kokkos_Parallel.hpp, 1st parallel_for.
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 3 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor
+This is Thread 2 in main Kokkos range-policy ParallelFor
+This is Thread 6 in main Kokkos range-policy ParallelFor
+This is Thread 5 in main Kokkos range-policy ParallelFor
+This is Thread 1 in main Kokkos range-policy ParallelFor
+This is Thread 7 in main Kokkos range-policy ParallelFor
+This is Thread 4 in main Kokkos range-policy ParallelFor
+GTEST: Thread 0 reports Kokkos parallel_for took 0.000258 seconds.
+
+
+
+[       OK ] TestResOpenMP.TestRegularFor (1 ms)
+[ RUN      ] TestResOpenMP.TestParallelFor
+GTEST: Thread 0 reports test entered. This is the first line of code.
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 1 in main Kokkos range-policy ParallelFor
+This is Thread 7 in main Kokkos range-policy ParallelFor
+This is Thread 2 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor
+This is Thread 6 in main Kokkos range-policy ParallelFor
+This is Thread 3 in main Kokkos range-policy ParallelFor
+This is Thread 5 in main Kokkos range-policy ParallelFor
+This is Thread 4 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 3 in main Kokkos range-policy ParallelFor
+This is Thread 4 in main Kokkos range-policy ParallelFor
+This is Thread 1 in main Kokkos range-policy ParallelFor
+This is Thread 2 in main Kokkos range-policy ParallelFor
+This is Thread 7 in main Kokkos range-policy ParallelFor
+This is Thread 6 in main Kokkos range-policy ParallelFor
+This is Thread 5 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in main Kokkos range-policy ParallelFor
+This is Thread 6 in main Kokkos range-policy ParallelFor
+This is Thread 7 in main Kokkos range-policy ParallelFor
+This is Thread 3 in main Kokkos range-policy ParallelFor
+This is Thread 5 in main Kokkos range-policy ParallelFor
+This is Thread 0 in main Kokkos range-policy ParallelFor
+This is Thread 4 in main Kokkos range-policy ParallelFor
+This is Thread 1 in main Kokkos range-policy ParallelFor
+GTEST: Thread 0 reports vectors declared.
+GTEST: Thread 0 reports timer declared.
+GTEST: Thread 0 reports counter successfully initialized to 0.
+This is Thread 0 in main Kokkos, Kokkos_Parallel.hpp, 1st parallel_for.
+This is Thread 0 in resilient Kokkos. This is the res pf constructor.
+This is Thread 0 in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a typedefs, b surrogate.
+This is Thread 0 in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a surrogate, b ViewHooks.
+This is Thread 0 in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a ViewHooks, b closure setup.
+This is Thread 0 in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.
+This is Thread 0 in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.
+This is Thread 0 in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.
+This is Thread 0 in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.
+This is Thread 0 in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.
+This is Thread 0 in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.
+This is Thread 0 in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a closure setup, b execute.
+This is Thread 7 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 7 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 6 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 7 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 2 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 2 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 3 in resilient Kokkos. Entered OMP Task 2.
+This is Thread 3 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 6 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 0 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 0 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 7 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 1 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 1 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 5 in resilient Kokkos. Entered OMP Task 1.
+This is Thread 5 in main Kokkos range-policy ParallelFor, before parallel pragma.
+This is Thread 4 in resilient Kokkos. Entered OMP Task 3.
+This is Thread 4 in main Kokkos range-policy ParallelFor, before parallel pragma.
+Entered combine_res_duplicates
+GTEST: Thread 0 reports test parallel_for completed. No determination on accuracy yet.
+GTEST: Thread 0 reports test parallel_for completed. Data assignment was correct.
+GTEST: Thread 0 reports counter is 120. It should be 5.
+/home/eagiem/kokkos-jeff/kokkos-resilience/tests/TestResOpenMP.cpp:168: Failure
+Expected equality of these values:
+  counter(0)
+    Which is: 120
+  5
+[  FAILED  ] TestResOpenMP.TestParallelFor (4 ms)
+[----------] 2 tests from TestResOpenMP (5 ms total)
+
+[----------] Global test environment tear-down
+[==========] 2 tests from 1 test suite ran. (5 ms total)
+[  PASSED  ] 1 test.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] TestResOpenMP.TestParallelFor
+
+ 1 FAILED TEST
