@@ -6,6 +6,9 @@
 #include <resilience/OpenMP/ResHostSpace.hpp>
 #include <resilience/OpenMP/ResOpenMP.hpp>
 
+// included for thread prints, delete later
+#include <omp.h>
+
 //#ifdef KR_ENABLE_OPENMP // TODO: RESILIENCE HEADER MODIFY
 //#ifdef KR_ENABLE_RESILIENT_EXECUTION_SPACE // TODO: REIMPLEMENT
 //!!!! And possibly other macros, check
@@ -92,7 +95,7 @@ TEST(TestResOpenMP, TestRegularFor)
     ASSERT_EQ(x(i), i);
   }
 
-  printf("It took %f seconds to perform the parallel_for, not including deep-copy\n", time);
+  printf("GTEST: Thread %d reports Kokkos parallel_for took %f seconds.\n", omp_get_thread_num(), time);
 
   printf("\n\n\n");
   fflush(stdout);
@@ -103,36 +106,47 @@ TEST(TestResOpenMP, TestRegularFor)
 ///*
 TEST(TestResOpenMP, TestParallelFor)
 {
-  printf("Entered the test. This is the first line of code.\n");
+  printf("GTEST: Thread %d reports test entered. This is the first line of code.\n", omp_get_thread_num());
   fflush(stdout);
 
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
+
+  // Allocate scalar for test incrementation
+  // UPDATE: ALLOWED THIS, COULD NOT FIGURE OUT HOW TO ACCESS
+  //typedef Kokkos::View<int, Kokkos::LayoutRight, MemSpace> ViewScalarInt;
+  //ViewScalarInt set_data_counter;
+  
+  // Fix with integer vector type for now
+  typedef Kokkos::View<int*, Kokkos::LayoutRight, MemSpace> ViewVectorInt;
+  ViewVectorInt counter( "DataAccesses", 1);
 
   // Allocate y, x vectors.
   typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace>   ViewVectorType;
   ViewVectorType y( "y", N );
   ViewVectorType x( "x", N );
   
-  printf("Got past declaring the vectors.\n"); 
+  printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num()); 
   fflush(stdout);
 
   // Timer
   Kokkos::Timer timer;
 
-  printf("Got past the Timer in the test.\n");
+  printf("GTEST: Thread %d reports timer declared.\n", omp_get_thread_num());
   fflush(stdout);
   
-  int set_data_counter = 0;
+  counter(0) = 0;
+  printf("GTEST: Thread %d reports counter successfully initialized to %d.\n", omp_get_thread_num(), counter(0));
+  fflush(stdout);
 
   //Initialize y vector on host using parallel_for
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    set_data_counter++; 
+    counter(0) = counter(0) + 1; 
   });
 
   Kokkos::fence(); //Is this needed? Fence in resilient parallel_for
- 
-  printf("Got past the For in the test.\n");
+
+  printf("GTEST: Thread %d reports test parallel_for completed. No determination on accuracy yet.\n", omp_get_thread_num());
   fflush(stdout);
 
   // Calculate time.
@@ -145,13 +159,13 @@ TEST(TestResOpenMP, TestParallelFor)
     ASSERT_EQ(x(i), i);
   }
 
-  printf("Got past the old test-assert, setting data.\n");
+  printf("GTEST: Thread %d reports test parallel_for completed. Data assignment was correct.\n", omp_get_thread_num());
   fflush(stdout);
 
-  printf("Setdatacounter is %d. It should be %d.\n", set_data_counter, N);
+  printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
   fflush(stdout);
 
-  ASSERT_EQ(set_data_counter, N);
+  ASSERT_EQ(counter(0), N);
 
   printf("\n\n\n");
   fflush(stdout);

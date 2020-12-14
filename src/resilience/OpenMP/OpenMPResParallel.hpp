@@ -82,7 +82,7 @@ namespace KokkosResilience {
   inline void duplicate_shared ( Kokkos::Experimental::ViewHolderBase &dst
                                , Kokkos::Experimental::ViewHolderBase &src ) {
     
-    printf("Entered duplicate_shared\n");
+    printf("This is Thread %d in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.\n", omp_get_thread_num());
     fflush(stdout);
     // Assign new record to view map
     dst.update_view (src.rec_ptr() );
@@ -102,6 +102,8 @@ namespace KokkosResilience {
 namespace Kokkos {
 namespace Impl {
 
+//ALL THE OLD WORK
+/*
 // Range policy implementation
 template< class FunctorType, class... Traits>
 class ParallelFor< FunctorType
@@ -131,7 +133,7 @@ class ParallelFor< FunctorType
     typedef Kokkos::RangePolicy<Kokkos::OpenMP, WorkTag, LaunchBounds> surrogate_policy;
    
 //TESTING PRINT STATEMENT
-    printf("Entered ParallelFor execute. Right after typedef, right before surrogate.\n");
+    printf("This is Thread %d in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a typedefs, b surrogate.\n", omp_get_thread_num());
     fflush(stdout); 
 
     surrogate_policy lPolicy[3];
@@ -140,7 +142,7 @@ class ParallelFor< FunctorType
     }
 
 //TESTING PRINT STATEMENT
-    printf("Entered ParallelFor execute. Right after surrogate, right before ViewHooks.\n");
+    printf("This is Thread %d in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a surrogate, b ViewHooks.\n", omp_get_thread_num());
     fflush(stdout);     
     // ViewHooks captures non-constant views and passes to duplicate_shared
     Kokkos::Impl::shared_allocation_tracking_enable();
@@ -157,7 +159,7 @@ class ParallelFor< FunctorType
     // TODO: needs testing different partitions
     
 //TESTING PRINT STATEMENT
-    printf("Entered ParallelFor execute. Right after ViewHooks, right before closure setup.\n");
+    printf("This is Thread %d in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a ViewHooks, b closure setup.\n", omp_get_thread_num());
     fflush(stdout); 
 
     Kokkos::Impl::ParallelFor< FunctorType, surrogate_policy, Kokkos::OpenMP> closureI( m_functor , lPolicy[0] );
@@ -179,7 +181,7 @@ class ParallelFor< FunctorType
 
  
 //TESTING PRINT STATEMENT
-    printf("Entered ParallelFor execute. Right after closure setup, right before closure execute.\n");
+    printf("This is Thread %d in resilient Kokkos. Entered ParallelFor in ResOMPParallel, a closure setup, b execute.\n", omp_get_thread_num());
     fflush(stdout);
 
 
@@ -193,7 +195,7 @@ class ParallelFor< FunctorType
         #pragma omp task
         { 
           //TESTING PRINT STATEMENT
-          printf("We got into the 1st OMP task.\n");
+          printf("This is Thread %d in resilient Kokkos. Entered OMP Task 1.\n", omp_get_thread_num());
           fflush(stdout);
 
           closureI.execute();
@@ -202,7 +204,7 @@ class ParallelFor< FunctorType
         #pragma omp task
         {
           //TESTING PRINT STATEMENT
-          printf("We got into the 2nd OMP task.\n");
+          printf("This is Thread %d in resilient Kokkos. Entered OMP Task 2.\n", omp_get_thread_num());
           fflush(stdout);
      
           closureII.execute();
@@ -211,7 +213,7 @@ class ParallelFor< FunctorType
         #pragma omp task
         {
           //TESTING PRINT STATEMENT
-          printf("We got into the 3rd OMP task.\n");
+          printf("This is Thread %d in resilient Kokkos. Entered OMP Task 3.\n", omp_get_thread_num());
           fflush(stdout);
 
           closureIII.execute();
@@ -231,10 +233,224 @@ class ParallelFor< FunctorType
     : m_functor ( arg_functor )
     , m_policy ( arg_policy )
  {
-   printf("res pf constructor\n");
+   printf("This is Thread %d in resilient Kokkos. This is the res pf constructor.\n", omp_get_thread_num());
  }
 
 }; // RangePolicy template ParallelFor
+*/
+
+// Range policy implementation NEW - ASK DAISY   
+template <class FunctorType, class... Traits>
+class ParallelFor< FunctorType
+                 , Kokkos::RangePolicy< Traits... >
+                 , KokkosResilience::ResOpenMP>{
+ private:
+  using Policy    = Kokkos::RangePolicy<Traits...>;
+  using WorkTag   = typename Policy::work_tag;
+  using WorkRange = typename Policy::WorkRange;
+  using Member    = typename Policy::member_type;
+  // Possible issue but should be fine to use WorkRange instead of LaunchBounds
+  // using LaunchBounds = typename Policy::launch_bounds;
+
+  OpenMPExec* m_instance;
+  const FunctorType m_functor;
+  const Policy m_policy;
+
+  // templated class for range of memory? Used on policy.begin, policy.end later
+  template <class TagType>
+  inline static
+      typename std::enable_if<std::is_same<TagType, void>::value>::type
+      exec_range(const FunctorType& functor, const Member ibeg,
+                 const Member iend) {
+
+// Do I need to account for this at this time?
+#ifdef KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION
+#ifdef KOKKOS_ENABLE_PRAGMA_IVDEP
+#pragma ivdep
+#endif
+#endif
+    for (Member iwork = ibeg; iwork < iend; ++iwork) {
+      functor(iwork);
+    }
+  }
+
+  //I understand there is a difference, but not the subtlety of the difference
+  template <class TagType>
+  inline static
+      typename std::enable_if<!std::is_same<TagType, void>::value>::type
+      exec_range(const FunctorType& functor, const Member ibeg,
+                 const Member iend) {
+    const TagType t{};
+#ifdef KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION
+#ifdef KOKKOS_ENABLE_PRAGMA_IVDEP
+#pragma ivdep
+#endif
+#endif
+    for (Member iwork = ibeg; iwork < iend; ++iwork) {
+      functor(t, iwork);
+    }
+  }
+
+ public:
+  inline void execute() const {
+    //keep for now for printout similarity
+    printf("This is Thread %d in resilient Kokkos range-policy ParallelFor, before parallel pragma.\n", omp_get_thread_num());
+    fflush(stdout);
+
+    enum {
+      is_dynamic = std::is_same<typename Policy::schedule_type::type,
+                                Kokkos::Dynamic>::value
+    };
+
+    typedef Kokkos::RangePolicy<Kokkos::OpenMP, WorkTag, WorkRange> surrogate_policy;
+   
+    surrogate_policy lPolicy[3];
+    for (int i = 0; i < 3; i++) {
+      lPolicy[i] = surrogate_policy(m_policy.begin(), m_policy.end());      
+    }
+   
+    // ViewHooks captures non-constant views and passes to duplicate_shared
+    Kokkos::Impl::shared_allocation_tracking_enable();
+
+    auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_copy_caller(
+                 []( Kokkos::Experimental::ViewHolderBase &dst
+                   , Kokkos::Experimental::ViewHolderBase &src){
+                       KokkosResilience::duplicate_shared(dst, src);
+               });
+
+    Kokkos::Experimental::ViewHooks::set("ResOpenMPDup", vhc);
+    
+    // What does the if do, pretty sure it was meeting this condition with pre-port run.
+    // Some work needed here
+    if (OpenMP::in_parallel()) {
+      exec_range<WorkTag>(m_functor, m_policy.begin(), m_policy.end());
+    } else {
+      OpenMPExec::verify_is_master("Kokkos::OpenMP parallel_for");
+
+#pragma omp parallel num_threads(OpenMP::impl_thread_pool_size())
+      {
+        #pragma omp task
+        {
+          if(omp_get_thread_num() < floor(OpenMP::impl_thread_pool_size()/3)){  
+         
+             printf("This is Thread %d in resilient Kokkos range-policy ParallelFor, Task 1.\n", omp_get_thread_num());
+             fflush(stdout);
+
+             // Can I use the same instance, unduplicated?
+             HostThreadTeamData& data = *(m_instance->get_thread_data());
+ 
+             // Using surrogate policy duplicates
+             data.set_work_partition(lPolicy[0].end() - lPolicy[0].begin(),
+                                     lPolicy[0].chunk_size());
+
+             if (is_dynamic) {
+               // Make sure work partition is set before stealing
+               if (data.pool_rendezvous()) data.pool_rendezvous_release();
+             }
+       
+             std::pair<int64_t, int64_t> range(0, 0);
+
+             do {
+               range = is_dynamic ? data.get_work_stealing_chunk()
+                                 : data.get_work_partition();
+               ParallelFor::template exec_range<WorkTag>(
+                           m_functor, range.first + lPolicy[0].begin(),
+                           range.second + lPolicy[0].begin());
+    
+             } while (is_dynamic && 0 <= range.first);
+           }
+         }// omp task 1
+           
+
+        #pragma omp task
+        {
+          
+	  if(omp_get_thread_num() > floor(OpenMP::impl_thread_pool_size())/3 &&
+             omp_get_thread_num() < 2*(floor(OpenMP::impl_thread_pool_size())/3){  
+
+             printf("This is Thread %d in resilient Kokkos range-policy ParallelFor, Task 2.\n", omp_get_thread_num());
+             fflush(stdout);
+
+             // Can I use the same instance, unduplicated?
+             HostThreadTeamData& data = *(m_instance->get_thread_data());
+ 
+             // Using surrogate policy duplicates
+             data.set_work_partition(lPolicy[1].end() - lPolicy[1].begin(),
+                                     lPolicy[1].chunk_size());
+
+             if (is_dynamic) {
+               // Make sure work partition is set before stealing
+               if (data.pool_rendezvous()) data.pool_rendezvous_release();
+             }
+       
+             std::pair<int64_t, int64_t> range(0, 0);
+
+             do {
+               range = is_dynamic ? data.get_work_stealing_chunk()
+                                 : data.get_work_partition();
+               ParallelFor::template exec_range<WorkTag>(
+                           m_functor, range.first + lPolicy[1].begin(),
+                           range.second + lPolicy[1].begin());
+    
+             } while (is_dynamic && 0 <= range.first);
+           }
+         }// omp task 2
+
+
+        #pragma omp task
+        {
+	  if(omp_get_thread_num() <OpenMP::impl_thread_pool_size() &&
+             omp_get_thread_num() > 2*(floor(OpenMP::impl_thread_pool_size())/3){  
+         
+             printf("This is Thread %d in resilient Kokkos range-policy ParallelFor, Task 3.\n", omp_get_thread_num());
+             fflush(stdout);
+
+             // Can I use the same instance, unduplicated?
+             HostThreadTeamData& data = *(m_instance->get_thread_data());
+ 
+             // Using surrogate policy duplicates
+             data.set_work_partition(lPolicy[2].end() - lPolicy[2].begin(),
+                                     lPolicy[2].chunk_size());
+
+             if (is_dynamic) {
+               // Make sure work partition is set before stealing
+               if (data.pool_rendezvous()) data.pool_rendezvous_release();
+             }
+       
+             std::pair<int64_t, int64_t> range(0, 0);
+
+             do {
+               range = is_dynamic ? data.get_work_stealing_chunk()
+                                 : data.get_work_partition();
+               ParallelFor::template exec_range<WorkTag>(
+                           m_functor, range.first + lPolicy[2].begin(),
+                           range.second + lPolicy[2].begin());
+    
+             } while (is_dynamic && 0 <= range.first);
+           }
+         }// omp task 3
+
+      } // pragma omp
+    } // omp-parallel else
+
+    Kokkos::fence();
+    
+    // Correct place for teardown?
+    Kokkos::Experimental::ViewHooks::clear("ResOpenMPDup", vhc);
+    Kokkos::Impl::shared_allocation_tracking_disable(); 
+       
+    // The last thing before the constructor
+    KokkosResilience::combine_res_duplicates();
+
+  } // execute
+
+  inline ParallelFor(const FunctorType& arg_functor, Policy arg_policy)
+      : m_instance(t_openmp_instance),
+        m_functor(arg_functor),
+        m_policy(arg_policy) {
+    printf("This is Thread %d in resilient Kokkos. This is the new version res pf constructor.\n", omp_get_thread_num());
+  }
+};//range policy implementation
 
 } // namespace Impl
 } // namespace Kokkos
