@@ -20,6 +20,8 @@ endfunction()
 if (KR_ENABLE_VELOC)
    add_example(simple_checkpoint SOURCES SimpleCheckpoint.cpp
        RESOURCES config.json veloc_test.cfg)
+   add_example(benchmark_multiview SOURCES benchmark_multiview.cpp
+       RESOURCES config.json veloc_test.cfg)
 endif()
 
 if (KR_ENABLE_STDFILE)
