@@ -16,12 +16,13 @@
 //@HEADER
 
 
-#include <cxxopts/cxxopts.hpp>
+#include <cxxopts.hpp>
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
 #include <random>
 #include <resilience/CheckpointFilter.hpp>
+#include <iostream>
 
 int main(int argc, char *argv[]) {
    int rank, nbProcs, nbLines, M;
@@ -133,3 +134,4 @@ int main(int argc, char *argv[]) {
 
    MPI_Finalize();
    return 0;
+}
