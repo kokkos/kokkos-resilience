@@ -4,3 +4,5 @@ target_include_directories(resilience PUBLIC
                            )
 
 install(DIRECTORY pico DESTINATION include FILES_MATCHING PATTERN "*.h")
+
+add_subdirectory(cxxopts)
