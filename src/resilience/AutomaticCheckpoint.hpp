@@ -21,7 +21,7 @@
 
 // Workaround for C++ < 17
 #define KR_CHECKPOINT_THIS _kr_self = *this
-#define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref< int >( x )
+#define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref< int >( x, #x )
 
 namespace KokkosResilience
 {
