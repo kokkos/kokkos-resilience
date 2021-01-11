@@ -13,7 +13,7 @@
 //#ifdef KR_ENABLE_RESILIENT_EXECUTION_SPACE // TODO: REIMPLEMENT
 //!!!! And possibly other macros, check
 
-#define N 5
+#define N 1000000
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -155,7 +155,7 @@ TEST(TestResOpenMP, TestParallelFor)
   Kokkos::deep_copy(x, y);
 
   for ( int i = 0; i < N; i++) {
-    //printf("x[%d]=%d\n", i, x(i));
+    //printf("x[%d]=%f\n", i, x(i));
     ASSERT_EQ(x(i), i);
   }
 
@@ -278,7 +278,7 @@ TEST(TestResOpenMP, TestParallelReduce)
 /**********************************
 **********PARALLEL SCANS***********
 **********************************/
-/*
+
 // gTest if the ParallelScan test works with regular Kokkos.
 TEST(TestResOpenMP, TestRegularScan)
 {
@@ -291,7 +291,7 @@ TEST(TestResOpenMP, TestRegularScan)
 
   // Initialize x vector on host using parallel_for
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
-    x ( i ) = 1;
+    x ( i ) = 1.0;
   });
  
   Kokkos::fence();
@@ -302,8 +302,8 @@ TEST(TestResOpenMP, TestRegularScan)
   // Perform vector element sum using parallel_scan
   Kokkos::parallel_scan( "xscan", N, KOKKOS_LAMBDA ( int j, double &update, const bool& final ) {
     update += x( j );
-    printf("Update: %f \n", update);
-    fflush(stdout);
+    //printf("Update: %f \n", update);
+    //fflush(stdout);
     if(final){
       x( j ) = update;
     }
@@ -330,33 +330,33 @@ TEST(TestResOpenMP, TestRegularScan)
   ASSERT_EQ(x(N-1), N);
 
 }
-*/
-/*
+
+
 // gTest if the parallel_scan test works with resilient Kokkos.
 TEST(TestResOpenMP, TestParallelScan)
 {
  
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
-  // Allocate x vector.
+  // Allocate y vector.
   typedef Kokkos::View<double*, Kokkos::LayoutRight, Kokkos::HostSpace>   ViewVectorType;
-  ViewVectorType x( "x", N );
+  ViewVectorType y( "y", N );
 
   // Initialize x vector on host using regular for (isolate parallel_scan)
   for ( int i = 0; i < N; i++ ) {
-    x( i ) = 1;
+    y( i ) = 1.0;
   }
    
   // Timer
   Kokkos::Timer timer;
 
   // Perform vector element sum using parallel_scan
-  Kokkos::parallel_scan( "xscan", N, KOKKOS_LAMBDA ( int j, double &update, const bool& final ) {
-    update += x( j );
-    printf("Update: %f \n", update);
-    fflush(stdout);
+  Kokkos::parallel_scan( "yscan", N, KOKKOS_LAMBDA ( int j, double &update, const bool& final ) {
+    update += y( j );
+   // printf("Update: %f \n", update);
+   // fflush(stdout);
     if(final){
-      x( j ) = update;
+      y( j ) = update;
     }
   });
 
@@ -369,18 +369,18 @@ TEST(TestResOpenMP, TestParallelScan)
   fflush(stdout);
  
   // TESTING SCAN VALUES: scan(0) = x(0), scan(2) = (3), scan(n-1) = N
-  printf("Correct Scan(0) = %f, Parallel_Scan(0) = %f \n", 1, x(0));
+  printf("Correct Scan(0) = %f, Parallel_Scan(0) = %f \n", 1, y(0));
   fflush(stdout);
-  printf("Correct Scan(2) = %f, Parallel_Scan(2) = %f \n", 3, x(2));
+  printf("Correct Scan(2) = %f, Parallel_Scan(2) = %f \n", 3, y(2));
   fflush(stdout);  
-  printf("Correct Scan(N-1) = %f, Parallel_Scan(N-1) = %f \n", N, x(N-1));
+  printf("Correct Scan(N-1) = %f, Parallel_Scan(N-1) = %f \n", N, y(N-1));
   fflush(stdout);  
 
-  ASSERT_EQ(x(0), 1);
-  ASSERT_EQ(x(2), 3);
-  ASSERT_EQ(x(N-1), N);
+  ASSERT_EQ(y(0), 1);
+  ASSERT_EQ(y(2), 3);
+  ASSERT_EQ(y(N-1), N);
 
-}*/
+}
 
 //#endif //KR_ENABLE_RESILIENT_EXECUTION_SPACE
 //#endif //KR_ENABLE_OPENMP
