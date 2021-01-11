@@ -110,7 +110,7 @@ namespace KokkosResilience
 
     std::string get_canonical_label( const std::string &_label ) const noexcept;
     
-    std::unordered_map< Detail::MemProtectKey, Detail::MemProtectBlock > m_cref_registry;
+    std::unordered_map< std::string, Detail::MemProtectBlock > m_cref_registry;
     std::unordered_map< std::string, Detail::MemProtectBlock > m_view_registry;
     
     MPI_Comm m_mpi_comm;

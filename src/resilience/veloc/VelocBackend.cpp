@@ -196,14 +196,14 @@ namespace KokkosResilience
       if ( !cref.ptr )  // uninitialized view
         continue;
       // If we haven't already register, register with VeloC
-      if ( m_cref_registry.find( Detail::MemProtectKey{ cref.ptr } ) == m_cref_registry.end())
+      if ( m_cref_registry.find( cref.name ) == m_cref_registry.end())
       {
         int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size());
   
         VELOC_SAFE_CALL( VELOC_Mem_protect( id, cref.ptr, cref.num, cref.sz ) );
         
         m_cref_registry.emplace( std::piecewise_construct,
-            std::forward_as_tuple( cref.ptr ),
+            std::forward_as_tuple( cref.name ),
             std::forward_as_tuple( id ) );
       }
     }
