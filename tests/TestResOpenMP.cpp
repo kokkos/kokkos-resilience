@@ -14,27 +14,18 @@
 //!!!! And possibly other macros, check
 
 #define N 1000000
+#define repeats 5
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
-/*TEST(TestResOpenMP, gTestFunctioning)
-{
-  printf("Arrived in TestResOpenMP, gTestFunctioning\n");
-  int x = 1;
-  ASSERT_EQ(x, 1);
-
-  printf("\n\n\n");
-  fflush(stdout);
-
-}
-
-// gTest if the spaces work by themselves. Goal is to deepcopy one view to another.
+// gTest resilient spaces work on own. Goal is to deepcopy one view to another.
 TEST(TestResOpenMP, TestSpaces)
 {
 
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
-  typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace> ViewVectorType;
+  using ViewVectorType = Kokkos::View<double*, Kokkos::LayoutRight, MemSpace>;
+  //typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace> ViewVectorType;
 
   ViewVectorType y( "y", N);
   ViewVectorType x( "x", N);
@@ -43,40 +34,35 @@ TEST(TestResOpenMP, TestSpaces)
     y( i ) = 1;
   }
 
-  // Time the deepcopy
   Kokkos::Timer timer;
   Kokkos::deep_copy(x, y);
   double time = timer.seconds();
 
-  std::cout << "The as-yet unconfirmed deep-copy took " << time << " seconds." << std::endl;
+  std::cout << "The deep-copy took " << time << " seconds." << std::endl;
 
   for ( int i = 0; i < N; i++) {
-    //printf("x[%d]=%f\n", i, x(i));
     ASSERT_EQ(x(i), 1);
   }
     
   printf("\n\n\n");
   fflush(stdout);
 
-}*/
+}
 
 /*********************************
 *********PARALLEL FORS************
 **********************************/
 
-
-// gTest if the ParallelFor test works with regular Kokkos.
+// gTest runs parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestRegularFor)
-{
- 
+{ 
   using range_policy = Kokkos::RangePolicy<Kokkos::OpenMP>;
 
   // Allocate y, x vectors.
-  typedef Kokkos::View<double*, Kokkos::LayoutRight, Kokkos::HostSpace>   ViewVectorType;
+  typedef Kokkos::View<double*, Kokkos::LayoutRight, Kokkos::HostSpace> ViewVectorType;
   ViewVectorType y( "y", N );
   ViewVectorType x( "x", N );
 
-  // Timer
   Kokkos::Timer timer;
 
   // Initialize y vector on host using parallel_for
@@ -85,13 +71,10 @@ TEST(TestResOpenMP, TestRegularFor)
   });
  
   Kokkos::fence();
-  
-  // Calculate time.
   double time = timer.seconds();
   
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
-    //printf("x[%d]=%f\n", i, x(i));
     ASSERT_EQ(x(i), i);
   }
 
@@ -102,17 +85,14 @@ TEST(TestResOpenMP, TestRegularFor)
 
 }
  
-// The gtest checking if the for works. Goal is to get into the parallel_for at all.
-///*
+// gTest runs parallel_for with resilient Kokkos. Expect same answer as last test.
+
 TEST(TestResOpenMP, TestParallelFor)
 {
-  printf("GTEST: Thread %d reports test entered. This is the first line of code.\n", omp_get_thread_num());
-  fflush(stdout);
 
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
   // Allocate scalar for test incrementation
-  // UPDATE: ALLOWED THIS, COULD NOT FIGURE OUT HOW TO ACCESS
   //typedef Kokkos::View<int, Kokkos::LayoutRight, MemSpace> ViewScalarInt;
   //ViewScalarInt set_data_counter;
   
@@ -128,34 +108,29 @@ TEST(TestResOpenMP, TestParallelFor)
   printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num()); 
   fflush(stdout);
 
-  // Timer
   Kokkos::Timer timer;
 
-  printf("GTEST: Thread %d reports timer declared.\n", omp_get_thread_num());
-  fflush(stdout);
-  
   counter(0) = 0;
+  
   printf("GTEST: Thread %d reports counter successfully initialized to %d.\n", omp_get_thread_num(), counter(0));
   fflush(stdout);
 
-  //Initialize y vector on host using parallel_for
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    counter(0) = counter(0) + 1; 
+    Kokkos::atomic_increment(&counter(0)); 
   });
 
-  Kokkos::fence(); //Is this needed? Fence in resilient parallel_for
+  Kokkos::fence();
 
-  printf("GTEST: Thread %d reports test parallel_for completed. No determination on accuracy yet.\n", omp_get_thread_num());
+  printf("GTEST: Thread %d reports test parallel_for completed, accuracy TBD.\n", omp_get_thread_num());
   fflush(stdout);
 
-  // Calculate time.
   double time = timer.seconds();
 
   Kokkos::deep_copy(x, y);
 
   for ( int i = 0; i < N; i++) {
-    //printf("x[%d]=%f\n", i, x(i));
     ASSERT_EQ(x(i), i);
   }
 
@@ -170,6 +145,49 @@ TEST(TestResOpenMP, TestParallelFor)
   printf("\n\n\n");
   fflush(stdout);
 }
+
+// gTest attempts to trigger all 3 executions generating different data. Should repeat user-specified number of times and then abort.
+TEST(TestResOpenMP, TestParallelForInsertError)
+{
+
+  using range_policy = Kokkos::RangePolicy<ExecSpace>;
+  
+  typedef Kokkos::View<int*, Kokkos::LayoutRight, MemSpace> ViewVectorInt;
+  ViewVectorInt counter( "DataAccesses", 1);
+
+  // Allocate y, x vectors.
+  typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace>   ViewVectorType;
+  ViewVectorType y( "y", N );
+  ViewVectorType x( "x", N );
+  
+  Kokkos::Timer timer;
+  counter(0) = 0;
+  
+  printf("GTEST: Thread %d reports counter successfully initialized to %d.\n", omp_get_thread_num(), counter(0));
+  fflush(stdout);
+
+
+  //TODO: TEST EXPECTED FAIL
+  //Set vectors to random seed
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = i;
+    Kokkos::atomic_increment(&counter(0)); 
+  });
+
+  Kokkos::fence(); 
+
+  printf("GTEST: Thread %d reports test parallel_for completed. No determination on accuracy yet.\n", omp_get_thread_num());
+  fflush(stdout);
+
+  // Calculate time.
+  double time = timer.seconds();
+
+  Kokkos::deep_copy(x, y);
+  
+  printf("\n\n\n");
+  fflush(stdout);
+}
+
 
 /**********************************
 ********PARALLEL REDUCES***********
@@ -186,6 +204,9 @@ TEST(TestResOpenMP, TestRegularReduce)
   ViewVectorType y( "y", N );
   ViewVectorType x( "x", N );
 
+  printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num());
+  fflush(stdout);
+
   double result = 0;
   double correct = N;
 
@@ -193,10 +214,16 @@ TEST(TestResOpenMP, TestRegularReduce)
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = 1;
   });
- 
+
+  printf("GTEST: Thread %d reports vector y initialized.\n", omp_get_thread_num());
+  fflush(stdout);
+
   Kokkos::fence();
   
   Kokkos::deep_copy(x, y);
+  
+  printf("GTEST: Thread %d reports vector y deep-copied to x.\n", omp_get_thread_num());
+  fflush(stdout);
 
   // Timer
   Kokkos::Timer timer;
@@ -208,10 +235,13 @@ TEST(TestResOpenMP, TestRegularReduce)
 
   Kokkos::fence();
 
+  printf("GTEST: Thread %d reports parallel_reduce finished.\n", omp_get_thread_num());
+  fflush(stdout);
+
   // Calculate time.
   double time = timer.seconds(); 
  
-  printf("It took %f seconds to perform the parallel_for, not including deep-copy\n", time);
+  printf("It took %f seconds to perform the parallel_reduce.y\n", time);
   fflush(stdout);
   printf("The correct length of two all ones vectors multiplied together is N. N is %f.\n", correct);
   fflush(stdout);
@@ -229,12 +259,17 @@ TEST(TestResOpenMP, TestRegularReduce)
 TEST(TestResOpenMP, TestParallelReduce)
 {
  
-  using range_policy = Kokkos::RangePolicy<ExecSpace>;
+  //using range_policy = Kokkos::RangePolicy<ExecSpace>;
+  //Kokkos::RangePolicy<KokkosResilience::ResOpenMP>
+  
 
   // Allocate y, x vectors.
   typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace> ViewVectorType;
   ViewVectorType y( "y", N );
   ViewVectorType x( "x", N );
+
+  printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num());
+  fflush(stdout);
 
   double result = 0;
   double correct = N;
@@ -243,23 +278,38 @@ TEST(TestResOpenMP, TestParallelReduce)
   for ( int i = 0; i < N; i++ ) {
     y( i ) = 1;
   }
+
+  Kokkos::fence();
+
+  printf("GTEST: Thread %d reports y initialized.\n", omp_get_thread_num());
+  fflush(stdout);
   
   Kokkos::deep_copy(x, y);
+
+  Kokkos::fence();
+
+  printf("GTEST: Thread %d reports y deep-copied to x.\n", omp_get_thread_num());
+  fflush(stdout);
 
   // Timer
   Kokkos::Timer timer;
 
   // Perform vector dot product y*x using parallel_reduce
-  Kokkos::parallel_reduce( "yx", N, KOKKOS_LAMBDA ( int j, double &update ) {
+  const Kokkos::RangePolicy<KokkosResilience::ResOpenMP> range_policy = Kokkos::RangePolicy<KokkosResilience::ResOpenMP>(0,N);
+
+  Kokkos::parallel_reduce( "yx", range_policy, KOKKOS_LAMBDA ( int j, double &update ) {
     update += y( j ) * x( j );
   }, result );
 
   Kokkos::fence();
 
+  printf("GTEST: Thread %d reports parallel_reduce finished.\n", omp_get_thread_num());
+  fflush(stdout);
+
   // Calculate time.
   double time = timer.seconds(); 
  
-  printf("It took %f seconds to perform the parallel_for, not including deep-copy\n", time);
+  printf("It took %f seconds to perform the parallel_reduce.\n", time);
   fflush(stdout);
   printf("The correct length of two all ones vectors multiplied together is N. N is %f.\n", correct);
   fflush(stdout);
@@ -273,12 +323,10 @@ TEST(TestResOpenMP, TestParallelReduce)
 
 }
 */
-
-
 /**********************************
 **********PARALLEL SCANS***********
 **********************************/
-
+/*
 // gTest if the ParallelScan test works with regular Kokkos.
 TEST(TestResOpenMP, TestRegularScan)
 {
@@ -381,6 +429,6 @@ TEST(TestResOpenMP, TestParallelScan)
   ASSERT_EQ(y(N-1), N);
 
 }
-
+*/
 //#endif //KR_ENABLE_RESILIENT_EXECUTION_SPACE
 //#endif //KR_ENABLE_OPENMP

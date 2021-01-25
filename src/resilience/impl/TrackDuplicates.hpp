@@ -138,6 +138,10 @@ class CombineFunctor {
         k = k < 2 ? k + 1 : 0;
       }
     }
+    //printf("All 3 executions return a different value at view position %i. Aborting.\n", i);
+    //fflush(stdout);
+    Kokkos::abort("All 3 executions return a different value.");
+    //Kokkos::Impl::Throw:rumtimeexeption look up
     // printf("no match found: %i\n", i);
   }
 };
