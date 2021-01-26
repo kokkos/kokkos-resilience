@@ -39,7 +39,7 @@ namespace KokkosResilience
   }
   
   VeloCMemoryBackend::VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm )
-    : m_mpi_comm( mpi_comm ), m_context( &ctx )
+    : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_last_id( 0 )
   {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, vconf.c_str() ) );
@@ -63,8 +63,8 @@ namespace KokkosResilience
 
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( label );
-        if ( pos != m_view_registry.end())
+        auto pos = m_registry.find( label );
+        if ( pos != m_registry.end())
         {
           view->deep_copy_to_buffer( pos->second.buff.data() );
           assert( pos->second.buff.size() == view->data_type_size() * view->span() );
@@ -124,8 +124,8 @@ namespace KokkosResilience
       auto vl = get_canonical_label( view->label() );
       if ( !view->span_is_contiguous() || !view->is_hostspace() )
       {
-        auto pos = m_view_registry.find( vl );
-        if ( pos != m_view_registry.end() )
+        auto pos = m_registry.find( vl );
+        if ( pos != m_registry.end() )
         {
           assert( pos->second.buff.size() == view->data_type_size() * view->span() );
           view->deep_copy_from_buffer( pos->second.buff.data() );
@@ -137,18 +137,12 @@ namespace KokkosResilience
   void
   VeloCMemoryBackend::reset()
   {
-    for ( auto &&vr : m_view_registry )
+    for ( auto &&vr : m_registry )
     {
       VELOC_Mem_unprotect( vr.second.id );
     }
 
-    for ( auto &&cr : m_cref_registry )
-    {
-      VELOC_Mem_unprotect( cr.second.id );
-    }
-
-    m_view_registry.clear();
-    m_cref_registry.clear();
+    m_registry.clear();
 
     m_latest_version.clear();
     m_alias_map.clear();
@@ -158,36 +152,43 @@ namespace KokkosResilience
   VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
                                        const std::vector< Detail::CrefImpl > &crefs  )
   {
+    // Clear protected bits
+    for ( auto &&p : m_registry )
+    {
+      p.second.protect = false;
+    }
+
     for ( auto &&view : views )
     {
       if ( !view->data() )  // uninitialized view
         continue;
 
       std::string label = get_canonical_label( view->label() );
+      auto iter = m_registry.find( label );
 
-      // If we haven't already register, register with VeloC
-      if ( m_view_registry.find( label ) == m_view_registry.end() )
+      // Attempt to find the view in our registry
+      if ( iter == m_registry.end() )
       {
-        int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size() );
-        auto type_size = view->data_type_size();
-        auto span = view->span();
-        
-        std::vector< unsigned char > buff;
+        // Calculate id using hash of view label
+        int id = ++m_last_id; // Prefix since we will consider id 0 to be no-id
+        iter = m_registry.emplace( std::piecewise_construct,
+                                        std::forward_as_tuple( label ),
+                                        std::forward_as_tuple( id ) ).first;
+        iter->second.element_size = view->data_type_size();
+        iter->second.size = view->span();
 
-        std::cout << "Protecting memory id " << id << " with label " << label << '\n';
         if ( !view->is_hostspace() || !view->span_is_contiguous() )
         {
           // Can't reference memory directly, allocate memory for a watch buffer
-          buff.assign( span * type_size, 0x00 );
-          VELOC_SAFE_CALL( VELOC_Mem_protect( id, buff.data(), span, type_size ) );
+          iter->second.buff.assign( iter->second.size * iter->second.element_size, 0x00 );
+          iter->second.ptr = iter->second.buff.data();
         } else {
-          VELOC_SAFE_CALL( VELOC_Mem_protect( id, view->data(), span, type_size ) );
+          iter->second.ptr = view->data();
         }
-  
-        m_view_registry.emplace( std::piecewise_construct,
-          std::forward_as_tuple( label ),
-          std::forward_as_tuple( id, std::move( buff ) ) );
       }
+
+      // iter now pointing to our entry
+      iter->second.protect = true;
     }
     
     // Register crefs
@@ -196,15 +197,40 @@ namespace KokkosResilience
       if ( !cref.ptr )  // uninitialized view
         continue;
       // If we haven't already register, register with VeloC
-      if ( m_cref_registry.find( cref.name ) == m_cref_registry.end())
+      auto iter = m_registry.find( cref.name );
+      if ( iter == m_registry.end())
       {
-        int id = static_cast< int >( m_view_registry.size() + m_cref_registry.size());
-  
-        VELOC_SAFE_CALL( VELOC_Mem_protect( id, cref.ptr, cref.num, cref.sz ) );
-        
-        m_cref_registry.emplace( std::piecewise_construct,
+        int id = ++m_last_id; // Prefix since we will consider id 0 to be no-id
+        iter = m_registry.emplace( std::piecewise_construct,
             std::forward_as_tuple( cref.name ),
-            std::forward_as_tuple( id ) );
+            std::forward_as_tuple( id ) ).first;
+
+        iter->second.ptr = cref.ptr;
+        iter->second.size = cref.num;
+        iter->second.element_size = cref.sz;
+      }
+
+      iter->second.protect = true;
+    }
+
+    // Register everything protected, unregister anything unprotected
+    for ( auto &&p : m_registry )
+    {
+      if ( p.second.protect )
+      {
+        if ( !p.second.registered )
+        {
+          std::cout << "Protecting memory id " << p.second.id << " with label " << p.first << '\n';
+          VELOC_SAFE_CALL( VELOC_Mem_protect( p.second.id, p.second.ptr, p.second.size, p.second.element_size ) );
+          p.second.registered = true;
+        }
+      } else { //deregister
+        if ( p.second.registered )
+        {
+          std::cout << "Unprotecting memory id " << p.second.id << " with label " << p.first << '\n';
+          VELOC_Mem_unprotect( p.second.id );
+          p.second.registered = false;
+        }
       }
     }
   }
