@@ -48,12 +48,13 @@ namespace KokkosResilience
           : id( mid )
       {}
 
-      explicit MemProtectBlock( int mid, std::vector< unsigned char > &&mbuff )
-          : id( mid ), buff( std::move( mbuff ) )
-      {}
-
       int id;
       std::vector< unsigned char > buff;
+      void *ptr = nullptr;
+      std::size_t size = 0;
+      std::size_t element_size = 0;
+      bool protect = false;
+      bool registered = false;
     };
   }
 }
@@ -110,14 +111,14 @@ namespace KokkosResilience
 
     std::string get_canonical_label( const std::string &_label ) const noexcept;
     
-    std::unordered_map< std::string, Detail::MemProtectBlock > m_cref_registry;
-    std::unordered_map< std::string, Detail::MemProtectBlock > m_view_registry;
+    std::unordered_map< std::string, Detail::MemProtectBlock > m_registry;
     
     MPI_Comm m_mpi_comm;
     context_type *m_context;
     
     mutable std::unordered_map< std::string, int > m_latest_version;
     std::unordered_map< std::string, std::string > m_alias_map;
+    int m_last_id;
   };
   
   class VeloCFileBackend
