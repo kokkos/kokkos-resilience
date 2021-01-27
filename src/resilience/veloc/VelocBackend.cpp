@@ -38,7 +38,7 @@ namespace KokkosResilience
     }
   }
   
-  VeloCMemoryBackend::VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm )
+  VeloCMemoryBackend::VeloCMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm )
     : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_last_id( 0 )
   {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
@@ -253,7 +253,19 @@ namespace KokkosResilience
       return _label;
     }
   }
-  
+
+  void
+  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views )
+  {
+    // No-op, don't do anything
+  }
+
+  void
+  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views)
+  {
+    // No-op, don't do anything
+  }
+
   VeloCFileBackend::VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm,
                                       const std::string &veloc_config )
     : m_mpi_comm( mpi_comm ), m_context( &ctx )

@@ -14,7 +14,8 @@ make_context( MPI_Comm comm, const std::string &config )
   using fun_type = std::function< std::unique_ptr< ContextBase >() >;
   static std::unordered_map< std::string, fun_type > backends = {
 #ifdef KR_ENABLE_VELOC
-      { "veloc", [&](){ return std::make_unique< MPIContext< VeloCMemoryBackend > >( comm, cfg ); } }
+      { "veloc", [&](){ return std::make_unique< MPIContext< VeloCMemoryBackend > >( comm, cfg ); } },
+      { "veloc-noop", [&](){ return std::make_unique< MPIContext< VeloCRegisterOnlyBackend > >( comm, cfg ); } }
 #endif
   };
 
