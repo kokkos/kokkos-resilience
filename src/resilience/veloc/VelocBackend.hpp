@@ -120,6 +120,26 @@ namespace KokkosResilience
     std::unordered_map< std::string, std::string > m_alias_map;
     int m_last_id;
   };
+
+  class VeloCRegisterOnlyBackend : public VeloCMemoryBackend
+  {
+   public:
+
+    using VeloCMemoryBackend::VeloCMemoryBackend;
+    ~VeloCRegisterOnlyBackend() = default;
+
+    VeloCRegisterOnlyBackend( const VeloCRegisterOnlyBackend & ) = delete;
+    VeloCRegisterOnlyBackend( VeloCRegisterOnlyBackend && ) noexcept = default;
+
+    VeloCRegisterOnlyBackend &operator=( const VeloCRegisterOnlyBackend & ) = delete;
+    VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
+
+    void checkpoint( const std::string &label, int version,
+                     const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+
+    void restart( const std::string &label, int version,
+                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
+  };
   
   class VeloCFileBackend
   {
@@ -130,7 +150,7 @@ namespace KokkosResilience
   
     void checkpoint( const std::string &label, int version,
                      const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views );
-  
+
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
   
