@@ -13,6 +13,8 @@
 
 namespace KokkosResilience
 {
+  class ContextBase;
+
   template< typename Backend >
   class MPIContext;
 
@@ -78,10 +80,8 @@ namespace KokkosResilience
   class VeloCMemoryBackend
   {
   public:
-    
-    using context_type = MPIContext< VeloCMemoryBackend >;
-    
-    VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm );
+
+    VeloCMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm );
     ~VeloCMemoryBackend();
 
     VeloCMemoryBackend( const VeloCMemoryBackend & ) = delete;
@@ -114,7 +114,7 @@ namespace KokkosResilience
     std::unordered_map< std::string, Detail::MemProtectBlock > m_registry;
     
     MPI_Comm m_mpi_comm;
-    context_type *m_context;
+    ContextBase *m_context;
     
     mutable std::unordered_map< std::string, int > m_latest_version;
     std::unordered_map< std::string, std::string > m_alias_map;

@@ -38,7 +38,7 @@ namespace KokkosResilience
     }
   }
   
-  VeloCMemoryBackend::VeloCMemoryBackend( context_type &ctx, MPI_Comm mpi_comm )
+  VeloCMemoryBackend::VeloCMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm )
     : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_last_id( 0 )
   {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
