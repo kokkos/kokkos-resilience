@@ -360,7 +360,7 @@ class SpecDuplicateTracker<Type, Kokkos::OpenMP> : public DuplicateTracker {
     inline SpecDuplicateTracker(const SpecDuplicateTracker& rhs)
         : DuplicateTracker(rhs), m_cf(rhs.m_cf) {}
 
-     virtual void combine_dups();
+     virtual bool combine_dups();
      virtual void set_func_ptr();
 };
 
@@ -368,11 +368,14 @@ template <class Type>
 void SpecDuplicateTracker<Type, Kokkos::OpenMP>::set_func_ptr() {}
 
 template <class Type>
-void SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
+bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
+  
+  bool success;
+  bool trigger = 1;
 
   if (dup_cnt != 3) {
-    printf("must have 3 duplicates !!!\n");
-    return;
+    printf("must have 3 duplicates !!!\n"); 
+    return 0;
   }
   int N = data_len / sizeof(rd_type);
   m_cf.load_ptrs( static_cast<rd_type*>(original_data)
@@ -383,8 +386,12 @@ void SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
   comb_type local_cf(m_cf);
   
   Kokkos::parallel_for( N, KOKKOS_LAMBDA(int i) {
-    local_cf.exec(i);
+    success = local_cf.exec(i);
+    if (!success) trigger = 0;
   });
+
+  return trigger;
+ 
 }
 
 } //namespace KokkosResilience

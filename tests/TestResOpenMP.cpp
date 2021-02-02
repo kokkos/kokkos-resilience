@@ -3,18 +3,18 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Core_fwd.hpp>
 #include <resilience/Resilience.hpp>
-#include <resilience/OpenMP/ResHostSpace.hpp>
-#include <resilience/OpenMP/ResOpenMP.hpp>
+//#include <resilience/OpenMP/ResHostSpace.hpp>
+//#include <resilience/OpenMP/ResOpenMP.hpp>
+
+#include <ctime>
 
 // included for thread prints, delete later
 #include <omp.h>
 
 //#ifdef KR_ENABLE_OPENMP // TODO: RESILIENCE HEADER MODIFY
 //#ifdef KR_ENABLE_RESILIENT_EXECUTION_SPACE // TODO: REIMPLEMENT
-//!!!! And possibly other macros, check
 
 #define N 1000000
-#define repeats 5
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -54,7 +54,7 @@ TEST(TestResOpenMP, TestSpaces)
 **********************************/
 
 // gTest runs parallel_for with non-resilient Kokkos. Should never fail.
-TEST(TestResOpenMP, TestRegularFor)
+TEST(TestResOpenMP, TestKokkosFor)
 { 
   using range_policy = Kokkos::RangePolicy<Kokkos::OpenMP>;
 
@@ -86,8 +86,7 @@ TEST(TestResOpenMP, TestRegularFor)
 }
  
 // gTest runs parallel_for with resilient Kokkos. Expect same answer as last test.
-
-TEST(TestResOpenMP, TestParallelFor)
+TEST(TestResOpenMP, TestResilientFor)
 {
 
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
@@ -147,7 +146,7 @@ TEST(TestResOpenMP, TestParallelFor)
 }
 
 // gTest attempts to trigger all 3 executions generating different data. Should repeat user-specified number of times and then abort.
-TEST(TestResOpenMP, TestParallelForInsertError)
+TEST(TestResOpenMP, TestResilientForInsertError)
 {
 
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
@@ -160,7 +159,6 @@ TEST(TestResOpenMP, TestParallelForInsertError)
   ViewVectorType y( "y", N );
   ViewVectorType x( "x", N );
   
-  Kokkos::Timer timer;
   counter(0) = 0;
   
   printf("GTEST: Thread %d reports counter successfully initialized to %d.\n", omp_get_thread_num(), counter(0));
@@ -169,20 +167,14 @@ TEST(TestResOpenMP, TestParallelForInsertError)
 
   //TODO: TEST EXPECTED FAIL
   //Set vectors to random seed
+  ASSERT_DEATH(
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
-    y ( i ) = i;
+    srand(time(NULL));
+    y(i) = rand();
     Kokkos::atomic_increment(&counter(0)); 
   });
-
-  Kokkos::fence(); 
-
-  printf("GTEST: Thread %d reports test parallel_for completed. No determination on accuracy yet.\n", omp_get_thread_num());
-  fflush(stdout);
-
-  // Calculate time.
-  double time = timer.seconds();
-
-  Kokkos::deep_copy(x, y);
+  
+  , "GTEST MESSAGE: Kokkos For Failed");
   
   printf("\n\n\n");
   fflush(stdout);
@@ -192,9 +184,9 @@ TEST(TestResOpenMP, TestParallelForInsertError)
 /**********************************
 ********PARALLEL REDUCES***********
 **********************************/
-/*
-// gTest if the ParallelReduce test works with regular Kokkos.
-TEST(TestResOpenMP, TestRegularReduce)
+
+// gTest runs parallel_reduce with non-resilient Kokkos. Should never fail.
+TEST(TestResOpenMP, TestKokkosReduce)
 {
  
   using range_policy = Kokkos::RangePolicy<Kokkos::OpenMP>;
@@ -225,7 +217,6 @@ TEST(TestResOpenMP, TestRegularReduce)
   printf("GTEST: Thread %d reports vector y deep-copied to x.\n", omp_get_thread_num());
   fflush(stdout);
 
-  // Timer
   Kokkos::Timer timer;
 
   // Perform vector dot product y*x using parallel_reduce
@@ -253,16 +244,15 @@ TEST(TestResOpenMP, TestRegularReduce)
 
   ASSERT_EQ(result, correct);
 
-}*/
-/*
-// gTest if the Resilient parallel_reduce works.
+}
+
+// gTest runs parallel_reduce with resilient Kokkos. Expect same answer as last test.
 TEST(TestResOpenMP, TestParallelReduce)
 {
  
-  //using range_policy = Kokkos::RangePolicy<ExecSpace>;
+  using range_policy = Kokkos::RangePolicy<ExecSpace>;
   //Kokkos::RangePolicy<KokkosResilience::ResOpenMP>
   
-
   // Allocate y, x vectors.
   typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace> ViewVectorType;
   ViewVectorType y( "y", N );
@@ -274,7 +264,7 @@ TEST(TestResOpenMP, TestParallelReduce)
   double result = 0;
   double correct = N;
 
-  // Initialize y vector on host using regular for (isolate parallel_reduce)
+  // Initialize y vector on host using regular for
   for ( int i = 0; i < N; i++ ) {
     y( i ) = 1;
   }
@@ -291,13 +281,12 @@ TEST(TestResOpenMP, TestParallelReduce)
   printf("GTEST: Thread %d reports y deep-copied to x.\n", omp_get_thread_num());
   fflush(stdout);
 
-  // Timer
   Kokkos::Timer timer;
 
   // Perform vector dot product y*x using parallel_reduce
-  const Kokkos::RangePolicy<KokkosResilience::ResOpenMP> range_policy = Kokkos::RangePolicy<KokkosResilience::ResOpenMP>(0,N);
+  //Kokkos::RangePolicy<KokkosResilience::ResOpenMP> range_policy = Kokkos::RangePolicy<KokkosResilience::ResOpenMP>(0,N);
 
-  Kokkos::parallel_reduce( "yx", range_policy, KOKKOS_LAMBDA ( int j, double &update ) {
+  Kokkos::parallel_reduce( "yx", range_policy(0,N), KOKKOS_LAMBDA ( int j, double &update ) {
     update += y( j ) * x( j );
   }, result );
 
@@ -306,7 +295,6 @@ TEST(TestResOpenMP, TestParallelReduce)
   printf("GTEST: Thread %d reports parallel_reduce finished.\n", omp_get_thread_num());
   fflush(stdout);
 
-  // Calculate time.
   double time = timer.seconds(); 
  
   printf("It took %f seconds to perform the parallel_reduce.\n", time);
@@ -322,7 +310,7 @@ TEST(TestResOpenMP, TestParallelReduce)
   ASSERT_EQ(result, correct);
 
 }
-*/
+
 /**********************************
 **********PARALLEL SCANS***********
 **********************************/

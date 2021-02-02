@@ -123,11 +123,6 @@ void ResOpenMP::print_configuration( std::ostream & s , const bool )
   }
 }
 
-void ResOpenMP::fence()
-{
-  OpenMP::fence();
-}
-
 const char* ResOpenMP::name() { return "ResOpenMP"; }
 
 } // namespace KokkosResilience

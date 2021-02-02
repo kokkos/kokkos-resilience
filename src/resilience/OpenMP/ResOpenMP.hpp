@@ -110,7 +110,7 @@ class ResOpenMP : public Kokkos::OpenMP {
     // This is a no-op on OpenMP
     static void impl_static_fence(OpenMP const& = OpenMP()) noexcept;
 
-    void fence();
+    //void fence();
 
     // Does the given instance return immediately after launching
     // a parallel algorithm

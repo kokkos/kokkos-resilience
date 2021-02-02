@@ -81,7 +81,7 @@ class DuplicateTracker {
     }
   }
 
-  inline virtual void combine_dups() {}
+  inline virtual bool combine_dups() {}
   inline virtual void set_func_ptr() {}
 };
 
@@ -120,7 +120,7 @@ class CombineFunctor {
 
   KOKKOS_INLINE_FUNCTION
   // void operator ()(const int i) const {
-  void exec(const int i) const {
+  bool exec(const int i) const {
     //printf("combine dups: %d\n", i);
     for (int j = 0; j < 3; j++) {
       //printf("iterating outer: %d - %d \n", i, j);
@@ -133,16 +133,14 @@ class CombineFunctor {
                        orig_view[i]))  // just need 2 that are the same
         {
          // printf("match found: %d - %d\n", i, j);
-          return;
+          return 1;
         }
         k = k < 2 ? k + 1 : 0;
       }
     }
-    //printf("All 3 executions return a different value at view position %i. Aborting.\n", i);
-    //fflush(stdout);
-    Kokkos::abort("All 3 executions return a different value.");
-    //Kokkos::Impl::Throw:rumtimeexeption look up
-    // printf("no match found: %i\n", i);
+   //Kokkos::Impl::Throw:rumtimeexeption look up
+    printf("no match found: %i\n", i);
+    return 0;
   }
 };
 

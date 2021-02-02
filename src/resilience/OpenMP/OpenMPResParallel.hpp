@@ -46,7 +46,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_OPENMP)// && defined (KR_LIZ_TODO) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#if defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
 
 #include <omp.h>
 #include <iostream>
@@ -62,18 +62,35 @@
 
 /*--------------------------------------------------------------------------*/
 
+// Number of repeats before fail-out if all duplicate views in resilience
+// return a different value.
+//int repeats = 5;
+
+/*--------------------------------------------------------------------------*/
+
 namespace KokkosResilience {
 
   // Combine the resilient duplicates
-  static void combine_res_duplicates() {
+  bool combine_res_duplicates() {
     printf("Entered combine_res_duplicates\n");
     fflush(stdout);
-    std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it=ResHostSpace::duplicate_map.begin();
+ /*   
+ *  std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it=ResHostSpace::duplicate_map.begin();
     while ( it != ResHostSpace::duplicate_map.end() ) {
       KokkosResilience::DuplicateTracker * dt = it->second;
       dt->combine_dups();
       it++;
+   }
+*/
+    
+
+    bool success = true;
+    for(auto& kv : ResHostSpace::duplicate_map) {
+      success = kv.second->combine_dups();
+      if(!success) break;
     }
+    return success;
+
   }
 
   // Create a duplicate. Data record duplicated, original copied to the duplicate
@@ -82,7 +99,7 @@ namespace KokkosResilience {
   inline void duplicate_shared ( Kokkos::Experimental::ViewHolderBase &dst
                                , Kokkos::Experimental::ViewHolderBase &src ) {
     
-    printf("This is Thread %d in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.\n", omp_get_thread_num());
+    printf("Thread %d in resilient Kokkos. Entered duplicate_shared in ResOMPParallel.\n", omp_get_thread_num());
     fflush(stdout);
     // Assign new record to view map
     dst.update_view (src.rec_ptr() );
@@ -183,8 +200,15 @@ class ParallelFor< FunctorType
  public:
   inline void execute() const {
     
-    printf("Thread %d in resilient Kokkos range-policy ParallelFor, before parallel pragma.\n", omp_get_thread_num());
+    int repeats = 5;
+    bool success = 0;
+    
+    while(success==0 && repeats > 0){
+    printf("Thread %d in resilient Kokkos rp-for, before parallel pragma.\n", omp_get_thread_num());
     fflush(stdout);
+    printf("This is execution number %d.\n",repeats);    
+    fflush(stdout);
+
 
     static constexpr bool is_dynamic = std::is_same<typename Policy::schedule_type::type,
                                 Kokkos::Dynamic>::value;
@@ -238,7 +262,15 @@ class ParallelFor< FunctorType
     Kokkos::Experimental::ViewHooks::clear("ResOpenMPDup", vhc);
     Kokkos::Impl::shared_allocation_tracking_disable(); 
        
-    KokkosResilience::combine_res_duplicates();
+    success = KokkosResilience::combine_res_duplicates();
+    repeats--;
+
+}// while (!success & repeats left)
+
+if(success==0 && repeats == 0){
+// TODO: Improve error message to give for label
+  Kokkos::abort("Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
+}
 
   } // execute
 
@@ -587,14 +619,50 @@ private:
     }
   }
 
+
+///FEED IN REDUCER, SEE ABOUT UPDATE
+  inline void
+  exec_work (const FunctorType& functor,
+             const ReducerType& reducer,
+             surrogate_policy& lPolicy,
+             bool is_dynamic) const {
+    
+    printf("Thread %d in resilient Kokkos rp-reduce, executing work.\n", omp_get_thread_num());
+    fflush(stdout);
+
+    HostThreadTeamData& data = *(m_instance->get_thread_data());
+
+    data.set_work_partition(lPolicy.end() - lPolicy.begin(),
+                              lPolicy.chunk_size());
+
+    if (is_dynamic) {
+    // Make sure work partition is set before stealing
+      if (data.pool_rendezvous()) data.pool_rendezvous_release();
+    }
+    
+    reference_type update = ValueInit::init(ReducerConditional::select(functor, reducer),
+                                            data.pool_reduce_local());
+    
+    std::pair<int64_t, int64_t> range(0, 0);
+    
+    do {
+      range = is_dynamic ? data.get_work_stealing_chunk()
+                         : data.get_work_partition();
+      ParallelReduce::template exec_range<WorkTag>(
+                      functor, range.first + lPolicy.begin(),
+                      range.second + lPolicy.begin(), update);
+     
+    } while (is_dynamic && 0 <= range.first);
+  } 
+
 public:
   inline void execute() const {
     if (m_policy.end() <= m_policy.begin()) {
       if (m_result_ptr) {
         ValueInit::init(ReducerConditional::select(m_functor, m_reducer),
                         m_result_ptr);
-        Kokkos::Impl::FunctorFinal<ReducerTypeFwd, WorkTagFwd>::final(
-            ReducerConditional::select(m_functor, m_reducer), m_result_ptr);
+            Kokkos::Impl::FunctorFinal<ReducerTypeFwd, WorkTagFwd>::final(
+      	            ReducerConditional::select(m_functor, m_reducer), m_result_ptr);
       }
       return;
     }
@@ -602,10 +670,24 @@ public:
     printf("This is Thread %d in resilient Kokkos range-policy ParallelReduce, before parallel pragma.\n", omp_get_thread_num());
     fflush(stdout);
 
-    enum {
-      is_dynamic = std::is_same<typename Policy::schedule_type::type,
-                                Kokkos::Dynamic>::value
-    };
+    static constexpr bool is_dynamic = std::is_same<typename Policy::schedule_type::type,
+                                Kokkos::Dynamic>::value;
+
+    surrogate_policy lPolicy[3];
+    for (int i = 0; i < 3; i++) {
+      lPolicy[i] = surrogate_policy(m_policy.begin(), m_policy.end());
+    }
+
+    // ViewHooks captures non-constant views and passes to duplicate_shared
+    Kokkos::Impl::shared_allocation_tracking_enable();
+
+    auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_copy_caller(
+                     []( Kokkos::Experimental::ViewHolderBase &dst
+                       , Kokkos::Experimental::ViewHolderBase &src){
+                           KokkosResilience::duplicate_shared(dst, src);
+      });
+
+    Kokkos::Experimental::ViewHooks::set("ResOpenMPDup", vhc);
 
     OpenMPExec::verify_is_master("Kokkos::OpenMP parallel_reduce");
 
@@ -618,33 +700,27 @@ public:
     );
 
     const int pool_size = OpenMP::impl_thread_pool_size();
+
 #pragma omp parallel num_threads(pool_size)
     {
-      HostThreadTeamData& data = *(m_instance->get_thread_data());
+      
+      if(omp_get_thread_num() < OpenMP::impl_thread_pool_size()/3){
+ 
+        exec_work(m_functor, m_reducer, lPolicy[0], is_dynamic);   
+       }
 
-      data.set_work_partition(m_policy.end() - m_policy.begin(),
-                              m_policy.chunk_size());
+       if(omp_get_thread_num() >= OpenMP::impl_thread_pool_size()/3 &&
+          omp_get_thread_num() < (2*OpenMP::impl_thread_pool_size())/3){
 
-      if (is_dynamic) {
-        // Make sure work partition is set before stealing
-        if (data.pool_rendezvous()) data.pool_rendezvous_release();
-      }
+         exec_work(m_functor, m_reducer, lPolicy[1], is_dynamic);
+       }
 
-      reference_type update =
-          ValueInit::init(ReducerConditional::select(m_functor, m_reducer),
-                          data.pool_reduce_local());
+       if(omp_get_thread_num() < OpenMP::impl_thread_pool_size() &&
+          omp_get_thread_num() >= (2*OpenMP::impl_thread_pool_size())/3){
 
-      std::pair<int64_t, int64_t> range(0, 0);
+         exec_work(m_functor, m_reducer, lPolicy[2], is_dynamic);
+       }
 
-      do {
-        range = is_dynamic ? data.get_work_stealing_chunk()
-                           : data.get_work_partition();
-
-        ParallelReduce::template exec_range<WorkTag>(
-            m_functor, range.first + m_policy.begin(),
-            range.second + m_policy.begin(), update);
-
-      } while (is_dynamic && 0 <= range.first);
     } //pragma omp
     
     Kokkos::fence();
@@ -655,6 +731,8 @@ public:
        
     KokkosResilience::combine_res_duplicates();
     */
+   
+
     // Reduction:
     const pointer_type ptr =
         pointer_type(m_instance->get_thread_data(0)->pool_reduce_local());
@@ -675,6 +753,12 @@ public:
         m_result_ptr[j] = ptr[j];
       }
     }
+
+    Kokkos::Experimental::ViewHooks::clear("ResOpenMPDup", vhc);
+    Kokkos::Impl::shared_allocation_tracking_disable(); 
+       
+    KokkosResilience::combine_res_duplicates();
+
   } // execute
 
   //----------------------------------------
