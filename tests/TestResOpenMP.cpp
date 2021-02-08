@@ -7,6 +7,9 @@
 //#include <resilience/OpenMP/ResOpenMP.hpp>
 
 #include <ctime>
+#include <random>
+#include <time.h>
+#include <thread>
 
 // included for thread prints, delete later
 #include <omp.h>
@@ -145,6 +148,20 @@ TEST(TestResOpenMP, TestResilientFor)
   fflush(stdout);
 }
 
+// Thread-safe random number generator
+namespace std {
+
+int intRand(const int & min, const int & max) {
+   
+  static thread_local mt19937* generator = nullptr;
+  if (!generator) generator = new mt19937(clock() + this_thread::get_id().hash());
+  uniform_int_distribution<int> distribution(min, max);
+  return distribution(*generator);
+             
+  }
+
+}
+
 // gTest attempts to trigger all 3 executions generating different data. Should repeat user-specified number of times and then abort.
 TEST(TestResOpenMP, TestResilientForInsertError)
 {
@@ -167,15 +184,15 @@ TEST(TestResOpenMP, TestResilientForInsertError)
 
   //TODO: TEST EXPECTED FAIL
   //Set vectors to random seed
-  ASSERT_DEATH(
+  //ASSERT_DEATH(
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
-    srand(time(NULL));
-    y(i) = rand();
+    y(i) = std::intRand (1, 1000000);
     Kokkos::atomic_increment(&counter(0)); 
   });
   
-  , "GTEST MESSAGE: Kokkos For Failed");
+  //, "GTEST MESSAGE: Kokkos For Failed");
   
+  printf("Let's see what happens after a Kokkos Abort\n");
   printf("\n\n\n");
   fflush(stdout);
 }

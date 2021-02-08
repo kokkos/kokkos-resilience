@@ -68,10 +68,11 @@
 
 /*--------------------------------------------------------------------------*/
 
+
 namespace KokkosResilience {
 
   // Combine the resilient duplicates
-  bool combine_res_duplicates() {
+  inline bool combine_res_duplicates() {
     printf("Entered combine_res_duplicates\n");
     fflush(stdout);
  /*   
