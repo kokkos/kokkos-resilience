@@ -20,6 +20,13 @@ find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
+find_package(GSL REQUIRED)
+
+
+message("GSL root dir: ${GSL_ROOT_DIR}")
+
+target_link_libraries(resilience PUBLIC GSL::gsl)
+
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
 

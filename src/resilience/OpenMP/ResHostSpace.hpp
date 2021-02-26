@@ -375,6 +375,7 @@ bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
 
   if (dup_cnt != 3) {
     printf("must have 3 duplicates !!!\n"); 
+    fflush(stdout);
     return 0;
   }
   int N = data_len / sizeof(rd_type);
@@ -384,7 +385,8 @@ bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
                 , static_cast<rd_type*>(dup_list[2]), N );
 
   comb_type local_cf(m_cf);
-  
+  printf("This function was loaded: combine_dups");
+  fflush(stdout);
   Kokkos::parallel_for( N, KOKKOS_LAMBDA(int i) {
     success = local_cf.exec(i);
     if (!success) trigger = 0;

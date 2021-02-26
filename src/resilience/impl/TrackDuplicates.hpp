@@ -81,8 +81,8 @@ class DuplicateTracker {
     }
   }
 
-  inline virtual bool combine_dups() {}
-  inline virtual void set_func_ptr() {}
+  virtual bool combine_dups()=0;
+  virtual void set_func_ptr() {}
 };
 
 template <class DType, class ExecSpace>
@@ -132,13 +132,14 @@ class CombineFunctor {
         if (cf.compare(dup_view[k][i],
                        orig_view[i]))  // just need 2 that are the same
         {
-         // printf("match found: %d - %d\n", i, j);
+          printf("match found: %d - %d\n", i, j);
           return 1;
         }
         k = k < 2 ? k + 1 : 0;
       }
     }
    //Kokkos::Impl::Throw:rumtimeexeption look up
+    Kokkos::abort("No match found");
     printf("no match found: %i\n", i);
     return 0;
   }

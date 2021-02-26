@@ -75,21 +75,35 @@ namespace KokkosResilience {
   inline bool combine_res_duplicates() {
     printf("Entered combine_res_duplicates\n");
     fflush(stdout);
- /*   
- *  std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it=ResHostSpace::duplicate_map.begin();
-    while ( it != ResHostSpace::duplicate_map.end() ) {
-      KokkosResilience::DuplicateTracker * dt = it->second;
-      dt->combine_dups();
-      it++;
-   }
-*/
-    
+  
+
+//*
 
     bool success = true;
+ 
+    std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it=ResHostSpace::duplicate_map.begin();
+    while ( it != ResHostSpace::duplicate_map.end() ) {
+      
+      printf("This is the old combine_res_dupes while loop\n");
+      fflush(stdout);
+      
+      KokkosResilience::DuplicateTracker * dt = it->second;
+      success = dt->combine_dups();
+      if(!success) break;
+      it++;
+    }
+//*/
+    
+/*
+    bool success = true;
     for(auto& kv : ResHostSpace::duplicate_map) {
+      printf("Something in the duplicate map \n");
       success = kv.second->combine_dups();
       if(!success) break;
     }
+  */  
+    if (!success) {Kokkos::abort("Aborted in combine_res_dups");} 
+    //Kokkos::abort("Aborted in comine dups: force");
     return success;
 
   }
@@ -127,14 +141,23 @@ class ParallelFor< FunctorType
  private:
   using Policy    = Kokkos::RangePolicy<Traits...>;
   using WorkTag   = typename Policy::work_tag;
-  using WorkRange = typename Policy::WorkRange;
+  //using WorkRange = typename Policy::WorkRange;
   using Member    = typename Policy::member_type;
+  
+  // CLOSURE OPTION
+  using LaunchBounds = typename Policy::launch_bounds;
 
   OpenMPExec* m_instance;
-  const FunctorType m_functor;
+  const FunctorType &  m_functor;
   const Policy m_policy;
 
-  typedef Kokkos::RangePolicy<Kokkos::OpenMP, WorkTag, WorkRange> surrogate_policy;
+
+  // MORE CLOSURE
+  ParallelFor() = delete;
+  ParallelFor & operator = ( const ParallelFor & ) = delete ;
+
+//COMMENTED CLSURE
+  //typedef Kokkos::RangePolicy<Kokkos::OpenMP, WorkTag, WorkRange> surrogate_policy;
    
   template <class TagType>
   inline static
@@ -167,7 +190,7 @@ class ParallelFor< FunctorType
       functor(t, iwork);
     }
   }
-
+/*
   inline void
   exec_work (const FunctorType& functor, 
 	     surrogate_policy& lPolicy,
@@ -197,8 +220,11 @@ class ParallelFor< FunctorType
     
     } while (dynamic_value && 0 <= range.first);
   }
-
+*/
  public:
+// CLOSURE ADDITION
+typedef FunctorType functor_type ;
+
   inline void execute() const {
     
     int repeats = 5;
@@ -214,21 +240,36 @@ class ParallelFor< FunctorType
     static constexpr bool is_dynamic = std::is_same<typename Policy::schedule_type::type,
                                 Kokkos::Dynamic>::value;
 
+//THIS LINE FROM CLOSURE ONLY, MOVE IF NOT
+    typedef Kokkos::RangePolicy<Kokkos::OpenMP, WorkTag, LaunchBounds> surrogate_policy;
+
     surrogate_policy lPolicy[3];
     for (int i = 0; i < 3; i++) {
       lPolicy[i] = surrogate_policy(m_policy.begin(), m_policy.end());      
     }
    
     // ViewHooks captures non-constant views and passes to duplicate_shared
+    
+    // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
     Kokkos::Impl::shared_allocation_tracking_enable();
 
     auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_copy_caller(
-                 []( Kokkos::Experimental::ViewHolderBase &dst
+                 [=]( Kokkos::Experimental::ViewHolderBase &dst
                    , Kokkos::Experimental::ViewHolderBase &src){
                        KokkosResilience::duplicate_shared(dst, src);
                });
 
     Kokkos::Experimental::ViewHooks::set("ResOpenMPDup", vhc);
+
+    // CLOSURES BACK, TESTING FOR VIEWHOOKS
+    Impl::ParallelFor< FunctorType, surrogate_policy, Kokkos::OpenMP > closureI( m_functor, lPolicy[0] );
+    Impl::ParallelFor< FunctorType, surrogate_policy, Kokkos::OpenMP > closureII( m_functor, lPolicy[1] );
+    Impl::ParallelFor< FunctorType, surrogate_policy, Kokkos::OpenMP > closureIII( m_functor, lPolicy[2] );
+ 
+    // THIS IS BACK UP
+    // Clear the ViewHooks and toggle the shared allocation tracking off again
+    //Kokkos::Experimental::ViewHooks::clear("ResOpenMPDup", vhc);
+    //Kokkos::Impl::shared_allocation_tracking_disable();         
     
     if (OpenMP::in_parallel()) {
       exec_range<WorkTag>(m_functor, m_policy.begin(), m_policy.end());
@@ -238,20 +279,20 @@ class ParallelFor< FunctorType
 #pragma omp parallel num_threads(OpenMP::impl_thread_pool_size())
       {
         if(omp_get_thread_num() < OpenMP::impl_thread_pool_size()/3){  
-      
-          exec_work(m_functor, lPolicy[0], is_dynamic);
+          closureI.execute(); 
+          //exec_work(m_functor, lPolicy[0], is_dynamic);
         }
 
         if(omp_get_thread_num() >= OpenMP::impl_thread_pool_size()/3 &&
            omp_get_thread_num() < (2*OpenMP::impl_thread_pool_size())/3){  
-
-          exec_work(m_functor, lPolicy[1], is_dynamic);
+	   closureII.execute();
+          //exec_work(m_functor, lPolicy[1], is_dynamic);
         }
 
         if(omp_get_thread_num() < OpenMP::impl_thread_pool_size() &&
            omp_get_thread_num() >= (2*OpenMP::impl_thread_pool_size())/3){  
-      
-          exec_work(m_functor, lPolicy[2], is_dynamic);
+           closureIII.execute();
+          //exec_work(m_functor, lPolicy[2], is_dynamic);
         }
   
       } // pragma omp
@@ -259,9 +300,11 @@ class ParallelFor< FunctorType
 
     Kokkos::fence();
     
+///*
     // Teardown
     Kokkos::Experimental::ViewHooks::clear("ResOpenMPDup", vhc);
     Kokkos::Impl::shared_allocation_tracking_disable(); 
+//*/
        
     success = KokkosResilience::combine_res_duplicates();
     repeats--;
@@ -269,7 +312,7 @@ class ParallelFor< FunctorType
 }// while (!success & repeats left)
 
 if(success==0 && repeats == 0){
-// TODO: Improve error message to give for label
+// TODO: Improve error message to give for label, change to throw_exception
   Kokkos::abort("Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
 }
 

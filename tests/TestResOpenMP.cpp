@@ -11,13 +11,18 @@
 #include <time.h>
 #include <thread>
 
-// included for thread prints, delete later
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_rng.h>
+#include <vector>
+#include <math.h>
+
+// included for thread prints
 #include <omp.h>
 
 //#ifdef KR_ENABLE_OPENMP // TODO: RESILIENCE HEADER MODIFY
 //#ifdef KR_ENABLE_RESILIENT_EXECUTION_SPACE // TODO: REIMPLEMENT
 
-#define N 1000000
+#define N 25
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -28,7 +33,6 @@ TEST(TestResOpenMP, TestSpaces)
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
   using ViewVectorType = Kokkos::View<double*, Kokkos::LayoutRight, MemSpace>;
-  //typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace> ViewVectorType;
 
   ViewVectorType y( "y", N);
   ViewVectorType x( "x", N);
@@ -148,21 +152,8 @@ TEST(TestResOpenMP, TestResilientFor)
   fflush(stdout);
 }
 
-// Thread-safe random number generator
-namespace std {
-
-int intRand(const int & min, const int & max) {
-   
-  static thread_local mt19937* generator = nullptr;
-  if (!generator) generator = new mt19937(clock() + this_thread::get_id().hash());
-  uniform_int_distribution<int> distribution(min, max);
-  return distribution(*generator);
-             
-  }
-
-}
-
-// gTest attempts to trigger all 3 executions generating different data. Should repeat user-specified number of times and then abort.
+// gTest attempts to trigger all 3 executions generating different data. 
+// Should repeat user-specified number of times (in context file) and then abort.
 TEST(TestResOpenMP, TestResilientForInsertError)
 {
 
@@ -181,18 +172,22 @@ TEST(TestResOpenMP, TestResilientForInsertError)
   printf("GTEST: Thread %d reports counter successfully initialized to %d.\n", omp_get_thread_num(), counter(0));
   fflush(stdout);
 
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
 
   //TODO: TEST EXPECTED FAIL
-  //Set vectors to random seed
-  //ASSERT_DEATH(
+  // Assigning each y(i) threadId, should cause a failure in the resilient execution.
+  EXPECT_DEATH(
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
-    y(i) = std::intRand (1, 1000000);
+    y(i) = omp_get_thread_num();
+    std::cout << y(i) << std::endl;
     Kokkos::atomic_increment(&counter(0)); 
   });
   
-  //, "GTEST MESSAGE: Kokkos For Failed");
+  , "GTEST EXPECT_DEATH: Kokkos parallel_for failed in threadsafe random loop");
   
   printf("Let's see what happens after a Kokkos Abort\n");
+  fflush(stdout); 
+ 
   printf("\n\n\n");
   fflush(stdout);
 }
