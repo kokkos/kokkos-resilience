@@ -60,12 +60,12 @@ class ViewHookCopyView<
                                  typename ViewType::memory_space>::value),
                   void>::type> {
  public:
-  static inline void copy_view(ViewType & view, const void * ptr) {
+  static inline void copy_view(ViewType & view, unsigned char * ptr) {
      auto src = KokkosResilience::make_unmanaged_host_view( view, ptr );
      Kokkos::deep_copy( view, src );
   }
 
-  static inline void copy_view(const void * ptr, ViewType & view) {
+  static inline void copy_view(unsigned char* ptr, ViewType & view) {
      auto src = KokkosResilience::make_unmanaged_host_view( view, ptr );
      Kokkos::deep_copy( src, view );
   }

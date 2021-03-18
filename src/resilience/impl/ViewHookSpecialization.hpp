@@ -58,8 +58,8 @@ class ViewHookUpdate<
         handle_type(reinterpret_cast<pointer_type>(record->data())));
 
     // have to attach the destructor, but don't construct / initialize
-    record->m_destroy = functor_type(
-        exec_space(), (value_type *)view.impl_map().m_impl_handle, view.span());
+//    record->m_destroy = functor_type(
+//        exec_space(), (value_type *)view.impl_map().m_impl_handle, view.span());
 
     // This should disconnect the duplicate view from the original record and
     // attach the duplicated data to the tracker 

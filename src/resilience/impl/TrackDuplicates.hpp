@@ -138,8 +138,7 @@ class CombineFunctor {
         k = k < 2 ? k + 1 : 0;
       }
     }
-   //Kokkos::Impl::Throw:rumtimeexeption look up
-    Kokkos::abort("No match found");
+    //No match found, all three executions return different number
     printf("no match found: %i\n", i);
     return 0;
   }

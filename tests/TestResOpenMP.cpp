@@ -11,8 +11,8 @@
 #include <time.h>
 #include <thread>
 
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_rng.h>
+//#include <gsl/gsl_randist.h>
+//#include <gsl/gsl_rng.h>
 #include <vector>
 #include <math.h>
 
@@ -174,7 +174,7 @@ TEST(TestResOpenMP, TestResilientForInsertError)
 
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
 
-  //TODO: TEST EXPECTED FAIL
+  //TODO: TEST EXPECTED FAIL NOT FAILING
   // Assigning each y(i) threadId, should cause a failure in the resilient execution.
   EXPECT_DEATH(
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
@@ -183,11 +183,8 @@ TEST(TestResOpenMP, TestResilientForInsertError)
     Kokkos::atomic_increment(&counter(0)); 
   });
   
-  , "GTEST EXPECT_DEATH: Kokkos parallel_for failed in threadsafe random loop");
+  , "GTEST EXPECT_DEATH: Kokkos parallel_for failed in OMP assign loop");
   
-  printf("Let's see what happens after a Kokkos Abort\n");
-  fflush(stdout); 
- 
   printf("\n\n\n");
   fflush(stdout);
 }
@@ -196,7 +193,7 @@ TEST(TestResOpenMP, TestResilientForInsertError)
 /**********************************
 ********PARALLEL REDUCES***********
 **********************************/
-
+/*
 // gTest runs parallel_reduce with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestKokkosReduce)
 {
@@ -322,7 +319,7 @@ TEST(TestResOpenMP, TestParallelReduce)
   ASSERT_EQ(result, correct);
 
 }
-
+*/
 /**********************************
 **********PARALLEL SCANS***********
 **********************************/

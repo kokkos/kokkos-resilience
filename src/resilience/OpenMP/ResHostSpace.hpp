@@ -83,13 +83,14 @@ class ResHostSpace : public Kokkos::HostSpace {
     typedef ResHostSpace	memory_space; // Tag class as Kokkos memory space
     typedef size_t 		size_type; // Preferred size type
     typedef Kokkos::OpenMP 	execution_space; // Preferred execution space
+    using   resilient_space =   ResHostSpace; 
 
     // Every memory space has a default execution space.  This is
     // useful for things like initializing a View (which happens in
     // parallel using the View's default execution space).
 
     /*--------------------------------------------------------------
-    IF DEFINE MACRO SWITCH HERE WHEN EXPANDING TO MORE MEMORY SPACES  
+    TODO: IF DEFINE MACRO SWITCH HERE WHEN EXPANDING TO MORE MEMORY SPACES  
     --------------------------------------------------------------*/
 
     typedef Kokkos::Device<execution_space, memory_space> device_type; // Preferred device type
@@ -370,7 +371,7 @@ void SpecDuplicateTracker<Type, Kokkos::OpenMP>::set_func_ptr() {}
 template <class Type>
 bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
   
-  bool success;
+  //bool success;
   bool trigger = 1;
 
   if (dup_cnt != 3) {
@@ -385,12 +386,36 @@ bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
                 , static_cast<rd_type*>(dup_list[2]), N );
 
   comb_type local_cf(m_cf);
-  printf("This function was loaded: combine_dups");
+  printf("Combine duplicates has size N=%d\n\n\n",N);
   fflush(stdout);
+  /*
+ 
   Kokkos::parallel_for( N, KOKKOS_LAMBDA(int i) {
-    success = local_cf.exec(i);
-    if (!success) trigger = 0;
-  });
+    local_cf.exec(i);
+  });*/
+
+
+  //currently counting if there are data-length number of successes
+  //that is, everything successful
+  //TODO: Change to only one unsuccessful	
+
+  int result = 0;
+  Kokkos::parallel_reduce( "combine_dups", N, KOKKOS_LAMBDA( int i, int &success ) {
+    success += local_cf.exec(i);
+  }, result );
+
+  printf("RESULT = %d after combining\n", result);
+  fflush(stdout);
+
+  printf("trigger = %d after combining but not setting (should be 1) \n", trigger);
+  fflush(stdout);
+
+
+  if (result != N) {trigger = 0;}
+
+  printf("trigger = %d after setting\n", trigger);
+  fflush(stdout);
+
 
   return trigger;
  
