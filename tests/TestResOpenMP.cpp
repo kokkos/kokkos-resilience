@@ -101,6 +101,8 @@ TEST(TestResOpenMP, TestResilientFor)
   // Allocate scalar for test incrementation
   //typedef Kokkos::View<int, Kokkos::LayoutRight, MemSpace> ViewScalarInt;
   //ViewScalarInt set_data_counter;
+
+  //set_data_counter() = 1;
   
   // Fix with integer vector type for now
   typedef Kokkos::View<int*, Kokkos::LayoutRight, MemSpace> ViewVectorInt;
@@ -132,6 +134,9 @@ TEST(TestResOpenMP, TestResilientFor)
   printf("GTEST: Thread %d reports test parallel_for completed, accuracy TBD.\n", omp_get_thread_num());
   fflush(stdout);
 
+  printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
+  fflush(stdout);
+
   double time = timer.seconds();
 
   Kokkos::deep_copy(x, y);
@@ -143,16 +148,13 @@ TEST(TestResOpenMP, TestResilientFor)
   printf("GTEST: Thread %d reports test parallel_for completed. Data assignment was correct.\n", omp_get_thread_num());
   fflush(stdout);
 
-  printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
-  fflush(stdout);
-
   ASSERT_EQ(counter(0), N);
 
   printf("\n\n\n");
   fflush(stdout);
 }
 
-// gTest attempts to trigger all 3 executions generating different data. 
+// gTest attempts to trigger all 2 executions generating different data. 
 // Should repeat user-specified number of times (in context file) and then abort.
 TEST(TestResOpenMP, TestResilientForInsertError)
 {
