@@ -174,16 +174,15 @@ namespace KokkosResilience
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc& filter )
   {
     Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), 
-      ctx.default_filter(), std::forward< FilterFunc >( filter ), ts... );
+      ctx.default_filter(), std::forward< FilterFunc >( filter ) );
   }
-#endif
 
   template< typename Context, typename F >
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun )
   {
     Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter() );
   }
-
+#endif
 }
 
 namespace kr = KokkosResilience;
