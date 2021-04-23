@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(kokkos-resilience VERSION 0.1.0)
 
+INCLUDE(GNUInstallDirs)
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 add_library(resilience)
@@ -96,7 +98,7 @@ endif()
 include(CMakePackageConfigHelpers)
 configure_package_config_file(cmake/resilienceConfig.cmake.in
                               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
-                              INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake)
+                              INSTALL_DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
                                  COMPATIBILITY SameMajorVersion
                                  )
@@ -112,13 +114,14 @@ install(TARGETS resilience EXPORT resilienceTargets
 install(EXPORT resilienceTargets
         FILE resilienceTargets.cmake
         NAMESPACE Kokkos::
-        DESTINATION cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience
         )
 
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
-        DESTINATION cmake )
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience
+        )
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
