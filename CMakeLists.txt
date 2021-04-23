@@ -105,10 +105,10 @@ write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVer
 
 # Set install rules
 install(TARGETS resilience EXPORT resilienceTargets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         )
 
 install(EXPORT resilienceTargets
@@ -129,7 +129,7 @@ install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.h
 if (KR_ENABLE_VELOC)
    install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
 
    # Need to install/export VeloC find module for downstream dependencies
    configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
@@ -139,7 +139,7 @@ endif()
 if (KR_ENABLE_HDF5)
   install(FILES
           ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
 
   # Need to install/export HDF5 find module for downstream dependencies
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
