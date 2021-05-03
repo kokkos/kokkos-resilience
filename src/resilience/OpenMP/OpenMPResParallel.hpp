@@ -227,25 +227,39 @@ class ParallelFor< FunctorType
    
       // ViewHooks captures non-constant views and passes to duplicate_shared
       // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
+      // THIS WAS NECESSARY FOR JEFF'S IMPLEMENTATION
       Kokkos::Impl::shared_allocation_tracking_enable();
 
-      auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_copy_caller(
+      // OLD CALL, SOURCE AND DESTINATION
+      /*
+       * auto vhc = Kokkos::Experimental::ViewHooks::create_view_hook_copy_caller(
                     [=]( Kokkos::Experimental::ViewHolderBase &dst
                        , Kokkos::Experimental::ViewHolderBase &src){
                          KokkosResilience::duplicate_shared(dst, src);
                });
+      */
+      // NEW CALL TENTATIVE
+      Kokkos::ViewHooks::set(
+          [=](Kokkos::ViewHolderBase& dst,
+              Kokkos::ViewHolderBase& src) {
+              KokkosResilience::duplicate_shared( &dst, &src);
+          },
+          [=](Kokkos::ViewHolderBase& dst, Kokkos::ViewHolderBase& src) {});
 
-      Kokkos::Experimental::ViewHooks::set("ResOpenMPDup", vhc);
- 
       // ViewHooks copy constructor triggered here
+      // IN JEFF VERSION
       auto m_functor_0 = m_functor;
       auto m_functor_1 = m_functor;
       auto m_functor_2 = m_functor;
 
       // Clear the ViewHooks and toggle the shared allocation tracking off again
       // Allows for user-intended view behavior in main body of parallel_for
-      Kokkos::Experimental::ViewHooks::clear("ResOpenMPDup", vhc);
-      Kokkos::Impl::shared_allocation_tracking_disable();         
+      // STILL DOING THIS TOGGLE?, PAIRED QUESTION.
+
+      // TENTATIVE NEW CALL
+      Kokkos::ViewHooks::clear();
+
+      Kokkos::Impl::shared_allocation_tracking_disable();
     
       if (OpenMP::in_parallel()) {
         exec_range<WorkTag>(m_functor, m_policy.begin(), m_policy.end());
