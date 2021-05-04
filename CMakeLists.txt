@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(kokkos-resilience VERSION 0.1.0)
 
+INCLUDE(GNUInstallDirs)
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 add_library(resilience)
@@ -96,29 +98,30 @@ endif()
 include(CMakePackageConfigHelpers)
 configure_package_config_file(cmake/resilienceConfig.cmake.in
                               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
-                              INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake)
+                              INSTALL_DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
                                  COMPATIBILITY SameMajorVersion
                                  )
 
 # Set install rules
 install(TARGETS resilience EXPORT resilienceTargets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         )
 
 install(EXPORT resilienceTargets
         FILE resilienceTargets.cmake
         NAMESPACE Kokkos::
-        DESTINATION cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience
         )
 
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/resilience/cmake )
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience
+        )
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
@@ -126,7 +129,7 @@ install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.h
 if (KR_ENABLE_VELOC)
    install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
 
    # Need to install/export VeloC find module for downstream dependencies
    configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
@@ -136,7 +139,7 @@ endif()
 if (KR_ENABLE_HDF5)
   install(FILES
           ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
 
   # Need to install/export HDF5 find module for downstream dependencies
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
