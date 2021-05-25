@@ -8,7 +8,7 @@
 #include <iomanip>
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
+#include <View/Hooks/Kokkos_ViewHooks.hpp>
 
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
@@ -57,8 +57,8 @@ namespace KokkosResilience
         std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > views;
 
         // Don't do anything with const views since they can never be checkpointed in this context
-        Kokkos::ViewHooks::set( [&views]( Kokkos::ViewHolderBase &view ) {
-          views.emplace_back( view.clone() );
+        Kokkos::Experimental::DynamicViewHooks::set( [&views]( Kokkos::ViewHolderBase &view ) {
+          //views.emplace_back( view.clone() );
         }, []( Kokkos::ConstViewHolderBase & ) {} );
 
         std::vector< Detail::CrefImpl > crefs;
@@ -68,7 +68,7 @@ namespace KokkosResilience
 
         Detail::Cref::check_ref_list = nullptr;
 
-        Kokkos::ViewHooks::clear();
+        Kokkos::Experimental::DynamicViewHooks::clear();
 
   #ifdef KR_ENABLE_TRACING
         auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );

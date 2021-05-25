@@ -11,6 +11,7 @@ add_executable(resilience_tests
                TestMain.cpp
                TestResilience.cpp
                TestLambdaCapture.cpp
+               TestHooks.cpp
                )
 
 if (KR_ENABLE_VELOC)
