@@ -33,3 +33,9 @@ if (${_cuda_found} GREATER "-1")
   add_subdirectory(cuda)
 endif()
 
+list(FIND Kokkos_DEVICES "OPENMP" _omp_found)
+
+if (${_omp_found} GREATER "-1")
+  add_subdirectory(openMP)
+endif()
+

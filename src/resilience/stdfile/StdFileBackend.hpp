@@ -2,7 +2,7 @@
 #define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
+//#include <Kokkos_ViewHooks.hpp>
 
 #include <memory>
 #include <string>
