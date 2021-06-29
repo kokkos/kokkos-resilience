@@ -30,6 +30,7 @@ TEST(Subscriber, value)
   test_view_type testa;
 
   test_view_type testb( testa );
+  std::cout << "Print from Nic's test, which will pass." << std::endl;
   EXPECT_EQ( TestSubscriber::self_ptr, &testb );
   EXPECT_EQ( TestSubscriber::other_ptr, &testa );
 }
