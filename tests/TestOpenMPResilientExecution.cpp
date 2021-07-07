@@ -5,6 +5,7 @@
 #include <resilience/Resilience.hpp>
 #include <resilience/openMP/ResHostSpace.hpp>
 #include <resilience/openMP/ResOpenMP.hpp>
+#include <resilience/openMP/OpenMPResSubscriber.hpp>
 
 #include <ctime>
 #include <random>
@@ -143,27 +144,33 @@ TEST(TestResOpenMP, TestKokkosFor)
 
 }
 
-/*
+
 // gTest runs parallel_for with resilient Kokkos. Expect same answer as last test.
 TEST(TestResOpenMP, TestResilientFor)
 {
 
+  // range policy with resilient execution space
   using range_policy = Kokkos::RangePolicy<ExecSpace>;
+
+  // test vector types with the duplicating subscriber
+  using subscriber_vector_double_type = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
+                                                      Kokkos::Experimental::SubscribableViewHooks<
+                                                          KokkosResilience::ResilientDuplicatesSubscriber > >;
+  using subscriber_vector_int_type = Kokkos::View< int* , Kokkos::LayoutRight, MemSpace,
+                                                   Kokkos::Experimental::SubscribableViewHooks<
+                                                       KokkosResilience::ResilientDuplicatesSubscriber > >;
 
   // Allocate scalar for test incrementation
   //typedef Kokkos::View<int, Kokkos::LayoutRight, MemSpace> ViewScalarInt;
   //ViewScalarInt set_data_counter;
-
   //set_data_counter() = 1;
 
-  // Fix with integer vector type for now
-  typedef Kokkos::View<int*, Kokkos::LayoutRight, MemSpace> ViewVectorInt;
-  ViewVectorInt counter( "DataAccesses", 1);
+  //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
+  subscriber_vector_int_type counter( "DataAccesses", 1);
 
   // Allocate y, x vectors.
-  typedef Kokkos::View<double*, Kokkos::LayoutRight, MemSpace>   ViewVectorType;
-  ViewVectorType y( "y", N );
-  ViewVectorType x( "x", N );
+  subscriber_vector_double_type y( "y", N );
+  subscriber_vector_double_type x( "x", N );
 
   printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num());
   fflush(stdout);
@@ -205,6 +212,7 @@ TEST(TestResOpenMP, TestResilientFor)
   fflush(stdout);
 }
 
+/*
 // gTest attempts to trigger all 2 executions generating different data. 
 // Should repeat user-specified number of times (in context file) and then abort.
 TEST(TestResOpenMP, TestResilientForInsertError)

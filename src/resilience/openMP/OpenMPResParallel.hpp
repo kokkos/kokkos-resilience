@@ -60,15 +60,14 @@
 //#include <impl/TrackDuplicates.hpp>
 //#include <impl/ViewHookSpecialization.hpp>
 
-//#include <openmp/OpenMPResSubscriber.hpp>
-//#include "OpenMPResSubscriber.hpp"
+//#include <openmp/OpenMPResSubscriber.hpp> ??? how is this foldering working
+#include "OpenMPResSubscriber.hpp"
 
 /*--------------------------------------------------------------------------*/
-/************************ OVERALL COMBINER FUNCTION *************************/
-// TODO: ORGANIZE THIS BETTER, BELONGS IN SUBSCRIBER FILE OR RES EXEC SPACE
+/********************  OVERALL COMBINER FUNCTION CALL  **********************/
 /*--------------------------------------------------------------------------*/
 
-/*
+
 namespace KokkosResilience{
 
 inline bool combine_resilient_duplicates() {
@@ -78,7 +77,8 @@ inline bool combine_resilient_duplicates() {
 
   bool success = true;
   // Combines all duplicates
-  for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::map) {
+  // Go over the Subscriber map, execute all the CombinerBase elements
+  for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
     success = combiner.second->execute();
     if(!success) break;
   }
@@ -96,7 +96,7 @@ inline bool combine_resilient_duplicates() {
 /*--------------------------------------------------------------------------*/
 /************************ RESILIENT PARALLEL FORS ***************************/
 /*--------------------------------------------------------------------------*/
-/*
+
 namespace Kokkos {
 namespace Impl {
 
@@ -216,11 +216,6 @@ class ParallelFor< FunctorType
       // Allows for user-intended view behavior in main body of parallel_for
       // STILL DOING THIS TOGGLE?, PAIRED QUESTION.
 
-      /*
-      // TENTATIVE NEW CALL
-      Kokkos::ViewHooks::clear();
-      */
-/*
       Kokkos::Impl::shared_allocation_tracking_disable();
 
       if (OpenMP::in_parallel()) {
@@ -271,7 +266,7 @@ class ParallelFor< FunctorType
 
 } // namespace Impl
 } // namespace Kokkos
-*/
+
 
 
 #endif // KOKKOS_ENABLE_OPENMP //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
