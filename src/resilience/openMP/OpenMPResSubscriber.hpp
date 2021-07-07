@@ -155,13 +155,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
   using EqualityType = CheckDuplicateEquality<DuplicateType>;
   EqualityType check_equality;
 
-  int duplicate_count;
+  int duplicate_count = 0;
   View original;
   View copy[3];
-  size_t original_len;
-
-  // TODO: HOW IS original_len ACQUIRING VALUE original.size()
-  // HOW IS duplicate_count acquiring 3? It's not! Need to assign it in subscriber, attach to...?
+  bool success = false;
 
   bool execute() override
   {
@@ -169,22 +166,17 @@ struct CombineDuplicates: public CombineDuplicatesBase
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
     }
     else {
-      // TODO: WILL BE PROBLEM, RETURNS BOOL. SAME ISSUE AS BEFORE, REDUCE ON SUCCESS?
-      Kokkos::parallel_for(original_len, *this);
+      success = false;
+      //TODO: WIL MULTIDIMENSIONAL VIEW AFFECT? TEST (MIGHT NEED EXECUTION POLICY)
+      Kokkos::parallel_for(original.size(), *this);
     }
+    return success;
 
   }
 
+  //KOKKOS_FUNCTION
   KOKKOS_INLINE_FUNCTION
-  bool operator ()(const int i) const {
-    //KOKKOS_FUNCTION
-    //bool operator () (int i)
-  // need bool for success, syntax??
-  // TODO: delete comment
-  // Move specialization from exec space to this file?
-  // local.exec function with trigger ->> trigger fix later
-
-    //TODO: IS THE = DOING WHAT I THINK IN VIEWS???
+  void operator ()(int i) {
 
     //printf("Majority vote, index i: %d\n", i);
     for (int j = 0; j < 3; j++) {
@@ -198,7 +190,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
                        original(i)))  // just need 2 that are the same
         {
           printf("match found: %d - %d\n", k, j);
-          return 1;
+          success = true;
+          return;
         }
         k = k < 2 ? k + 1 : 0;
       }
@@ -207,7 +200,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     printf("no match found: %i\n", i);
     // TODO: MOVE ABORT HERE FROM MAIN COMBINE CALL (TESTING)
     // TODO: DISCUSS WITH NIC, NOT ABORT, JUST BREAK INTO MAIN P_FOR
-    return 0;
+    success = false;
   }
 
 };
@@ -229,17 +222,13 @@ struct ResilientDuplicatesSubscriber {
   using key_type = void *;  // key_type should be data() pointer
   static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_map;
 
-  // TODO: ASK NIC, HOW IS THIS MAP CLEARING? Need 3 duplicates attached.
-
-  // Need to count how many duplicates attached to a particular data() pointer
-  //int duplicate_count;
-
-  // Attach it some other way?
-  //void* duplicate_list[3];
+  //TODO: Write map clearing function
 
   //Is the view_like function which initialize the dimensions of the duplicating view
+  template <typename View>
   KOKKOS_INLINE_FUNCTION
-  ViewMatching(View &self, const View &other) {
+  static void ViewMatching(View &self, const View &other) {
+    self = View();
     // According to view API wiki...
     self.layout() = other.layout();
   }
@@ -247,20 +236,24 @@ struct ResilientDuplicatesSubscriber {
   template <typename View>
   static void copy_constructed(View &self, const View &other) {
     if (in_resilient_parallel_loop) {
-      auto &c = duplicates_map[other.data()];
-      c.size  = other.extent();
-      // will do reference counting, etc... shares allocation record
-      c.original = other;
+
+      //This won't be triggered if the entry already exists
+      auto res = duplicates_map.emplace(std::piecewise_construct,
+                                        std::forward_as_tuple(other.data()),
+                                        std::forward_as_tuple(std::make_unique< CombineDuplicates< View, typename View::data_type > >()) );
+      auto &c = dynamic_cast< CombineDuplicates < View, typename View::data_type >& > (*res.first->second);
+
+      if (res.second){c.original = other;}
 
       in_resilient_parallel_loop = false;
       // Reinitialize self to be like other (same dimensions, etc)
-      self = ViewMatching(other);
+      ViewMatching(self, other);
 
       // Copy all data
       Kokkos::deep_copy(self, other);
 
       // Reference counting can be turned off here for performance reasons
-      c.copy[c.count++] = self;
+      c.copy[c.duplicate_count++] = self;
     }
   }
 };
