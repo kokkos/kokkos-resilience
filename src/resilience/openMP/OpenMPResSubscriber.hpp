@@ -59,9 +59,10 @@
 #include <cmath>
 #include <map>
 #include <typeinfo>
+#include <unordered_map>
 
 /*--------------------------------------------------------------------------
- *************** TEST SUBSCRIBER, DELETE **********************************
+ *************** TEST SUBSCRIBER, DELETE LATER *****************************
  --------------------------------------------------------------------------*/
 
 struct TestIISubscriber;
@@ -83,46 +84,25 @@ struct TestIISubscriber
   }
 };
 
-/*----------------------------------------------------------------------------
- ************ SUBSCRIBER TO DUPLICATE VIEWS, COPY DATA ***********************
- ----------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------
+ ******************** ERROR MESSAGE GENERATION *****************************
+ --------------------------------------------------------------------------*/
 
-/*
+// UH OH NAMESPACE AGREEMENT!!!!!!!!!!!
+
 namespace KokkosResilience {
+struct ResilientDuplicatesSubscriber;
 
-struct ResilientDuplicatesSubscriber {
-  static bool in_resilient_parallel_loop;
-
-  using key_type = void *;  // could be view name
-  static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > map;
-
-  template <typename View>
-  static void copy_constructed(View &self, const View &other) {
-    if (in_resilient_parallel_loop) {
-      auto &c = map[other.data()];
-      c.size  = other.extens();
-      // will do reference counting, etc... shares allocation record
-      c.original = other;
-
-      in_resilient_parallel_loop = false;
-      // Reinitialize self to be like other (same dimensions, etc)
-      self = view_like(other);
-
-      // Copy all data
-      Kokkos::deep_copy(self, other);
-
-      // Reference counting can be turned off here for performance reseasons
-      c.copy[c.count++] = self;
-    }
-  }
-};
-
-} //namespace KokkosResilience
-
+// Generate usable error message
+static_assert(Kokkos::Experimental::is_hooks_policy<
+                  Kokkos::Experimental::SubscribableViewHooks<
+                      ResilientDuplicatesSubscriber> >::value,
+              "Must be a hooks policy");
+}
 /*----------------------------------------------------------------------------
- ************ COMBINER TO RECOMBINE VIEWS, CHECK CORRECTNESS *****************
+ ******** STRUCT TO CHECK CORRECTNESS OF INDIVIDUAL ELEMENTS OF VIEWS ********
  ----------------------------------------------------------------------------*/
-/*
+
 namespace KokkosResilience {
 
 template <class Type, class Enabled = void>
@@ -159,9 +139,10 @@ struct CheckDuplicateEquality<
 };
 
 } // namespace KokkosResilience
+
 namespace KokkosResilience{
 
-struct CombineDuplicateBase
+struct CombineDuplicatesBase
 {
   // Need virtual bool in order to return success
   // TODO: clean comment
@@ -174,18 +155,36 @@ struct CombineDuplicates: public CombineDuplicatesBase
   using EqualityType = CheckDuplicateEquality<DuplicateType>;
   EqualityType check_equality;
 
+  int duplicate_count;
   View original;
   View copy[3];
-  //size_t = m_len;
+  size_t original_len;
+
+  // TODO: HOW IS original_len ACQUIRING VALUE original.size()
+  // HOW IS duplicate_count acquiring 3? It's not! Need to assign it in subscriber, attach to...?
+
+  bool execute() override
+  {
+    if (duplicate_count < 3){
+      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
+    }
+    else {
+      // TODO: WILL BE PROBLEM, RETURNS BOOL. SAME ISSUE AS BEFORE, REDUCE ON SUCCESS?
+      Kokkos::parallel_for(original_len, *this);
+    }
+
+  }
 
   KOKKOS_INLINE_FUNCTION
-  // void operator ()(const int i) const {
-  // need bool for success
+  bool operator ()(const int i) const {
+    //KOKKOS_FUNCTION
+    //bool operator () (int i)
+  // need bool for success, syntax??
   // TODO: delete comment
-  // Move caller from exec space to this file?
+  // Move specialization from exec space to this file?
   // local.exec function with trigger ->> trigger fix later
 
-  bool exec(const int i) const {
+    //TODO: IS THE = DOING WHAT I THINK IN VIEWS???
 
     //printf("Majority vote, index i: %d\n", i);
     for (int j = 0; j < 3; j++) {
@@ -206,6 +205,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     //No match found, all three executions return different number
     printf("no match found: %i\n", i);
+    // TODO: MOVE ABORT HERE FROM MAIN COMBINE CALL (TESTING)
+    // TODO: DISCUSS WITH NIC, NOT ABORT, JUST BREAK INTO MAIN P_FOR
     return 0;
   }
 
@@ -213,91 +214,58 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
 } // namespace KokkosResilience
 
-//
-
 /*----------------------------------------------------------------------------
- ************ COMBINER CALL MOVED FROM EXEC SPACE ****************************
+ ************ SUBSCRIBER TO DUPLICATE VIEWS, COPY DATA ***********************
  ----------------------------------------------------------------------------*/
-/*
-namespace KokkosResilience{
 
-template <class Type>
-class SpecDuplicateTracker<Type, Kokkos::OpenMP> : public DuplicateTracker {
- public:
-  typedef typename std::remove_reference<Type>::type nr_type;
-  typedef typename std::remove_pointer<nr_type>::type np_type;
-  typedef typename std::remove_extent<np_type>::type ne_type;
-  typedef typename std::remove_const<ne_type>::type rd_type;
-  typedef CombineFunctor<rd_type, Kokkos::OpenMP> comb_type;
+namespace KokkosResilience {
 
-  comb_type m_cf;
+struct ResilientDuplicatesSubscriber {
 
-  inline SpecDuplicateTracker() : DuplicateTracker(), m_cf() {}
+  // Gating for using subscriber only inside resilient parallel loops
+  static bool in_resilient_parallel_loop;
 
-  inline SpecDuplicateTracker(const SpecDuplicateTracker& rhs)
-      : DuplicateTracker(rhs), m_cf(rhs.m_cf) {}
+  // Creating map for duplicates
+  using key_type = void *;  // key_type should be data() pointer
+  static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_map;
 
-  virtual bool combine_dups();
-  virtual void set_func_ptr();
+  // TODO: ASK NIC, HOW IS THIS MAP CLEARING? Need 3 duplicates attached.
+
+  // Need to count how many duplicates attached to a particular data() pointer
+  //int duplicate_count;
+
+  // Attach it some other way?
+  //void* duplicate_list[3];
+
+  //Is the view_like function which initialize the dimensions of the duplicating view
+  KOKKOS_INLINE_FUNCTION
+  ViewMatching(View &self, const View &other) {
+    // According to view API wiki...
+    self.layout() = other.layout();
+  }
+
+  template <typename View>
+  static void copy_constructed(View &self, const View &other) {
+    if (in_resilient_parallel_loop) {
+      auto &c = duplicates_map[other.data()];
+      c.size  = other.extent();
+      // will do reference counting, etc... shares allocation record
+      c.original = other;
+
+      in_resilient_parallel_loop = false;
+      // Reinitialize self to be like other (same dimensions, etc)
+      self = ViewMatching(other);
+
+      // Copy all data
+      Kokkos::deep_copy(self, other);
+
+      // Reference counting can be turned off here for performance reasons
+      c.copy[c.count++] = self;
+    }
+  }
 };
 
-template <class Type>
-void SpecDuplicateTracker<Type, Kokkos::OpenMP>::set_func_ptr() {}
-
-template <class Type>
-bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
-
-  //bool success;
-  bool trigger = 1;
-
-  if (dup_cnt != 3) {
-    printf("must have 3 duplicates !!!\n");
-    fflush(stdout);
-    return 0;
-  }
-  int N = data_len / sizeof(rd_type);
-  m_cf.load_ptrs( static_cast<rd_type*>(original_data)
-      , static_cast<rd_type*>(dup_list[0])
-      , static_cast<rd_type*>(dup_list[1])
-      , static_cast<rd_type*>(dup_list[2]), N );
-
-  comb_type local_cf(m_cf);
-  printf("Combine duplicates has size N=%d\n\n\n",N);
-  fflush(stdout);
-
-
-  Kokkos::parallel_for( N, KOKKOS_LAMBDA(int i) {
-    local_cf.exec(i);
-  });
-*/
-/*
-  //currently counting if there are data-length number of successes
-  //that is, everything successful
-  //TODO: Change to only one unsuccessful
-
-  int result = 0;
-  Kokkos::parallel_reduce( "combine_dups", N, KOKKOS_LAMBDA( int i, int &success ) {
-    success += local_cf.exec(i);
-  }, result );
-
-  printf("RESULT = %d after combining\n", result);
-  fflush(stdout);
-
-  printf("trigger = %d after combining but not setting (should be 1) \n", trigger);
-  fflush(stdout);
-
-
-  if (result != N) {trigger = 0;}
-
-  printf("trigger = %d after setting\n", trigger);
-  fflush(stdout);
-
-  return trigger;
-
-}
-
 } //namespace KokkosResilience
- */
 
 #endif //defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
 #endif

@@ -230,7 +230,7 @@ namespace Impl {
 /*--------------------------------------
 NEED MORE CASES TO BE COMPLETELY GUARDED
 --------------------------------------*/
-
+/*
 #if defined ( KOKKOS_ENABLE_CUDA )
 // Running in ResHostSpace, attempting to access CudaSpace
 template<>
@@ -241,7 +241,7 @@ struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResHostSpace , Kok
   inline static void verify( const void * p ) { KokkosResilience::ResHostSpace::access_error(p); }
 };
 #endif
-/*
+
 // Running in ResHostSpace and attempting to access an unknown space: throw error
 template< class OtherSpace >
 struct VerifyExecutionCanAccessMemorySpace<
@@ -253,8 +253,8 @@ struct VerifyExecutionCanAccessMemorySpace<
     { Kokkos::abort("resilient OpenMP code attempted to access unknown space memory"); }
   inline static void verify( const void * )
     { Kokkos::abort("resilient OpenMP code attempted to access unknown space memory"); }
-};*/
-
+};
+*/
 } // namespace Impl
 
 } // namespace Kokkos
@@ -374,7 +374,7 @@ template <class Type>
 bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
 
   //bool success;
-  bool trigger = 1;
+  static bool success;
 
   if (dup_cnt != 3) {
     printf("must have 3 duplicates !!!\n");
@@ -390,13 +390,13 @@ bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
   comb_type local_cf(m_cf);
   printf("Combine duplicates has size N=%d\n\n\n",N);
   fflush(stdout);
-  /*
+
 
   Kokkos::parallel_for( N, KOKKOS_LAMBDA(int i) {
     local_cf.exec(i);
-  });*/
+  });
 
-/*
+
   //currently counting if there are data-length number of successes
   //that is, everything successful
   //TODO: Change to only one unsuccessful
