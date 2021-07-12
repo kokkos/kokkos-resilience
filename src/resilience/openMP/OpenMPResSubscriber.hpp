@@ -60,6 +60,7 @@
 #include <map>
 #include <typeinfo>
 #include <unordered_map>
+#include "OpenMPResSubscriber.cpp"
 
 /*--------------------------------------------------------------------------
  *************** TEST SUBSCRIBER, DELETE LATER *****************************
@@ -110,10 +111,9 @@ struct CheckDuplicateEquality;
 
 template <class Type>
 struct CheckDuplicateEquality<
-    Type, typename std::enable_if<std::is_same<Type, float>::value ||
-                                  std::is_same<Type, double>::value,
-        void>::type> {
-  KOKKOS_INLINE_FUNCTION
+    Type, typename std::enable_if< std::is_floating_point < Type >::value, void >::type > {
+
+    KOKKOS_INLINE_FUNCTION
   CheckDuplicateEquality() {}
 
   KOKKOS_INLINE_FUNCTION
@@ -125,9 +125,8 @@ struct CheckDuplicateEquality<
 
 template <class Type>
 struct CheckDuplicateEquality<
-    Type, typename std::enable_if<!std::is_same<Type, float>::value &&
-                                  !std::is_same<Type, double>::value,
-        void>::type> {
+    Type, typename std::enable_if< !std::is_floating_point < Type >::value, void >::type > {
+
   KOKKOS_INLINE_FUNCTION
   CheckDuplicateEquality() {}
 
@@ -168,7 +167,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
     else {
       success = false;
       //TODO: WIL MULTIDIMENSIONAL VIEW AFFECT? TEST (MIGHT NEED EXECUTION POLICY)
-      Kokkos::parallel_for(original.size(), *this);
+      //Kokkos::parallel_for(original.size(), *this);
+      Kokkos::parallel_for(original.size(), KOKKOS_LAMBDA(int i){
+        *this;
+      });
     }
     return success;
 
@@ -257,6 +259,14 @@ struct ResilientDuplicatesSubscriber {
     }
   }
 };
+
+KOKKOS_INLINE_FUNCTION
+void clear_duplicates_map() {
+  for (auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+    // Just delete entry, delete pointer as well? Deleting by key fine, or need to delete combiner struct?
+    KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.erase(entry.first);
+  }
+}
 
 } //namespace KokkosResilience
 

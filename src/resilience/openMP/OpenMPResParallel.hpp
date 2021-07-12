@@ -57,10 +57,7 @@
 
 #include <Kokkos_Parallel.hpp>
 #include <OpenMP/Kokkos_OpenMP_Parallel.hpp>//main parallel
-//#include <impl/TrackDuplicates.hpp>
-//#include <impl/ViewHookSpecialization.hpp>
 
-//#include <openmp/OpenMPResSubscriber.hpp> ??? how is this foldering working
 #include "OpenMPResSubscriber.hpp"
 
 /*--------------------------------------------------------------------------*/
@@ -246,6 +243,7 @@ class ParallelFor< FunctorType
 
       // TODO: COMBINE RES DUPLICATES CALL HERE
       success = KokkosResilience::combine_resilient_duplicates();
+      KokkosResilience::clear_duplicates_map();
       repeats--;
 
     }// while (!success & repeats left)
