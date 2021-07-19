@@ -46,21 +46,19 @@
 #include <Kokkos_Macros.hpp>
 #if defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
 
+#include <Kokkos_Core_fwd.hpp>
+#include <Kokkos_CopyViews.hpp>
 #include <omp.h>
 #include <iostream>
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
-#include <impl/Kokkos_FunctorAdapter.hpp>
-
+#include <Kokkos_OpenMP.hpp>
 #include <KokkosExp_MDRangePolicy.hpp>
-
+#include <impl/Kokkos_FunctorAdapter.hpp>
 #include <Kokkos_Parallel.hpp>
-#include <OpenMP/Kokkos_OpenMP_Parallel.hpp>
-#include <Kokkos_Core_fwd.hpp>
 #include <cmath>
 #include <map>
 #include <typeinfo>
 #include <unordered_map>
-#include "OpenMPResSubscriber.cpp"
+#include <sstream>
 
 /*--------------------------------------------------------------------------
  *************** TEST SUBSCRIBER, DELETE LATER *****************************
@@ -146,63 +144,82 @@ struct CombineDuplicatesBase
   // Need virtual bool in order to return success
   // TODO: clean comment
   virtual bool execute() = 0;
+  virtual void print() = 0;
 };
 
-template< typename View , class DuplicateType >
+template< typename View >
 struct CombineDuplicates: public CombineDuplicatesBase
 {
-  using EqualityType = CheckDuplicateEquality<DuplicateType>;
+  using EqualityType = CheckDuplicateEquality<typename View::value_type>;
   EqualityType check_equality;
 
   int duplicate_count = 0;
   View original;
   View copy[3];
-  bool success = false;
+  Kokkos::View <bool*> success{"success", 1};
 
   bool execute() override
   {
+    success(0) = false;
+
     if (duplicate_count < 3){
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
     }
     else {
-      success = false;
-      //TODO: WIL MULTIDIMENSIONAL VIEW AFFECT? TEST (MIGHT NEED EXECUTION POLICY)
-      //Kokkos::parallel_for(original.size(), *this);
-      Kokkos::parallel_for(original.size(), KOKKOS_LAMBDA(int i){
-        *this;
-      });
-    }
-    return success;
 
+      //TODO: WIL MULTIDIMENSIONAL VIEW AFFECT? TEST (MIGHT NEED EXECUTION POLICY)
+      //Todo:: race condition on success
+      Kokkos::parallel_for(original.size(), *this);
+      Kokkos::fence();
+    }
+    return success(0);
+  }
+
+  void print () override {
+    std::cout << "This is the original data pointer " << original.data() << std::endl;
+    std::cout << "This is the copy[0] data pointer " << copy[0].data() << std::endl;
+    std::cout << "This is the copy[1]  data pointer " << copy[1].data() << std::endl;
+    std::cout << "This is the copy[2]  data pointer " << copy[2].data() << std::endl;
+
+    for (int i=0; i<original.size();i++){
+      printf("This is original at index %d with value %lf \n", i, original(i));
+      printf("This is copy[0] at index %d with value %lf \n", i, copy[0](i));
+      printf("This is copy[1] at index %d with value %lf \n", i, copy[1](i));
+      printf("This is copy[2] at index %d with value %lf \n", i, copy[2](i));
+
+    }
   }
 
   //KOKKOS_FUNCTION
-  KOKKOS_INLINE_FUNCTION
-  void operator ()(int i) {
+  KOKKOS_FUNCTION
+  void operator ()(int i) const {
 
     //printf("Majority vote, index i: %d\n", i);
     for (int j = 0; j < 3; j++) {
+      printf("Original value before compare at index %d is %lf\n", i, original(i));
+      printf("Copy value before compare at index %d is %lf\n", i, copy[j](i));
       //printf("Outer iteration: %d - %d \n", i, j);
       original(i) = copy[j](i);
       //printf("first entry: %d, %d\n", j, orig_view[i]);
-      int k = j < 2 ? j + 1 : 0;
       for (int r = 0; r < 2; r++) {
+        int k = (j+r+1)%3;
         //printf("iterate inner %d, %d, %d \n", i, j, k);
         if (check_equality.compare(copy[k](i),
                        original(i)))  // just need 2 that are the same
         {
           printf("match found: %d - %d\n", k, j);
-          success = true;
+          printf("Original value after compare at index %d is %lf\n", i, original(i));
+          printf("Copy value after compare at index %d is %lf\n", i, copy[k](i));
+          Kokkos::atomic_assign(&success(0), true);
           return;
         }
-        k = k < 2 ? k + 1 : 0;
       }
     }
     //No match found, all three executions return different number
     printf("no match found: %i\n", i);
     // TODO: MOVE ABORT HERE FROM MAIN COMBINE CALL (TESTING)
     // TODO: DISCUSS WITH NIC, NOT ABORT, JUST BREAK INTO MAIN P_FOR
-    success = false;
+    Kokkos::atomic_assign(&success(0), false);
   }
 
 };
@@ -229,10 +246,13 @@ struct ResilientDuplicatesSubscriber {
   //Is the view_like function which initialize the dimensions of the duplicating view
   template <typename View>
   KOKKOS_INLINE_FUNCTION
-  static void ViewMatching(View &self, const View &other) {
-    self = View();
-    // According to view API wiki...
-    self.layout() = other.layout();
+  static void ViewMatching(View &self, const View &other, int duplicate_count) {
+
+    //TODO: TEst with no label
+    std::stringstream label_ss;
+    label_ss << other.label() << duplicate_count;
+    self = View(label_ss.str(), other.layout());
+
   }
 
   template <typename View>
@@ -242,14 +262,14 @@ struct ResilientDuplicatesSubscriber {
       //This won't be triggered if the entry already exists
       auto res = duplicates_map.emplace(std::piecewise_construct,
                                         std::forward_as_tuple(other.data()),
-                                        std::forward_as_tuple(std::make_unique< CombineDuplicates< View, typename View::data_type > >()) );
-      auto &c = dynamic_cast< CombineDuplicates < View, typename View::data_type >& > (*res.first->second);
+                                        std::forward_as_tuple(std::make_unique< CombineDuplicates< View > >()) );
+      auto &c = dynamic_cast< CombineDuplicates < View >& > (*res.first->second);
 
       if (res.second){c.original = other;}
 
       in_resilient_parallel_loop = false;
       // Reinitialize self to be like other (same dimensions, etc)
-      ViewMatching(self, other);
+      ViewMatching(self, other, c.duplicate_count);
 
       // Copy all data
       Kokkos::deep_copy(self, other);
@@ -265,6 +285,14 @@ void clear_duplicates_map() {
   for (auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
     // Just delete entry, delete pointer as well? Deleting by key fine, or need to delete combiner struct?
     KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.erase(entry.first);
+  }
+}
+
+
+KOKKOS_INLINE_FUNCTION
+void print_duplicates_map(){
+  for(auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+    entry.second->print();
   }
 }
 
