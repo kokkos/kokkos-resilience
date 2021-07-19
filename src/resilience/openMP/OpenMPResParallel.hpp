@@ -148,8 +148,9 @@ class ParallelFor< FunctorType
 
   inline void
   exec_work (const FunctorType& functor,
-             surrogate_policy& lPolicy,
-             bool dynamic_value) const {
+             const surrogate_policy & lPolicy,
+             bool dynamic_value,
+             int exec_num_threads) const {
 
     printf("Thread %d in resilient Kokkos range-policy, executing work.\n", omp_get_thread_num());
     fflush(stdout);
@@ -159,16 +160,23 @@ class ParallelFor< FunctorType
     data.set_work_partition(lPolicy.end() - lPolicy.begin(),
                                      lPolicy.chunk_size());
 
+    std::cout << "Policy.end: " << lPolicy.end() << " Policy.begin " << lPolicy.begin() << " chunk " <<lPolicy.chunk_size() << std::endl;
+
     if (dynamic_value) {
       // Make sure work partition is set before stealing
       if (data.pool_rendezvous()) data.pool_rendezvous_release();
     }
 
     std::pair<int64_t, int64_t> range(0, 0);
-
+    std::cout<< "This is now dynamic_value: " <<dynamic_value <<std::endl;
     do {
+      // If (dynamic_value), range=data.getworkstealing, else range=data.getworkpartition
+      // Dynamic value is changing between first and second, this is triggering get work partition
       range = dynamic_value ? data.get_work_stealing_chunk()
                          : data.get_work_partition();
+
+      std::cout << "ThreadID:" << omp_get_thread_num() << "range:" << range.first << "-" << range.second << std::endl;
+
       ParallelFor::template exec_range<WorkTag>(
                    functor, range.first + lPolicy.begin(),
                    range.second + lPolicy.begin());
@@ -190,6 +198,9 @@ class ParallelFor< FunctorType
 
       static constexpr bool is_dynamic = std::is_same<typename Policy::schedule_type::type,
                                 Kokkos::Dynamic>::value;
+      //static constexpr bool is_dynamic = true;
+      //static constexpr bool is_dynamic = true;
+      std::cout << "This is is_dynamic:" << is_dynamic << std::endl;
 
       surrogate_policy lPolicy[3];
       for (int i = 0; i < 3; i++) {
@@ -220,29 +231,49 @@ class ParallelFor< FunctorType
       } else {
         OpenMPExec::verify_is_master("Kokkos::OpenMP parallel_for");
 
+        //TODO: THIS <3-THREADS CASE HAS MAJOR ATOMIC PROBLEMS
+        if (OpenMP::impl_thread_pool_size() < 3) {
+
+          int exec_num_threads = OpenMP::impl_thread_pool_size();
+          exec_work(m_functor_0, lPolicy[0], is_dynamic, exec_num_threads);
+          exec_work(m_functor_1, lPolicy[1], is_dynamic, exec_num_threads);
+          exec_work(m_functor_2, lPolicy[2], is_dynamic, exec_num_threads);
+
+        } else {
 #pragma omp parallel num_threads(OpenMP::impl_thread_pool_size())
-        {
-          if(omp_get_thread_num() < OpenMP::impl_thread_pool_size()/3){
-            exec_work(m_functor_0, lPolicy[0], is_dynamic);
-          }
+          {
+            if (omp_get_thread_num() < OpenMP::impl_thread_pool_size() / 3) {
+              int exec_num_threads = OpenMP::impl_thread_pool_size() / 3;
+              exec_work(m_functor_0, lPolicy[0], is_dynamic, exec_num_threads);
+            }
 
-          if(omp_get_thread_num() >= OpenMP::impl_thread_pool_size()/3 &&
-             omp_get_thread_num() < (2*OpenMP::impl_thread_pool_size())/3){
-            exec_work(m_functor_1, lPolicy[1], is_dynamic);
-          }
+            if (omp_get_thread_num() >= OpenMP::impl_thread_pool_size() / 3 &&
+                omp_get_thread_num() <
+                    (2 * OpenMP::impl_thread_pool_size()) / 3) {
+              int exec_num_threads = ((2 * OpenMP::impl_thread_pool_size())/3) -
+                                     (OpenMP::impl_thread_pool_size()/3);
+              exec_work(m_functor_1, lPolicy[1], is_dynamic, exec_num_threads);
+            }
 
-          if(omp_get_thread_num() < OpenMP::impl_thread_pool_size() &&
-             omp_get_thread_num() >= (2*OpenMP::impl_thread_pool_size())/3){
-            exec_work(m_functor_2, lPolicy[2], is_dynamic);
-          }
+            if (omp_get_thread_num() < OpenMP::impl_thread_pool_size() &&
+                omp_get_thread_num() >=
+                    (2 * OpenMP::impl_thread_pool_size()) / 3) {
+              int exec_num_threads = OpenMP::impl_thread_pool_size() -
+                                     ((2 * OpenMP::impl_thread_pool_size())/3);
+              exec_work(m_functor_2, lPolicy[2], is_dynamic, exec_num_threads);
+            }
 
-        } // pragma omp
+          }  // pragma omp
+        }    //else
       } // omp-parallel else
+      Kokkos::fence();
+      KokkosResilience::print_duplicates_map();
+      Kokkos::fence();
+      // TODO: COMBINE RES DUPLICATES CALL HERE
+      success = KokkosResilience::combine_resilient_duplicates();
 
       Kokkos::fence();
 
-      // TODO: COMBINE RES DUPLICATES CALL HERE
-      success = KokkosResilience::combine_resilient_duplicates();
       KokkosResilience::clear_duplicates_map();
       repeats--;
 
