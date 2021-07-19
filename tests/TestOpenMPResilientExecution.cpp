@@ -25,6 +25,7 @@
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
+/*
 TEST(TestResOpenMP, TestThreads)
 {
   int max = omp_get_max_threads();
@@ -37,7 +38,7 @@ TEST(TestResOpenMP, TestThreads)
     std::cout << "There are " << n  << " threads: Hello from thread: " << tid << std::endl;
   };
   ASSERT_EQ( omp_get_max_threads(), 8);
-}
+}*/
 
 // gTest resilient spaces work on own. Goal is to deepcopy one view to another.
 TEST(TestResOpenMP, TestSpaces)
@@ -185,6 +186,10 @@ TEST(TestResOpenMP, TestResilientFor)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
+    printf("This is i from the parallel for %d \n", i);
+    //printf("This is y(i) -unknown thread- from the parallel for %lf \n", y(i));
+    //std::cout << "This is the y(" << i << ") data pointer" << y.data() << std::endl;
+
     Kokkos::atomic_increment(&counter(0));
   });
 
