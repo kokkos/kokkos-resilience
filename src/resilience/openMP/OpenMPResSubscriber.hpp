@@ -182,10 +182,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
     std::cout << "This is the copy[2]  data pointer " << copy[2].data() << std::endl;
 
     for (int i=0; i<original.size();i++){
-      printf("This is original at index %d with value %lf \n", i, original(i));
-      printf("This is copy[0] at index %d with value %lf \n", i, copy[0](i));
-      printf("This is copy[1] at index %d with value %lf \n", i, copy[1](i));
-      printf("This is copy[2] at index %d with value %lf \n", i, copy[2](i));
+      std::cout << "This is the original at index " << i << "with value" << original(i) << std::endl;
+      std::cout << "This is the copy[0] at index " << i << "with value" << copy[0](i) << std::endl;
+      std::cout << "This is the copy[1] at index " << i << "with value" << copy[1](i) << std::endl;
+      std::cout << "This is the copy[2] at index " << i << "with value" << copy[2](i) << std::endl;
 
     }
   }
@@ -196,8 +196,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
     //printf("Majority vote, index i: %d\n", i);
     for (int j = 0; j < 3; j++) {
-      printf("Original value before compare at index %d is %lf\n", i, original(i));
-      printf("Copy value before compare at index %d is %lf\n", i, copy[j](i));
+      //printf("Original value before compare at index %d is %lf\n", i, original(i));
+      //printf("Copy value before compare at index %d is %lf\n", i, copy[j](i));
       //printf("Outer iteration: %d - %d \n", i, j);
       original(i) = copy[j](i);
       //printf("first entry: %d, %d\n", j, orig_view[i]);
@@ -207,9 +207,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
         if (check_equality.compare(copy[k](i),
                        original(i)))  // just need 2 that are the same
         {
-          printf("match found: %d - %d\n", k, j);
-          printf("Original value after compare at index %d is %lf\n", i, original(i));
-          printf("Copy value after compare at index %d is %lf\n", i, copy[k](i));
+          //printf("match found: %d - %d\n", k, j);
+          //printf("Original value after compare at index %d is %lf\n", i, original(i));
+          //printf("Copy value after compare at index %d is %lf\n", i, copy[k](i));
           Kokkos::atomic_assign(&success(0), true);
           return;
         }
@@ -255,6 +255,8 @@ struct ResilientDuplicatesSubscriber {
 
   }
 
+  //TODO: POSSIBLY THE CULPRIT FOR ONLY 1 VIEW DUPLICATED
+
   template <typename View>
   static void copy_constructed(View &self, const View &other) {
     if (in_resilient_parallel_loop) {
@@ -267,7 +269,7 @@ struct ResilientDuplicatesSubscriber {
 
       if (res.second){c.original = other;}
 
-      in_resilient_parallel_loop = false;
+      //in_resilient_parallel_loop = false;
       // Reinitialize self to be like other (same dimensions, etc)
       ViewMatching(self, other, c.duplicate_count);
 
@@ -287,7 +289,6 @@ void clear_duplicates_map() {
     KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.erase(entry.first);
   }
 }
-
 
 KOKKOS_INLINE_FUNCTION
 void print_duplicates_map(){
