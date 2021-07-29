@@ -152,34 +152,119 @@ class ParallelFor< FunctorType
              bool dynamic_value,
              int exec_num_threads) const {
 
-    printf("Thread %d in resilient Kokkos range-policy, executing work.\n", omp_get_thread_num());
-    fflush(stdout);
+    //printf("Thread %d in resilient Kokkos range-policy, executing work.\n", omp_get_thread_num());
+    //fflush(stdout);
 
+    //Initial setup, returns for each thread up to MAX_THREAD
     HostThreadTeamData& data = *(m_instance->get_thread_data());
+
+    //Feeds in the total range and a chunk size, which is set in the work partition
+    // to the max of the chunk size and
+    //(length + std::numeric_limits<int>::max()) / std::numeric_limits<int>::max();
+    //Also sets the steal rank =  m_team_base + m_team_alloc + m_team_size <= m_pool_size
+    //                        ? m_team_base + m_team_alloc
+    //                        : 0;
+    // No access to these variables
 
     data.set_work_partition(lPolicy.end() - lPolicy.begin(),
                                      lPolicy.chunk_size());
 
-    std::cout << "Policy.end: " << lPolicy.end() << " Policy.begin " << lPolicy.begin() << " chunk " <<lPolicy.chunk_size() << std::endl;
 
+    //printf("ThreadID: %d, Policy.end(): %d, Policy,begin(): %d, and Policy.chunk_size(): %d\n", omp_get_thread_num(), lPolicy.end(), lPolicy.begin(), lPolicy.chunk_size());
+    //fflush(stdout);
+
+    // HERE STARTS SCHEDULER MODIFICATIONS, CLEAN UP
+    // to separate function (?), not triggered in case of < 3 threads.
+
+    // Per-thread rescheduling.
+    // TODO: TEST CORNER CASES BELOW
+    // 1) Uneven thread split (3-3-2) CHECKED, FINE
+    // 2) Range unevenly divided (e.g., the range-exceeding case in 3-3-2 with last 2 threads originally assigned 2 and 0 elements) CHECKED, FINE
+    // 3) Massive size: Unchecked
+    // 4) Range size < # threads available CHECKED, FINE
+
+    int chunk_min = ((lPolicy.end()-lPolicy.begin()) + std::numeric_limits<int>::max()) /
+                            std::numeric_limits<int>::max();
+
+    int work_end  = lPolicy.end()-lPolicy.begin();
+    //printf("ThreadID: %d, workend %d and chunkmin %d\n", omp_get_thread_num(), work_end, chunk_min);
+    //fflush(stdout);
+
+    int chunk = lPolicy.chunk_size();
+
+    // Have not increased chunk size, chunk size is unit element work
+    int work_chunk = std::max(chunk, chunk_min);
+
+    // LEAGUE SIZE BASED ON DEBUGGER EVIDENCE
+    int league_size = OpenMP::impl_thread_pool_size();
+
+    // num is number of work chunks - same for all 3 executions
+    int num  = (work_end + work_chunk - 1) / work_chunk;
+
+    // Separate part based on which execution functor thread possesses
+    // partitioning is different based on num_exec_threads
+    int part = (num + exec_num_threads - 1) / exec_num_threads;
+
+    // TODO: STEAL RANK? DYNAMIC ONLY
+    // No procedure for invoking this in range policy implementation, unless dynamic triggered
+
+    // This doesn't happen unless the schedule is set to dynamic, a rare occurrence
+    //TODO: ACCOUNT FOR THIS, WILL BREAK CODE
     if (dynamic_value) {
       // Make sure work partition is set before stealing
       if (data.pool_rendezvous()) data.pool_rendezvous_release();
     }
 
     std::pair<int64_t, int64_t> range(0, 0);
-    std::cout<< "This is now dynamic_value: " <<dynamic_value <<std::endl;
+
+    // Artificially resetting the first range to rescheduled first range
+    // Always overridden? No, took out overrider, now it's necessary.
+    if (omp_get_thread_num() < league_size / 3) {
+
+      range.first = part * omp_get_thread_num();
+    }
+
+    if (omp_get_thread_num() >= league_size / 3 &&
+        omp_get_thread_num() < (2 * league_size) / 3) {
+
+      range.first = part * (omp_get_thread_num() - (league_size/3));
+    }
+
+    if (omp_get_thread_num() < league_size &&
+        omp_get_thread_num() >= (2 * league_size) / 3) {
+
+      range.first = part * (omp_get_thread_num() - ( ( 2 * league_size) / 3 ) );
+    }
+
+    range.second = range.first + part;
+    range.second = range.second < work_end ? range.second : work_end;
+
+    //printf("ThreadID %d in after setup, first range: %d - %d,\n", omp_get_thread_num(),range.first,range.second);
+    //fflush(stdout);
+
     do {
       // If (dynamic_value), range=data.getworkstealing, else range=data.getworkpartition
-      // Dynamic value is changing between first and second, this is triggering get work partition
-      range = dynamic_value ? data.get_work_stealing_chunk()
-                         : data.get_work_partition();
+      // Dynamic value is 0, this is triggering get work partition
+      // Dynamic value is a rare occurrance specifically triggered by user.
+      // TODO: ACCOUNT FOR THIS
 
-      std::cout << "ThreadID:" << omp_get_thread_num() << "range:" << range.first << "-" << range.second << std::endl;
+
+      //range = dynamic_value ? data.get_work_stealing_chunk()
+      //                   : data.get_work_partition();
+
+      // This is overriding the scheduling from range above.
+      // Once secure, find way to delete that scheduling, no need for 2x schedule
+
+      range.first *= work_chunk;
+      range.second *= work_chunk;
+      range.second = range.second < work_end ? range.second : work_end;
+
+      //printf("ThreadID %d in dowhile, updating work partition: %d - %d,\n", omp_get_thread_num(),range.first,range.second);
+      //fflush(stdout);
 
       ParallelFor::template exec_range<WorkTag>(
                    functor, range.first + lPolicy.begin(),
-                   range.second + lPolicy.begin());
+                            range.second + lPolicy.begin());
 
     } while (dynamic_value && 0 <= range.first);
   }
@@ -198,8 +283,7 @@ class ParallelFor< FunctorType
 
       static constexpr bool is_dynamic = std::is_same<typename Policy::schedule_type::type,
                                 Kokkos::Dynamic>::value;
-      //static constexpr bool is_dynamic = true;
-      //static constexpr bool is_dynamic = true;
+
       std::cout << "This is is_dynamic:" << is_dynamic << std::endl;
 
       surrogate_policy lPolicy[3];
@@ -207,31 +291,29 @@ class ParallelFor< FunctorType
         lPolicy[i] = surrogate_policy(m_policy.begin(), m_policy.end());
       }
 
+
+
       // ViewHooks captures non-constant views and passes to duplicate_shared
       // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
-      // THIS WAS NECESSARY FOR JEFF'S IMPLEMENTATION
       Kokkos::Impl::shared_allocation_tracking_enable();
 
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
       auto m_functor_0 = m_functor;
-      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
       auto m_functor_1 = m_functor;
-      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
       auto m_functor_2 = m_functor;
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      // Clear the ViewHooks and toggle the shared allocation tracking off again
+      // toggle the shared allocation tracking off again
       // Allows for user-intended view behavior in main body of parallel_for
-      // STILL DOING THIS TOGGLE?, PAIRED QUESTION.
-
-      Kokkos::Impl::shared_allocation_tracking_disable();
+       Kokkos::Impl::shared_allocation_tracking_disable();
 
       if (OpenMP::in_parallel()) {
         exec_range<WorkTag>(m_functor, m_policy.begin(), m_policy.end());
       } else {
         OpenMPExec::verify_is_master("Kokkos::OpenMP parallel_for");
 
-        //TODO: THIS <3-THREADS CASE HAS MAJOR ATOMIC PROBLEMS
+//TODO: MAKE EXEC_WORK TRIGGER RANGE MITIGATION ONLY ON 3 OR MORE THREADS
         if (OpenMP::impl_thread_pool_size() < 3) {
 
           int exec_num_threads = OpenMP::impl_thread_pool_size();
@@ -267,9 +349,10 @@ class ParallelFor< FunctorType
         }    //else
       } // omp-parallel else
       Kokkos::fence();
-      KokkosResilience::print_duplicates_map();
-      Kokkos::fence();
-      // TODO: COMBINE RES DUPLICATES CALL HERE
+      //KokkosResilience::print_duplicates_map();
+      //Kokkos::fence();
+
+      // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
 
       Kokkos::fence();
