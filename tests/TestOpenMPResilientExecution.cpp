@@ -21,7 +21,7 @@
 //#ifdef KR_ENABLE_OPENMP // TODO: RESILIENCE HEADER MODIFY
 //#ifdef KR_ENABLE_RESILIENT_EXECUTION_SPACE // TODO: REIMPLEMENT
 
-#define N 25
+#define N 100000
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -39,7 +39,7 @@ TEST(TestResOpenMP, TestThreads)
   };
   ASSERT_EQ( omp_get_max_threads(), 8);
 }*/
-
+/*
 // gTest resilient spaces work on own. Goal is to deepcopy one view to another.
 TEST(TestResOpenMP, TestSpaces)
 {
@@ -101,11 +101,11 @@ TEST(TestResOpenMP, TestDuplicateSubscriber)
   fflush(stdout);
 
 }
-
+*/
 /*********************************
 *********PARALLEL FORS************
 **********************************/
-
+/*
 // gTest runs parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestKokkosFor)
 {
@@ -122,8 +122,7 @@ TEST(TestResOpenMP, TestKokkosFor)
 
   Kokkos::fence();
 
-  auto test(y2);
-
+  //auto test(y2);
 
   // Initialize y vector on host using parallel_for
   Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( int i) {
@@ -144,8 +143,9 @@ TEST(TestResOpenMP, TestKokkosFor)
   fflush(stdout);
 
 }
+*/
 
-
+/*
 // gTest runs parallel_for with resilient Kokkos. Expect same answer as last test.
 TEST(TestResOpenMP, TestResilientFor)
 {
@@ -157,9 +157,51 @@ TEST(TestResOpenMP, TestResilientFor)
   using subscriber_vector_double_type = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
                                                       Kokkos::Experimental::SubscribableViewHooks<
                                                           KokkosResilience::ResilientDuplicatesSubscriber > >;
+    // Allocate y, x vectors.
+  subscriber_vector_double_type y( "y", N );
+  subscriber_vector_double_type x( "x", N );
+
+  printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num());
+  fflush(stdout);
+
+  Kokkos::Timer timer;
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = i;
+    printf("This is i from the parallel for %d \n", i);
+  });
+
+  Kokkos::fence();
+
+  printf("GTEST: Thread %d reports test parallel_for completed, accuracy TBD.\n", omp_get_thread_num());
+  fflush(stdout);
+
+  double time = timer.seconds();
+
+  Kokkos::deep_copy(x, y);
+
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(x(i), i);
+  }
+
+  printf("GTEST: Thread %d reports test parallel_for completed. Data assignment was correct.\n", omp_get_thread_num());
+  fflush(stdout);
+  printf("\n\n\n");
+  fflush(stdout);
+}
+ */
+/*
+
+// gTest runs parallel_for with resilient Kokkos and atomic counter. Expect counter to count iterations.
+TEST(TestResOpenMP, TestResilientForAtomics)
+{
+  // range policy with resilient execution space
+  using range_policy = Kokkos::RangePolicy<ExecSpace>;
+
   using subscriber_vector_int_type = Kokkos::View< int* , Kokkos::LayoutRight, MemSpace,
-                                                   Kokkos::Experimental::SubscribableViewHooks<
-                                                       KokkosResilience::ResilientDuplicatesSubscriber > >;
+      Kokkos::Experimental::SubscribableViewHooks<
+          KokkosResilience::ResilientDuplicatesSubscriber > >;
 
   // Allocate scalar for test incrementation
   //typedef Kokkos::View<int, Kokkos::LayoutRight, MemSpace> ViewScalarInt;
@@ -169,12 +211,63 @@ TEST(TestResOpenMP, TestResilientFor)
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   subscriber_vector_int_type counter( "DataAccesses", 1);
 
+  Kokkos::Timer timer;
+
+  counter(0) = 0;
+
+  printf("GTEST: Thread %d reports counter successfully initialized to %d.\n", omp_get_thread_num(), counter(0));
+  fflush(stdout);
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    printf("This is i from the parallel for %d \n", i);
+    Kokkos::atomic_increment(&counter(0));
+    printf("This is counter(0): %d\n", counter(0));
+    fflush(stdout);
+  });
+
+  Kokkos::fence();
+
+  printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
+  fflush(stdout);
+
+  double time = timer.seconds();
+
+  ASSERT_EQ(counter(0), N);
+
+  printf("\n\n\n");
+  fflush(stdout);
+}
+ */
+
+// gTest runs parallel_for with resilient Kokkos and atomic counter. Expect counter to count iterations.
+TEST(TestResOpenMP, TestResilientForAtomicsWithAssignment)
+{
+  // range policy with resilient execution space
+  using range_policy = Kokkos::RangePolicy<ExecSpace>;
+
+  using subscriber_vector_int_type = Kokkos::View< int* , Kokkos::LayoutRight, MemSpace,
+      Kokkos::Experimental::SubscribableViewHooks<
+          KokkosResilience::ResilientDuplicatesSubscriber > >;
+  using subscriber_vector_double_type = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
+      Kokkos::Experimental::SubscribableViewHooks<
+          KokkosResilience::ResilientDuplicatesSubscriber > >;
+
   // Allocate y, x vectors.
   subscriber_vector_double_type y( "y", N );
   subscriber_vector_double_type x( "x", N );
 
   printf("GTEST: Thread %d reports vectors declared.\n", omp_get_thread_num());
   fflush(stdout);
+
+
+  // Allocate scalar for test incrementation
+  //typedef Kokkos::View<int, Kokkos::LayoutRight, MemSpace> ViewScalarInt;
+  //ViewScalarInt set_data_counter;
+  //set_data_counter() = 1;
+
+  //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
+  subscriber_vector_int_type counter( "DataAccesses", 1);
 
   Kokkos::Timer timer;
 
@@ -186,21 +279,19 @@ TEST(TestResOpenMP, TestResilientFor)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    printf("This is i from the parallel for %d \n", i);
-    //printf("This is y(i) -unknown thread- from the parallel for %lf \n", y(i));
-    //std::cout << "This is the y(" << i << ") data pointer" << y.data() << std::endl;
-
+    //printf("This is i from the parallel for %d \n", i);
+    //fflush(stdout);
     Kokkos::atomic_increment(&counter(0));
+    //printf("This is counter(0): %d\n", counter(0));
+    //fflush(stdout);
+
   });
 
   Kokkos::fence();
 
-  printf("GTEST: Thread %d reports test parallel_for completed, accuracy TBD.\n", omp_get_thread_num());
-  fflush(stdout);
+  double time = timer.seconds();
   printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
   fflush(stdout);
-
-  double time = timer.seconds();
 
   Kokkos::deep_copy(x, y);
 
@@ -216,6 +307,10 @@ TEST(TestResOpenMP, TestResilientFor)
   printf("\n\n\n");
   fflush(stdout);
 }
+
+
+
+
 
 /*
 // gTest attempts to trigger all 2 executions generating different data. 
