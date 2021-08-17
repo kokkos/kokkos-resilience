@@ -46,43 +46,36 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <omp.h>
 #include <iostream>
+
 #include <OpenMP/Kokkos_OpenMP_Exec.hpp>
 #include <impl/Kokkos_FunctorAdapter.hpp>
 
 #include <KokkosExp_MDRangePolicy.hpp>
 
 #include <Kokkos_Parallel.hpp>
-#include <OpenMP/Kokkos_OpenMP_Parallel.hpp>//main parallel
+#include <OpenMP/Kokkos_OpenMP_Parallel.hpp>
 
 #include "OpenMPResSubscriber.hpp"
 
 /*--------------------------------------------------------------------------*/
-/********************  OVERALL COMBINER FUNCTION CALL  **********************/
+/************************** DUPLICATE COMBINER CALL *************************/
 /*--------------------------------------------------------------------------*/
-
 
 namespace KokkosResilience{
 
 inline bool combine_resilient_duplicates() {
 
-  printf("Entered the combine resilient duplicates function. \n\n");
-  fflush(stdout);
-
   bool success = true;
   // Combines all duplicates
   // Go over the Subscriber map, execute all the CombinerBase elements
+  // If any duplicate fails to find a match, breaks
   for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
     success = combiner.second->execute();
     if(!success) break;
-  }
-
-  //TODO: CHANGE TO GENTLE, FIX ERROR
-  if (!success) {
-    Kokkos::abort("Aborted in combine_resilient_duplicates");
   }
 
   return success;
@@ -152,121 +145,97 @@ class ParallelFor< FunctorType
              bool dynamic_value,
              int exec_num_threads) const {
 
-    //printf("Thread %d in resilient Kokkos range-policy, executing work.\n", omp_get_thread_num());
-    //fflush(stdout);
-
-    //Initial setup, returns for each thread up to MAX_THREAD
+    //Initial setup, returns for each thread
     HostThreadTeamData& data = *(m_instance->get_thread_data());
-
-    //Feeds in the total range and a chunk size, which is set in the work partition
-    // to the max of the chunk size and
-    //(length + std::numeric_limits<int>::max()) / std::numeric_limits<int>::max();
-    //Also sets the steal rank =  m_team_base + m_team_alloc + m_team_size <= m_pool_size
-    //                        ? m_team_base + m_team_alloc
-    //                        : 0;
-    // No access to these variables
 
     data.set_work_partition(lPolicy.end() - lPolicy.begin(),
                                      lPolicy.chunk_size());
 
+    if (OpenMP::impl_thread_pool_size() < 3) {
 
-    //printf("ThreadID: %d, Policy.end(): %d, Policy,begin(): %d, and Policy.chunk_size(): %d\n", omp_get_thread_num(), lPolicy.end(), lPolicy.begin(), lPolicy.chunk_size());
-    //fflush(stdout);
+      if (dynamic_value) {
+        // Make sure work partition is set before stealing
+        if (data.pool_rendezvous()) data.pool_rendezvous_release();
+      }
 
-    // HERE STARTS SCHEDULER MODIFICATIONS, CLEAN UP
-    // to separate function (?), not triggered in case of < 3 threads.
+      std::pair<int64_t, int64_t> range(0, 0);
 
-    // Per-thread rescheduling.
-    // TODO: TEST CORNER CASES BELOW
-    // 1) Uneven thread split (3-3-2) CHECKED, FINE
-    // 2) Range unevenly divided (e.g., the range-exceeding case in 3-3-2 with last 2 threads originally assigned 2 and 0 elements) CHECKED, FINE
-    // 3) Massive size: Unchecked
-    // 4) Range size < # threads available CHECKED, FINE
+      do {
+        range = dynamic_value ? data.get_work_stealing_chunk()
+                             : data.get_work_partition();
 
-    int chunk_min = ((lPolicy.end()-lPolicy.begin()) + std::numeric_limits<int>::max()) /
-                            std::numeric_limits<int>::max();
+        ParallelFor::template exec_range<WorkTag>(
+            functor, range.first + lPolicy.begin(),
+            range.second + lPolicy.begin());
 
-    int work_end  = lPolicy.end()-lPolicy.begin();
-    //printf("ThreadID: %d, workend %d and chunkmin %d\n", omp_get_thread_num(), work_end, chunk_min);
-    //fflush(stdout);
+      } while (dynamic_value && 0 <= range.first);
 
-    int chunk = lPolicy.chunk_size();
-
-    // Have not increased chunk size, chunk size is unit element work
-    int work_chunk = std::max(chunk, chunk_min);
-
-    // LEAGUE SIZE BASED ON DEBUGGER EVIDENCE
-    int league_size = OpenMP::impl_thread_pool_size();
-
-    // num is number of work chunks - same for all 3 executions
-    int num  = (work_end + work_chunk - 1) / work_chunk;
-
-    // Separate part based on which execution functor thread possesses
-    // partitioning is different based on num_exec_threads
-    int part = (num + exec_num_threads - 1) / exec_num_threads;
-
-    // TODO: STEAL RANK? DYNAMIC ONLY
-    // No procedure for invoking this in range policy implementation, unless dynamic triggered
-
-    // This doesn't happen unless the schedule is set to dynamic, a rare occurrence
-    //TODO: ACCOUNT FOR THIS, WILL BREAK CODE
-    if (dynamic_value) {
-      // Make sure work partition is set before stealing
-      if (data.pool_rendezvous()) data.pool_rendezvous_release();
     }
+    else {
+      // Per-thread scheduler modifications for triplicate execution
+      int64_t chunk_min = ((lPolicy.end() - lPolicy.begin()) +
+                           std::numeric_limits<int>::max()) /
+                          std::numeric_limits<int>::max();
 
-    std::pair<int64_t, int64_t> range(0, 0);
+      int64_t work_end = lPolicy.end() - lPolicy.begin();
 
-    // Artificially resetting the first range to rescheduled first range
-    // Always overridden? No, took out overrider, now it's necessary.
-    if (omp_get_thread_num() < league_size / 3) {
+      int64_t chunk = lPolicy.chunk_size();
 
-      range.first = part * omp_get_thread_num();
-    }
+      // No increase to chunk size
+      int64_t work_chunk = std::max(chunk, chunk_min);
 
-    if (omp_get_thread_num() >= league_size / 3 &&
-        omp_get_thread_num() < (2 * league_size) / 3) {
+      // League size may change
+      int league_size = OpenMP::impl_thread_pool_size();
 
-      range.first = part * (omp_get_thread_num() - (league_size/3));
-    }
+      // num is number of work chunks - same for all 3 executions
+      int num = (work_end + work_chunk - 1) / work_chunk;
 
-    if (omp_get_thread_num() < league_size &&
-        omp_get_thread_num() >= (2 * league_size) / 3) {
+      // part based on which execution functor thread possesses - different per
+      // execution
+      int part = (num + exec_num_threads - 1) / exec_num_threads;
 
-      range.first = part * (omp_get_thread_num() - ( ( 2 * league_size) / 3 ) );
-    }
+      // This doesn't happen unless the schedule is set to dynamic
+      // This case is currently unavailable
+      if (dynamic_value) {
+        // Make sure work partition is set before stealing
+        if (data.pool_rendezvous()) data.pool_rendezvous_release();
+      }
 
-    range.second = range.first + part;
-    range.second = range.second < work_end ? range.second : work_end;
+      std::pair<int64_t, int64_t> range(0, 0);
 
-    //printf("ThreadID %d in after setup, first range: %d - %d,\n", omp_get_thread_num(),range.first,range.second);
-    //fflush(stdout);
+      // Resetting the first range to rescheduled first range
+      if (omp_get_thread_num() < league_size / 3) {
+        range.first = part * omp_get_thread_num();
+      }
 
-    do {
-      // If (dynamic_value), range=data.getworkstealing, else range=data.getworkpartition
-      // Dynamic value is 0, this is triggering get work partition
-      // Dynamic value is a rare occurrance specifically triggered by user.
-      // TODO: ACCOUNT FOR THIS
+      if (omp_get_thread_num() >= league_size / 3 &&
+          omp_get_thread_num() < (2 * league_size) / 3) {
+        range.first = part * (omp_get_thread_num() - (league_size / 3));
+      }
 
+      if (omp_get_thread_num() < league_size &&
+          omp_get_thread_num() >= (2 * league_size) / 3) {
+        range.first = part * (omp_get_thread_num() - ((2 * league_size) / 3));
+      }
 
-      //range = dynamic_value ? data.get_work_stealing_chunk()
-      //                   : data.get_work_partition();
-
-      // This is overriding the scheduling from range above.
-      // Once secure, find way to delete that scheduling, no need for 2x schedule
-
-      range.first *= work_chunk;
-      range.second *= work_chunk;
+      range.second = range.first + part;
       range.second = range.second < work_end ? range.second : work_end;
 
-      //printf("ThreadID %d in dowhile, updating work partition: %d - %d,\n", omp_get_thread_num(),range.first,range.second);
-      //fflush(stdout);
+      do {
+        // Dynamic case not available
+        // range = dynamic_value ? data.get_work_stealing_chunk()
+        //                   : data.get_work_partition();
 
-      ParallelFor::template exec_range<WorkTag>(
-                   functor, range.first + lPolicy.begin(),
-                            range.second + lPolicy.begin());
+        range.first *= work_chunk;
+        range.second *= work_chunk;
+        range.second = range.second < work_end ? range.second : work_end;
 
-    } while (dynamic_value && 0 <= range.first);
+        ParallelFor::template exec_range<WorkTag>(
+            functor, range.first + lPolicy.begin(),
+            range.second + lPolicy.begin());
+
+      } while (dynamic_value && 0 <= range.first);
+    }
   }
 
  public:
@@ -276,24 +245,15 @@ class ParallelFor< FunctorType
     bool success = 0;
 
     while(success==0 && repeats > 0){
-      printf("Thread %d in resilient Kokkos rp-for, before parallel pragma.\n", omp_get_thread_num());
-      fflush(stdout);
-      printf("This is execution number %d.\n",repeats);
-      fflush(stdout);
 
       static constexpr bool is_dynamic = std::is_same<typename Policy::schedule_type::type,
                                 Kokkos::Dynamic>::value;
-
-      std::cout << "This is is_dynamic:" << is_dynamic << std::endl;
 
       surrogate_policy lPolicy[3];
       for (int i = 0; i < 3; i++) {
         lPolicy[i] = surrogate_policy(m_policy.begin(), m_policy.end());
       }
 
-
-
-      // ViewHooks captures non-constant views and passes to duplicate_shared
       // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
       Kokkos::Impl::shared_allocation_tracking_enable();
 
@@ -306,14 +266,14 @@ class ParallelFor< FunctorType
 
       // toggle the shared allocation tracking off again
       // Allows for user-intended view behavior in main body of parallel_for
-       Kokkos::Impl::shared_allocation_tracking_disable();
+      Kokkos::Impl::shared_allocation_tracking_disable();
 
       if (OpenMP::in_parallel()) {
         exec_range<WorkTag>(m_functor, m_policy.begin(), m_policy.end());
       } else {
         OpenMPExec::verify_is_master("Kokkos::OpenMP parallel_for");
 
-//TODO: MAKE EXEC_WORK TRIGGER RANGE MITIGATION ONLY ON 3 OR MORE THREADS
+        // Three consecutive executions if less than three threads total
         if (OpenMP::impl_thread_pool_size() < 3) {
 
           int exec_num_threads = OpenMP::impl_thread_pool_size();
@@ -322,6 +282,7 @@ class ParallelFor< FunctorType
           exec_work(m_functor_2, lPolicy[2], is_dynamic, exec_num_threads);
 
         } else {
+          //Three concurrent executions with 1/3 threads each if >3 threads
 #pragma omp parallel num_threads(OpenMP::impl_thread_pool_size())
           {
             if (omp_get_thread_num() < OpenMP::impl_thread_pool_size() / 3) {
@@ -363,23 +324,22 @@ class ParallelFor< FunctorType
     }// while (!success & repeats left)
 
     if(success==0 && repeats == 0){
-    // TODO: Improve error message to give for label, change to throw_exception
+    // Abort if 5 repeated tries at executing failed to find acceptable match
     Kokkos::abort("Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
     }
 
   } // execute
+
   inline ParallelFor(const FunctorType& arg_functor, Policy arg_policy)
       : m_instance(t_openmp_instance),
         m_functor(arg_functor),
         m_policy(arg_policy) {
-    printf("Thread %d in resilient Kokkos, res pf constructor.\n", omp_get_thread_num());
   }
+
 };// range policy implementation
 
 } // namespace Impl
 } // namespace Kokkos
 
-
-
-#endif // KOKKOS_ENABLE_OPENMP //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#endif // KOKKOS_ENABLE_OPENMP
 #endif // INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
