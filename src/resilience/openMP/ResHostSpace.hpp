@@ -218,7 +218,6 @@ NEED MORE CASES TO BE COMPLETELY GUARDED
 
 
 } // namespace Impl
-
 } // namespace Kokkos
 
 /*--------------------------------------------------------------------------*/
@@ -343,87 +342,6 @@ public:
 
 }  // namespace Kokkos
 
-/*--------------------------------------------------------------------------*/
-/*
-namespace KokkosResilience{
-
-template <class Type>
-class SpecDuplicateTracker<Type, Kokkos::OpenMP> : public DuplicateTracker {
-  public:
-    typedef typename std::remove_reference<Type>::type nr_type;
-    typedef typename std::remove_pointer<nr_type>::type np_type;
-    typedef typename std::remove_extent<np_type>::type ne_type;
-    typedef typename std::remove_const<ne_type>::type rd_type;
-    typedef CombineFunctor<rd_type, Kokkos::OpenMP> comb_type;
-
-    comb_type m_cf;
-
-    inline SpecDuplicateTracker() : DuplicateTracker(), m_cf() {}
-
-    inline SpecDuplicateTracker(const SpecDuplicateTracker& rhs)
-        : DuplicateTracker(rhs), m_cf(rhs.m_cf) {}
-
-     virtual bool combine_dups();
-     virtual void set_func_ptr();
-};
-
-template <class Type>
-void SpecDuplicateTracker<Type, Kokkos::OpenMP>::set_func_ptr() {}
-
-template <class Type>
-bool SpecDuplicateTracker<Type, Kokkos::OpenMP>::combine_dups() {
-
-  //bool success;
-  static bool success;
-
-  if (dup_cnt != 3) {
-    printf("must have 3 duplicates !!!\n");
-    fflush(stdout);
-    return 0;
-  }
-  int N = data_len / sizeof(rd_type);
-  m_cf.load_ptrs( static_cast<rd_type*>(original_data)
-                , static_cast<rd_type*>(dup_list[0])
-                , static_cast<rd_type*>(dup_list[1])
-                , static_cast<rd_type*>(dup_list[2]), N );
-
-  comb_type local_cf(m_cf);
-  printf("Combine duplicates has size N=%d\n\n\n",N);
-  fflush(stdout);
-
-
-  Kokkos::parallel_for( N, KOKKOS_LAMBDA(int i) {
-    local_cf.exec(i);
-  });
-
-
-  //currently counting if there are data-length number of successes
-  //that is, everything successful
-  //TODO: Change to only one unsuccessful
-
-  int result = 0;
-  Kokkos::parallel_reduce( "combine_dups", N, KOKKOS_LAMBDA( int i, int &success ) {
-    success += local_cf.exec(i);
-  }, result );
-
-  printf("RESULT = %d after combining\n", result);
-  fflush(stdout);
-
-  printf("trigger = %d after combining but not setting (should be 1) \n", trigger);
-  fflush(stdout);
-
-
-  if (result != N) {trigger = 0;}
-
-  printf("trigger = %d after setting\n", trigger);
-  fflush(stdout);
-
-  return trigger;
-
-}
-
-} //namespace KokkosResilience
-*/
 /*--------------------------------------------------------------------------*/
 
 #endif // #define INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
