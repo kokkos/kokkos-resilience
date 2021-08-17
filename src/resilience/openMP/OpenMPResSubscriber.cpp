@@ -2,7 +2,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP
 
 #include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#if defined(KOKKOS_ENABLE_OPENMP)
 
 #include "OpenMPResSubscriber.hpp"
 
@@ -14,5 +14,5 @@ std::unordered_map < ResilientDuplicatesSubscriber::key_type, std::unique_ptr<Co
 
 }
 
-#endif //defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#endif //defined(KOKKOS_ENABLE_OPENMP)
 #endif //INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP

@@ -44,7 +44,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <Kokkos_Core_fwd.hpp>
 #include <Kokkos_CopyViews.hpp>
@@ -61,35 +61,11 @@
 #include <sstream>
 
 /*--------------------------------------------------------------------------
- *************** TEST SUBSCRIBER, DELETE LATER *****************************
- --------------------------------------------------------------------------*/
-
-struct TestIISubscriber;
-
-// Generate usable error message
-static_assert( Kokkos::Experimental::is_hooks_policy< Kokkos::Experimental::SubscribableViewHooks< TestIISubscriber > >::value, "Must be a hooks policy" );
-
-struct TestIISubscriber
-{
-  static Kokkos::View< double **, Kokkos::Experimental::SubscribableViewHooks< TestIISubscriber > >* self_ptr;
-  static const Kokkos::View< double **, Kokkos::Experimental::SubscribableViewHooks< TestIISubscriber > >* other_ptr;
-
-  template< typename View >
-  static void copy_constructed( View &self, const View &other )
-  {
-    self_ptr= &self;
-    other_ptr = &other;
-
-  }
-};
-
-/*--------------------------------------------------------------------------
  ******************** ERROR MESSAGE GENERATION *****************************
  --------------------------------------------------------------------------*/
 
-// UH OH NAMESPACE AGREEMENT!!!!!!!!!!!
-
 namespace KokkosResilience {
+
 struct ResilientDuplicatesSubscriber;
 
 // Generate usable error message
@@ -98,6 +74,7 @@ static_assert(Kokkos::Experimental::is_hooks_policy<
                       ResilientDuplicatesSubscriber> >::value,
               "Must be a hooks policy");
 }
+
 /*----------------------------------------------------------------------------
  ******** STRUCT TO CHECK CORRECTNESS OF INDIVIDUAL ELEMENTS OF VIEWS ********
  ----------------------------------------------------------------------------*/
@@ -107,26 +84,28 @@ namespace KokkosResilience {
 template <class Type, class Enabled = void>
 struct CheckDuplicateEquality;
 
+// Checks equality of individual element on floating points
 template <class Type>
 struct CheckDuplicateEquality<
     Type, typename std::enable_if< std::is_floating_point < Type >::value, void >::type > {
 
-    KOKKOS_INLINE_FUNCTION
-  CheckDuplicateEquality() {}
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality() = default;
 
   KOKKOS_INLINE_FUNCTION
-  CheckDuplicateEquality(const CheckDuplicateEquality& cde) {}
+  CheckDuplicateEquality(const CheckDuplicateEquality& cde) = default;
 
   KOKKOS_INLINE_FUNCTION
   bool compare(Type a, Type b) const { return (abs(a - b) < 0.00000001); }
 };
 
+// Checks on non-floating points, user can create own checker for custom structs
 template <class Type>
 struct CheckDuplicateEquality<
     Type, typename std::enable_if< !std::is_floating_point < Type >::value, void >::type > {
 
   KOKKOS_INLINE_FUNCTION
-  CheckDuplicateEquality() {}
+  CheckDuplicateEquality() = default;
 
   KOKKOS_INLINE_FUNCTION
   CheckDuplicateEquality(const CheckDuplicateEquality& cde) {}
@@ -141,8 +120,7 @@ namespace KokkosResilience{
 
 struct CombineDuplicatesBase
 {
-  // Need virtual bool in order to return success
-  // TODO: clean comment
+  // Virtual bool to return success flag
   virtual bool execute() = 0;
   virtual void print() = 0;
 };
@@ -167,8 +145,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     else {
 
-      //TODO: WIL MULTIDIMENSIONAL VIEW AFFECT? TEST (MIGHT NEED EXECUTION POLICY)
-      //Todo:: race condition on success
       Kokkos::parallel_for(original.size(), *this);
       Kokkos::fence();
     }
@@ -190,11 +166,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
   }
 
-  //KOKKOS_FUNCTION
   KOKKOS_FUNCTION
   void operator ()(int i) const {
 
-    //printf("Majority vote, index i: %d\n", i);
     for (int j = 0; j < 3; j++) {
       //printf("Original value before compare at index %d is %lf\n", i, original(i));
       //printf("Copy value before compare at index %d is %lf\n", i, copy[j](i));
@@ -215,10 +189,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
         }
       }
     }
+
     //No match found, all three executions return different number
-    printf("no match found: %i\n", i);
-    // TODO: MOVE ABORT HERE FROM MAIN COMBINE CALL (TESTING)
-    // TODO: DISCUSS WITH NIC, NOT ABORT, JUST BREAK INTO MAIN P_FOR
+    //printf("no match found: %i\n", i);
     Kokkos::atomic_assign(&success(0), false);
   }
 
@@ -241,21 +214,16 @@ struct ResilientDuplicatesSubscriber {
   using key_type = void *;  // key_type should be data() pointer
   static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_map;
 
-  //TODO: Write map clearing function
-
-  //Is the view_like function which initialize the dimensions of the duplicating view
+  // Function which initializes the dimensions of the duplicating view
   template <typename View>
   KOKKOS_INLINE_FUNCTION
   static void ViewMatching(View &self, const View &other, int duplicate_count) {
 
-    //TODO: TEst with no label
     std::stringstream label_ss;
     label_ss << other.label() << duplicate_count;
     self = View(label_ss.str(), other.layout());
 
   }
-
-  //TODO: POSSIBLY THE CULPRIT FOR ONLY 1 VIEW DUPLICATED
 
   template <typename View>
   static void copy_constructed(View &self, const View &other) {
@@ -269,7 +237,6 @@ struct ResilientDuplicatesSubscriber {
 
       if (res.second){c.original = other;}
 
-      //in_resilient_parallel_loop = false;
       // Reinitialize self to be like other (same dimensions, etc)
       ViewMatching(self, other, c.duplicate_count);
 
@@ -284,10 +251,7 @@ struct ResilientDuplicatesSubscriber {
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_map() {
-  for (auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-    // Just delete entry, delete pointer as well? Deleting by key fine, or need to delete combiner struct?
-    KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.erase(entry.first);
-  }
+  KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.clear();
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -299,5 +263,5 @@ void print_duplicates_map(){
 
 } //namespace KokkosResilience
 
-#endif //defined(KOKKOS_ENABLE_OPENMP) //&& defined (KR_ENABLE_ACTIVE_EXECUTION_SPACE)
+#endif //defined(KOKKOS_ENABLE_OPENMP)
 #endif

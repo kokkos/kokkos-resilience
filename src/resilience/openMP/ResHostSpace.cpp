@@ -63,7 +63,6 @@ IF SWITCHES FOR NON-PREFERRED MEMORY HERE, WHEN EXPANDING
 
 #include <iostream>
 #include <sstream>
-#include <cstring>
 
 // Resilience headers
 #include "../Resilience.hpp"
@@ -86,19 +85,6 @@ namespace KokkosResilience {
 ResHostSpace::ResHostSpace()
   : HostSpace() {}
 
-/*
-// This map is keyed by *data() cast to string and contains duplicate subscribers
-std::map<std::string, KokkosResilience::DuplicateTracker* > ResHostSpace::duplicate_map;
-
-void ResHostSpace::clear_duplicate_map() {
-  std::map<std::string, KokkosResilience::DuplicateTracker* >::iterator it = ResHostSpace::duplicate_map.begin();
-  while ( it != ResHostSpace::duplicate_map.end() ) {
-    KokkosResilience::DuplicateTracker* dt = static_cast<KokkosResilience::DuplicateTracker*>(it->second);
-    delete dt;
-    duplicate_map.erase(it);
-  }
-}
-*/
 } // namespace KokkosResilience
 
 /*--------------------------------------------------------------------------*/

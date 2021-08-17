@@ -70,10 +70,6 @@
 
 namespace KokkosResilience {
 
-/*-----------------------
-MAY NEED MORE HERE
--------------------*/
-
 int ResOpenMP::concurrency()
 { return OpenMP::concurrency();}
 
