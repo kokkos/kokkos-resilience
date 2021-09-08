@@ -16,9 +16,13 @@ namespace KokkosResilience {
 
 namespace detail {
 
+std::string versionless_filename(std::string const &filename, std::string const &label) {
+  return filename + "." + label;
+}
+
 std::string full_filename(std::string const &filename, std::string const &label,
                           int version) {
-  return filename + "." + label + "." + std::to_string(version);
+  return versionless_filename(filename, label) + "." + std::to_string(version);
 }
 }  // namespace detail
 
@@ -43,6 +47,7 @@ void StdFileBackend::checkpoint(
     for (auto &&v : views) {
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
+std::cerr << "Checkpointing \"" << v->label() << "\"" << std::endl;
 
       file.write(bytes, len);
     }
@@ -61,11 +66,25 @@ bool StdFileBackend::restart_available(const std::string &label, int version) {
 
 int StdFileBackend::latest_version(const std::string &label) const noexcept {
   int result = -1;
-  for (int version = 0; /**/; ++version) {
-    std::string filename = detail::full_filename(m_filename, label, version);
-    if (!boost::filesystem::exists(filename)) {
-      result = version - 1;
-      break;
+  std::string filename = detail::versionless_filename(m_filename, label);
+  boost::filesystem::path dir(filename);
+  
+  filename = dir.filename().string();
+
+  dir = boost::filesystem::absolute(dir).parent_path();
+
+  for(auto &entry : boost::filesystem::directory_iterator(dir)){
+    if (!boost::filesystem::is_regular_file(entry)) {
+      continue;
+    }
+    if(filename == entry.path().filename().stem().string()){
+        //This is a checkpoint, probably.
+        try{
+            int vers = std::stoi(entry.path().filename().extension().string().substr(1));
+            result = std::max(result,vers);
+        } catch(...) {
+            //Just not the filename format we expected, could be unrelated.
+        }
     }
   }
   return result;
@@ -87,6 +106,8 @@ void StdFileBackend::restart(
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
 
+std::cerr << "Recovering \"" << v->label() << "\"" << std::endl;
+      
       file.read(bytes, len);
     }
 #ifdef KR_ENABLE_TRACING
