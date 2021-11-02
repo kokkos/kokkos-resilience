@@ -25,7 +25,12 @@ target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
+option(KR_ENABLE_INCREMENTAL_SCAN "use scan based methods for automatic incremental checkpointing" OFF)
+option(KR_ENABLE_INCREMENTAL_HASH "use hash based methods for automatic incremental checkpointing" OFF)
 
+# ETL for murmur3
+find_package(etl)
+target_link_libraries(resilience PUBLIC etl)
 
 # VeloC backend
 if (KR_ENABLE_VELOC)
@@ -37,6 +42,14 @@ if (KR_ENABLE_VELOC)
   if (VELOC_BAREBONE)
     target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
   endif()
+endif()
+
+if (KR_ENABLE_INCREMENTAL_SCAN)
+  target_compile_definitions(resilience PRIVATE KR_ENABLE_INCREMENTAL_SCAN)
+endif()
+
+if (KR_ENABLE_INCREMENTAL_HASH)
+  target_compile_definitions(resilience PRIVATE KR_ENABLE_INCREMENTAL_HASH)
 endif()
 
 # StdFile backend

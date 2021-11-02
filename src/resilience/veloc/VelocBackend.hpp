@@ -57,6 +57,26 @@ namespace KokkosResilience
       std::size_t element_size = 0;
       bool protect = false;
       bool registered = false;
+
+      bool incremental = false;
+      int meta_data_id = -1;
+#ifdef KR_ENABLE_INCREMENTAL_SCAN
+//      bool incremental = false;
+//      int meta_data_id = -1;
+      int indx_id = -1;
+      uint32_t num_changes = 0;
+      std::vector<uint8_t> incr_buff;
+      std::vector<uint32_t> indx_buff;
+      std::vector< bool > changed_buff;
+#endif
+#ifdef KR_ENABLE_INCREMENTAL_HASH
+      bool incremental = false;
+      int meta_data_id = -1;
+      std::vector< unsigned int >  meta_data;
+      std::vector< unsigned int >  hash_data;
+      std::vector< unsigned char > incr_buff;
+      std::vector< bool > changed_buff;
+#endif
     };
   }
 }
@@ -112,7 +132,7 @@ namespace KokkosResilience
     std::string get_canonical_label( const std::string &_label ) const noexcept;
     
     std::unordered_map< std::string, Detail::MemProtectBlock > m_registry;
-    
+
     MPI_Comm m_mpi_comm;
     ContextBase *m_context;
     
