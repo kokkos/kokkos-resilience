@@ -6,15 +6,15 @@
 template< typename F >
 auto get_view_list( F &&_fun )
 {
-  std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > views;
-  Kokkos::Experimental::DynamicViewHooks::set( [&views]( Kokkos::ViewHolderBase &view ) {
-    //views.emplace_back( view.clone() );
-  }, []( Kokkos::ConstViewHolderBase & ) {} );
+  std::vector< Kokkos::Experimental::ViewHolder > views;
+  Kokkos::Experimental::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const Kokkos::Experimental::ViewHolder &view ) {
+    views.emplace_back( view );
+  } );
 
   auto f = _fun;
 
   KokkosResilience::Detail::Cref::check_ref_list = nullptr;
-  Kokkos::Experimental::DynamicViewHooks::clear();
+  Kokkos::Experimental::DynamicViewHooks::copy_constructor_set.reset();
 
   f();
 
@@ -22,9 +22,9 @@ auto get_view_list( F &&_fun )
 }
 
 template< typename View >
-bool capture_list_contains( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_list, View &&_v )
+bool capture_list_contains( const std::vector< Kokkos::Experimental::ViewHolder > &_list, View &&_v )
 {
-  auto pos = std::find_if( _list.begin(), _list.end(), [&_v]( auto &&_hold ){ return _hold->data() == _v.data(); } );
+  auto pos = std::find_if( _list.begin(), _list.end(), [&_v]( auto &&_hold ){ return _hold.data() == _v.data(); } );
   return pos != _list.end();
 }
 
@@ -34,7 +34,8 @@ struct mixed_data
     : x( "test", 5 ), y( false )
   {}
 
-  Kokkos::View< double * > x;
+  using view_type = Kokkos::View< double *, Kokkos::Experimental::SubscribableViewHooks< Kokkos::Experimental::DynamicViewHooksSubscriber > >;
+  view_type x;
   bool y;
 
   void work() { y = true; };
@@ -65,12 +66,12 @@ TEST(LambdaCapture, clone_holder)
 {
   auto dat = mixed_data();
 
-  auto holder = Kokkos::ViewHolder< decltype( dat.x ) >( dat.x );
-  //auto *h2 = holder.clone();
+  auto holder = Kokkos::Experimental::make_view_holder( dat.x );
+  auto h2 = holder;
 
   EXPECT_EQ( holder.data(), dat.x.data() );
-  //EXPECT_EQ( holder.data(), h2->data() );
-  //EXPECT_EQ( h2->data(), dat.x.data() );
+  EXPECT_EQ( holder.data(), h2.data() );
+  EXPECT_EQ( h2.data(), dat.x.data() );
 }
 
 TEST(LambdaCapture, holder)

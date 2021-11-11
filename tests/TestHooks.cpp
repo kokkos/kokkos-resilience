@@ -1,7 +1,6 @@
 #include "TestCommon.hpp"
-#include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/ResilientRef.hpp>
 #include <algorithm>
+#include <unordered_map>
 #include <Kokkos_View.hpp>
 
 struct TestSubscriber;

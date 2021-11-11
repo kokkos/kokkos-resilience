@@ -38,13 +38,13 @@ namespace KokkosResilience
 
     virtual ~ContextBase() = default;
 
-    virtual void register_hashes(const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+    virtual void register_hashes(const std::vector< Kokkos::Experimental::ViewHolder > &views,
                                  const std::vector< Detail::CrefImpl > &crefs) = 0;
     virtual bool restart_available( const std::string &label, int version ) = 0;
     virtual void restart( const std::string &label, int version,
-                          const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
+                          const std::vector< Kokkos::Experimental::ViewHolder > &views ) = 0;
     virtual void checkpoint( const std::string &label, int version,
-                             const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
+                             const std::vector< Kokkos::Experimental::ViewHolder > &views ) = 0;
 
     virtual int latest_version( const std::string &label ) const noexcept = 0;
     virtual void register_alias( const std::string &original, const std::string &alias ) = 0;
