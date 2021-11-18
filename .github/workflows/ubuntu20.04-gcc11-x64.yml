@@ -1,6 +1,6 @@
 name: Ubuntu 20.04 gcc 11 x64
 
-on: push
+on: [push, workflow_dispatch]
 
 jobs:
   build:
