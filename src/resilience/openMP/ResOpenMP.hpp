@@ -136,10 +136,6 @@ class ResOpenMP : public Kokkos::OpenMP {
     // use UniqueToken
     static int concurrency();
 
-    /*****************************************
-    // MAY NEED TO INSERT DEPRECATED CODE HERE
-    *****************************************/
-
     static void impl_initialize(int thread_count = -1);
 
     // The default execution space initialized for current 'master' thread

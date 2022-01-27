@@ -51,9 +51,6 @@
 #include <iosfwd>
 #include <typeinfo>
 
-/*--------------------------------
-*** MAY NEED MORE HEADERS HERE**
---------------------------------*/
 #include <Kokkos_Core_fwd.hpp>
 
 // Resilience 
@@ -91,9 +88,6 @@ class ResHostSpace : public Kokkos::HostSpace {
     // Every memory space has a default execution space.  This is
     // useful for things like initializing a View (which happens in
     // parallel using the View's default execution space).
-    /*--------------------------------------------------------------
-    TODO: IF DEFINE MACRO SWITCH HERE WHEN EXPANDING TO MORE MEMORY SPACES  
-    --------------------------------------------------------------*/
 
     typedef Kokkos::Device<execution_space, memory_space> device_type; // Preferred device type
 
@@ -136,21 +130,11 @@ struct MemorySpaceAccess< Kokkos::HostSpace, KokkosResilience::ResHostSpace > {
   enum { deepcopy   = true };
 };
 
-/*--------------------------------------
-NEED MORE CASES TO BE COMPLETELY GUARDED
---------------------------------------*/
-
 /*--------------------------------------*/
 
 } // namespace Impl
 
 } // namespace Kokkos
-
-/*--------------------------------------------------------------------------*/
-
-/*---------------------------------------
-MAY NEED HOST MIRROR SPECIALIZATIONS HERE
----------------------------------------*/
 
 /*--------------------------------------------------------------------------*/
 
@@ -202,11 +186,6 @@ struct DeepCopy< KokkosResilience::ResHostSpace, Kokkos::HostSpace, ExecutionSpa
   }
 };
 
-/*--------------------------------------
-NEED MORE CASES TO BE COMPLETELY GUARDED
---------------------------------------*/
-
-
 } // namespace Impl
 } // namespace Kokkos
 
@@ -216,9 +195,6 @@ namespace Kokkos {
 
 namespace Impl {
 
-/*--------------------------------------
-NEED MORE CASES TO BE COMPLETELY GUARDED
---------------------------------------*/
 /*
 #if defined ( KOKKOS_ENABLE_CUDA )
 // Running in ResHostSpace, attempting to access CudaSpace
