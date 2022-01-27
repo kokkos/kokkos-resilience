@@ -7,13 +7,17 @@ FetchContent_Declare(googletest
 
 FetchContent_MakeAvailable(googletest)
 
+
+
 add_executable(resilience_tests
                TestMain.cpp
 #              TestResilience.cpp
 #              TestLambdaCapture.cpp
 #              TestHooks.cpp
 		       TestOpenMPResilientExecution.cpp
-               )
+		       )
+
+
 
 #if (KR_ENABLE_VELOC)
 #    target_sources(resilience_tests PRIVATE

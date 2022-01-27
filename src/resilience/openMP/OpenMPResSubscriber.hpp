@@ -153,37 +153,38 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   void print () override {
     std::cout << "This is the original data pointer " << original.data() << std::endl;
-    std::cout << "This is the copy[0] data pointer " << copy[0].data() << std::endl;
-    std::cout << "This is the copy[1]  data pointer " << copy[1].data() << std::endl;
-    std::cout << "This is the copy[2]  data pointer " << copy[2].data() << std::endl;
+    std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+    std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
+    std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
 
     for (int i=0; i<original.size();i++){
-      std::cout << "This is the original at index " << i << "with value" << original(i) << std::endl;
-      std::cout << "This is the copy[0] at index " << i << "with value" << copy[0](i) << std::endl;
-      std::cout << "This is the copy[1] at index " << i << "with value" << copy[1](i) << std::endl;
-      std::cout << "This is the copy[2] at index " << i << "with value" << copy[2](i) << std::endl;
+      std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+      std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+      std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
+      std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
 
     }
   }
 
+  // Looping over duplicates to check for equality
   KOKKOS_FUNCTION
   void operator ()(int i) const {
 
     for (int j = 0; j < 3; j++) {
-      //printf("Original value before compare at index %d is %lf\n", i, original(i));
-      //printf("Copy value before compare at index %d is %lf\n", i, copy[j](i));
-      //printf("Outer iteration: %d - %d \n", i, j);
+        //printf("Original value before compare at index %d is %lf\n", i, original(i));
+        //printf("Copy[%d] value before compare at index %d is %lf\n", j, i, copy[j](i));
+        //printf("Outer iteration: %d - %d \n", i, j);
       original(i) = copy[j](i);
-      //printf("first entry: %d, %d\n", j, orig_view[i]);
+
       for (int r = 0; r < 2; r++) {
         int k = (j+r+1)%3;
-        //printf("iterate inner %d, %d, %d \n", i, j, k);
+
         if (check_equality.compare(copy[k](i),
                        original(i)))  // just need 2 that are the same
         {
           //printf("match found: %d - %d\n", k, j);
           //printf("Original value after compare at index %d is %lf\n", i, original(i));
-          //printf("Copy value after compare at index %d is %lf\n", i, copy[k](i));
+          //printf("Copy[%d] value after compare at index %d is %lf\n", k, i, copy[k](i));
           Kokkos::atomic_assign(&success(0), true);
           return;
         }

@@ -52,10 +52,6 @@
 //#include <impl/Kokkos_Profiling_Interface.hpp>
 //#endif
 
-/*--------------------------------------------------------
-IF SWITCHES FOR NON-PREFERRED MEMORY HERE, WHEN EXPANDING
----------------------------------------------------------*/
-
 #include <cstddef>
 #include <cstdlib>
 #include <cstdint>
@@ -261,7 +257,3 @@ void SharedAllocationRecord<KokkosResilience::ResHostSpace, void>::print_records
 
 }  // namespace Impl
 }  // namespace Kokkos
-
-/*-------------------------
-ATOMIC LOCKS HERE IF NEEDED
--------------------------*/
