@@ -1,6 +1,11 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 #include <Kokkos_Core.hpp>
+#include <resilience/openMP/ResHostSpace.hpp>
+#include <resilience/openMP/ResOpenMP.hpp>
+
+#define MemSpace KokkosResilience::ResHostSpace
+#define ExecSpace2 KokkosResilience::ResOpenMP
 
 namespace Test {
 
@@ -11,7 +16,9 @@ using namespace Kokkos;
 template <typename ExecSpace>
 struct TestMDRange_2D {
   using DataType     = int;
-  using ViewType     = typename Kokkos::View<DataType **, ExecSpace>;
+  using ViewType     = typename Kokkos::View<DataType **, ExecSpace,
+                                             Kokkos::Experimental::SubscribableViewHooks<
+                                             KokkosResilience::ResilientDuplicatesSubscriber > >;
   using HostViewType = typename ViewType::HostMirror;
 
   ViewType input_view;
