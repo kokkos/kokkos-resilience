@@ -223,11 +223,15 @@ class ParallelFor< FunctorType
   const Policy m_policy; // construct as RangePolicy( 0, num_tiles
                          // ).set_chunk_size(1) in ctor
 
+  using iterate_type = typename Kokkos::Impl::HostIterateTile<
+      MDRangePolicy, FunctorType, typename MDRangePolicy::work_tag, void>;
+
   ParallelFor() = delete;
   ParallelFor & operator = ( const ParallelFor & ) = delete ;
 
   using surrogate_mdr_policy = Kokkos::MDRangePolicy < Kokkos::OpenMP, WorkTag >;
-  //using surrogate_policy = MDRangePolicy::impl_range_policy;
+  //no surrogate_policy defined here, variable used later?
+  using surrogate_policy = typename MDRangePolicy::impl_range_policy;
 
  public:
   inline void execute() const {
@@ -237,8 +241,11 @@ class ParallelFor< FunctorType
 
     while(success==0 && repeats > 0){
 
-      surrogate_mdr_policy wrapper_policy;
+      surrogate_mdr_policy wrapper_mdr_policy;
+
+      surrogate_policy wrapper_policy;
       wrapper_policy = surrogate_policy(m_policy.begin(), 3 * m_policy.end());
+
 
       // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
       //Kokkos::Impl::shared_allocation_tracking_enable();
@@ -250,7 +257,7 @@ class ParallelFor< FunctorType
       auto m_functor_2 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      auto wrapper_functor = [&](auto i){
+      auto wrapper_policy_functor = [&](auto i){
         if (i < m_policy.end())
         {
           m_functor_0 (i);
@@ -269,7 +276,7 @@ class ParallelFor< FunctorType
       // ALL THREAD SCHEDULING HANDLED BY KOKKOS HERE, ITERATION HANDLING BY US
       // Attempt to feed in a three-times as long range policy (wrapper-policy)
       // With a wrapped functor, so that the iterations are bound to the duplicated functors/views
-      Impl::ParallelFor< decltype(wrapper_functor) , surrogate_mdr_policy, Kokkos::OpenMP > closure( wrapper_functor , wrapper_policy );
+      Impl::ParallelFor< decltype(wrapper_policy_functor) , surrogate_mdr_policy, Kokkos::OpenMP > closure( wrapper_policy_functor , wrapper_policy );
 
       // Execute it.
       closure.execute();
@@ -360,7 +367,7 @@ class ParallelReduce< FunctorType
   ParallelReduce() = delete ;
   ParallelReduce & operator = ( const ParallelReduce & ) = delete ;
 
-  using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
+  using surrogate_mdr_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
 
  public:
   inline void execute() const {
@@ -369,8 +376,8 @@ class ParallelReduce< FunctorType
 
     while (success == 0 && repeats > 0) {
       // TODO: SHOULD THERE BE A GUARD ON THE END SIZE? AND IF SO WHAT BEHAVIOR DESIRED?
-      surrogate_policy wrapper_policy;
-      wrapper_policy = surrogate_policy(m_policy.begin(), 3 * m_policy.end());
+      surrogate_mdr_policy wrapper_policy;
+      wrapper_policy = surrogate_mdr_policy(m_policy.begin(), 3 * m_policy.end());
 
       // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
       // Kokkos::Impl::shared_allocation_tracking_enable();
@@ -417,7 +424,7 @@ class ParallelReduce< FunctorType
       // ALL THREAD SCHEDULING HANDLED BY KOKKOS HERE, ITERATION HANDLING BY US
       // Attempt to feed in a three-times as long range policy (wrapper-policy)
       // With a wrapped functor, so that the iterations are bound to the duplicated functors/views
-      Impl::ParallelReduce<decltype(wrapper_functor), surrogate_policy,
+      Impl::ParallelReduce<decltype(wrapper_functor), surrogate_mdr_policy,
                            decltype(wrapper_reducer), Kokkos::OpenMP>
           closure(wrapper_functor, wrapper_policy);
 
