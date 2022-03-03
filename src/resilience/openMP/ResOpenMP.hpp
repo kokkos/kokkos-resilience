@@ -104,13 +104,14 @@ class ResOpenMP : public Kokkos::OpenMP {
     static void print_configuration(std::ostream&, const bool verbose = false);
 
     // The instance running a parallel algorithm
-    inline static bool in_parallel(OpenMP const& = OpenMP()) noexcept;
+    //static bool in_parallel(OpenMP const& = OpenMP()) noexcept;
+    // TODO: add defnition to ccp refer to OMP
 
     // Wait until all dispatched functors complete on the given instance
     // This is a no-op on OpenMP
     static void impl_static_fence(OpenMP const& = OpenMP()) noexcept;
 
-    //void fence();
+    //void fence() const;
 
     // Does the given instance return immediately after launching
     // a parallel algorithm
@@ -141,6 +142,9 @@ class ResOpenMP : public Kokkos::OpenMP {
 
     // The default execution space initialized for current 'master' thread
     static bool impl_is_initialized() noexcept;
+    /*inline bool impl_is_initialized() noexcept {
+      return Kokkos::OpenMP::impl_is_initialized();
+    }*/
 
     // Free any resources being consumed by the default execution space
     static void impl_finalize();

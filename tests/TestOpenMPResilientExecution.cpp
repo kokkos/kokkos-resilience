@@ -249,7 +249,7 @@ TEST(TestResOpenMP, TestMDrangeTest_for2) {
 
   TestMDRange_2D<Kokkos::OpenMP>::test_for2(100, 100);
 }
-
+/*
 TEST(TestResOpenMP, TestResilientMDrangeTest_for2) {
 
   std::cout << "Resilient Kokkos Normal MDRangePolicy Test" << std::endl;
@@ -257,7 +257,7 @@ TEST(TestResOpenMP, TestResilientMDrangeTest_for2) {
   TestMDRange_2D<ExecSpace2>::test_for2(100, 100);
 }
 }  // namespace Test
-
+*/
 /*********************************
 ********PARALLEL REDUCES**********
 **********************************/

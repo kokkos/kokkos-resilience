@@ -204,7 +204,7 @@ class ParallelFor< FunctorType
   }
 
 };// range policy implementation
-
+/*
 // *****************************
 // MDRange policy implementation
 template <class FunctorType, class... Traits>
@@ -229,7 +229,7 @@ class ParallelFor< FunctorType
   ParallelFor() = delete;
   ParallelFor & operator = ( const ParallelFor & ) = delete ;
 
-  using surrogate_mdr_policy = Kokkos::MDRangePolicy < Kokkos::OpenMP, WorkTag >;
+  using surrogate_mdr_policy = Kokkos::MDRangePolicy < Kokkos::OpenMP, typename MDRangePolicy::iteration_pattern, WorkTag >;
   //no surrogate_policy defined here, variable used later?
   using surrogate_policy = typename MDRangePolicy::impl_range_policy;
 
@@ -241,10 +241,12 @@ class ParallelFor< FunctorType
 
     while(success==0 && repeats > 0){
 
-      surrogate_mdr_policy wrapper_mdr_policy;
+      surrogate_mdr_policy wrapper_mdr_policy_0 = m_mdr_policy;
+      surrogate_mdr_policy wrapper_mdr_policy_1 = m_mdr_policy;
+      surrogate_mdr_policy wrapper_mdr_policy_2 = m_mdr_policy;
 
-      surrogate_policy wrapper_policy;
-      wrapper_policy = surrogate_policy(m_policy.begin(), 3 * m_policy.end());
+      //surrogate_policy wrapper_policy;
+      //wrapper_policy = surrogate_policy(m_policy.begin(), 3 * m_policy.end());
 
 
       // parallel_for turns off shared allocation tracking, toggle it back on for ViewHooks
@@ -256,11 +258,11 @@ class ParallelFor< FunctorType
       auto m_functor_1 = m_functor;
       auto m_functor_2 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
-
-      auto wrapper_policy_functor = [&](auto i){
+*/
+      /*auto wrapper_policy_functor = [&](auto ... is){
         if (i < m_policy.end())
         {
-          m_functor_0 (i);
+          m_functor_0 (is...);
         }
         else if (( m_policy.end() <= i) && (i < 2 * m_policy.end()))
         {
@@ -270,16 +272,31 @@ class ParallelFor< FunctorType
         {
           m_functor_2 (i - ( 2 * m_policy.end()));
         }
+      };*/
+/*
+      auto wrapper_functor_0 = [&](auto ... is){
+        m_functor_0 (is...);
+      };
+
+      auto wrapper_functor_1 = [&](auto ... is){
+        m_functor_1 (is...);
+      };
+      auto wrapper_functor_2 = [&](auto ... is){
+        m_functor_2 (is...);
       };
 
       // TODO:
       // ALL THREAD SCHEDULING HANDLED BY KOKKOS HERE, ITERATION HANDLING BY US
       // Attempt to feed in a three-times as long range policy (wrapper-policy)
       // With a wrapped functor, so that the iterations are bound to the duplicated functors/views
-      Impl::ParallelFor< decltype(wrapper_policy_functor) , surrogate_mdr_policy, Kokkos::OpenMP > closure( wrapper_policy_functor , wrapper_policy );
+      Impl::ParallelFor< decltype(wrapper_functor_0) , surrogate_mdr_policy, Kokkos::OpenMP > closure0( wrapper_functor_0 , wrapper_mdr_policy_0 );
+      Impl::ParallelFor< decltype(wrapper_functor_1) , surrogate_mdr_policy, Kokkos::OpenMP > closure1( wrapper_functor_1 , wrapper_mdr_policy_1 );
+      Impl::ParallelFor< decltype(wrapper_functor_2) , surrogate_mdr_policy, Kokkos::OpenMP > closure2( wrapper_functor_2 , wrapper_mdr_policy_1 );
 
       // Execute it.
-      closure.execute();
+      closure0.execute();
+      closure1.execute();
+      closure2.execute();
 
       Kokkos::fence();
       KokkosResilience::print_duplicates_map();
@@ -310,7 +327,10 @@ class ParallelFor< FunctorType
         m_policy(Policy(0, m_mdr_policy.m_num_tiles).set_chunk_size(1)) {}
   template <typename Policy, typename Functor>
   static int max_tile_size_product(const Policy&, const Functor&) {
-    return 1024; // Unsure if this restriction needs to persist from MD Range in main Kokkos.
+
+    return 1024;
+    // Persist from MD Range in main Kokkos.
+
   }
 
 };// MD range policy implementation
@@ -318,11 +338,11 @@ class ParallelFor< FunctorType
 
 } // namespace Impl
 } // namespace Kokkos
-
+*/
 /*--------------------------------------------------------------------------*/
 /*********************** RESILIENT PARALLEL REDUCES *************************/
 /*--------------------------------------------------------------------------*/
-
+/*
 namespace Kokkos {
 namespace Impl {
 
@@ -532,6 +552,7 @@ class ParallelReduce< FunctorType
                 }
             }
 */
+/*
 //----------------------------------------
 
   template<class ViewType>
@@ -549,7 +570,7 @@ class ParallelReduce< FunctorType
                 /*static_assert( std::is_same< typename ViewType::memory_space
                                                 , Kokkos::HostSpace >::value
                   , "Reduction result on Kokkos::OpenMP must be a Kokkos::View in HostSpace"
-                  );*/
+                  );
   }
 
   inline ParallelReduce(const FunctorType &arg_functor,
@@ -563,10 +584,10 @@ class ParallelReduce< FunctorType
                 /*static_assert( std::is_same< typename ViewType::memory_space
                                                 , Kokkos::HostSpace >::value
                   , "Reduction result on Kokkos::OpenMP must be a Kokkos::View in HostSpace"
-                  );*/
+                  );
   }
 }; // range policy parallel reduce
-
+*/
 } // namespace Impl
 } // namespace Kokkos
 

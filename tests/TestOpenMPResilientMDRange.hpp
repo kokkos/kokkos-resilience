@@ -11,7 +11,9 @@ using namespace Kokkos;
 template <typename ExecSpace>
 struct TestMDRange_2D {
   using DataType     = int;
-  using ViewType     = typename Kokkos::View<DataType **, ExecSpace>;
+  // may need MemSpace, might be defaulted (if not, default)
+  using ViewType     = Kokkos::View<DataType **, ExecSpace, Kokkos::Experimental::SubscribableViewHooks<
+                                                         KokkosResilience::ResilientDuplicatesSubscriber > >;
   using HostViewType = typename ViewType::HostMirror;
 
   ViewType input_view;

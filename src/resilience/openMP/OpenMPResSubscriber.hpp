@@ -156,31 +156,32 @@ struct CombineDuplicates: public CombineDuplicatesBase
     std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
     std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
     std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
-
+/*
     for (int i=0; i<original.size();i++){
       std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
       std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
       std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
       std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
 
-    }
+    }*/
   }
 
   // Looping over duplicates to check for equality
+  template <typename ... T>
   KOKKOS_FUNCTION
-  void operator ()(int i) const {
+  void operator ()(T ... is) const {
 
     for (int j = 0; j < 3; j++) {
         //printf("Original value before compare at index %d is %lf\n", i, original(i));
         //printf("Copy[%d] value before compare at index %d is %lf\n", j, i, copy[j](i));
         //printf("Outer iteration: %d - %d \n", i, j);
-      original(i) = copy[j](i);
+      original(is...) = copy[j](is...);
 
       for (int r = 0; r < 2; r++) {
         int k = (j+r+1)%3;
 
-        if (check_equality.compare(copy[k](i),
-                       original(i)))  // just need 2 that are the same
+        if (check_equality.compare(copy[k](is...),
+                       original(is...)))  // just need 2 that are the same
         {
           //printf("match found: %d - %d\n", k, j);
           //printf("Original value after compare at index %d is %lf\n", i, original(i));

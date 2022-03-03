@@ -73,10 +73,15 @@ namespace KokkosResilience {
 int ResOpenMP::concurrency()
 { return OpenMP::concurrency();}
 
+
 // Has been initialized: possible noexcept syntax in Kokkos::OpenMP
-inline bool ResOpenMP::impl_is_initialized() noexcept {
+bool ResOpenMP::impl_is_initialized() noexcept {
   return Kokkos::OpenMP::impl_is_initialized();
 }
+//bool in_parallel(OpenMP const& = OpenMP()) noexcept;
+
+
+
 
 void ResOpenMP::impl_finalize() {
   Kokkos::OpenMP::impl_finalize();
