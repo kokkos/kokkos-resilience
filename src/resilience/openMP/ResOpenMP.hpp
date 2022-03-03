@@ -60,7 +60,6 @@
 #include <Kokkos_Parallel.hpp>
 #include <Kokkos_TaskScheduler.hpp>
 #include <Kokkos_Layout.hpp>
-#include <impl/Kokkos_Tags.hpp>
 
 //This space specific
 #include <Kokkos_Serial.hpp>
