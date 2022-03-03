@@ -12,8 +12,6 @@ add_executable(resilience_tests
                TestResilience.cpp
                TestLambdaCapture.cpp
                TestHooks.cpp
-#              TestSubscriber.cpp
-			   TestSubcriber2.cpp
 		       TestOpenMPResilientExecution.cpp
                TestDynamicViewHooks.cpp
                )
