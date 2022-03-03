@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 #include <Kokkos_Core.hpp>
-#include <View/Hooks/Kokkos_ViewHooks.hpp>
+#include "../view_hooks/ViewHolder.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
@@ -91,17 +91,17 @@ namespace KokkosResilience
     VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
   
     void checkpoint( const std::string &label, int version,
-                     const std::vector< Kokkos::Experimental::ViewHolder > &views );
+                     const std::vector< KokkosResilience::ViewHolder > &views );
   
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
   
     void restart( const std::string &label, int version,
-                  const std::vector< Kokkos::Experimental::ViewHolder > &views );
+                  const std::vector< KokkosResilience::ViewHolder > &views );
 
     void clear_checkpoints();
   
-    void register_hashes( const std::vector< Kokkos::Experimental::ViewHolder > &views,
+    void register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
       const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
@@ -135,10 +135,10 @@ namespace KokkosResilience
     VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
 
     void checkpoint( const std::string &label, int version,
-                     const std::vector< Kokkos::Experimental::ViewHolder > &views );
+                     const std::vector< KokkosResilience::ViewHolder > &views );
 
     void restart( const std::string &label, int version,
-                  const std::vector< Kokkos::Experimental::ViewHolder > &views );
+                  const std::vector< KokkosResilience::ViewHolder > &views );
   };
   
   class VeloCFileBackend
@@ -149,15 +149,15 @@ namespace KokkosResilience
     ~VeloCFileBackend();
   
     void checkpoint( const std::string &label, int version,
-                     const std::vector< Kokkos::Experimental::ViewHolder > &views );
+                     const std::vector< KokkosResilience::ViewHolder > &views );
 
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
   
     void restart( const std::string &label, int version,
-                  const std::vector< Kokkos::Experimental::ViewHolder > &views );
+                  const std::vector< KokkosResilience::ViewHolder > &views );
   
-    void register_hashes( const std::vector< Kokkos::Experimental::ViewHolder > & ) {} // Do nothing
+    void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
 
   private:
   

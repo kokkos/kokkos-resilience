@@ -52,7 +52,7 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< Kokkos::Experimental::ViewHolder > &_views )
+                                       const std::vector< KokkosResilience::ViewHolder > &_views )
   {
     bool status = true;
     
@@ -107,7 +107,7 @@ namespace KokkosResilience
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< Kokkos::Experimental::ViewHolder > &_views )
+    const std::vector< KokkosResilience::ViewHolder > &_views )
   {
     auto lab = get_canonical_label( label );
     VELOC_SAFE_CALL( VELOC_Restart_begin( lab.c_str(), version ));
@@ -149,7 +149,7 @@ namespace KokkosResilience
   }
   
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< Kokkos::Experimental::ViewHolder > &views,
+  VeloCMemoryBackend::register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
                                        const std::vector< Detail::CrefImpl > &crefs  )
   {
     // Clear protected bits
@@ -255,13 +255,13 @@ namespace KokkosResilience
   }
 
   void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<Kokkos::Experimental::ViewHolder> &views )
+  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views )
   {
     // No-op, don't do anything
   }
 
   void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<Kokkos::Experimental::ViewHolder> &views)
+  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views)
   {
     // No-op, don't do anything
   }
@@ -280,7 +280,7 @@ namespace KokkosResilience
   
   void
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::vector< Kokkos::Experimental::ViewHolder > &views )
+                                const std::vector< KokkosResilience::ViewHolder > &views )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait());
@@ -335,7 +335,7 @@ namespace KokkosResilience
   }
   
   void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::vector< Kokkos::Experimental::ViewHolder > &views )
+                                  const std::vector< KokkosResilience::ViewHolder > &views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     

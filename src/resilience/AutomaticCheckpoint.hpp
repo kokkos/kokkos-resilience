@@ -8,7 +8,8 @@
 #include <iomanip>
 
 #include <Kokkos_Core.hpp>
-#include <View/Hooks/Kokkos_ViewHooks.hpp>
+#include "view_hooks/ViewHolder.hpp"
+#include "view_hooks/DynamicViewHooks.hpp"
 
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
@@ -54,10 +55,10 @@ namespace KokkosResilience
       if ( filter( iteration ) )
       {
         // Copy the functor, since if it has any views we can turn on view tracking
-        std::vector< Kokkos::Experimental::ViewHolder > views;
+        std::vector< KokkosResilience::ViewHolder > views;
 
         // Don't do anything with const views since they can never be checkpointed in this context
-        Kokkos::Experimental::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const Kokkos::Experimental::ViewHolder &view ) {
+        KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const KokkosResilience::ViewHolder &view ) {
           views.emplace_back( view );
         } );
 
@@ -68,7 +69,7 @@ namespace KokkosResilience
 
         Detail::Cref::check_ref_list = nullptr;
 
-        Kokkos::Experimental::DynamicViewHooks::copy_constructor_set.reset();
+        KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
 
   #ifdef KR_ENABLE_TRACING
         auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
