@@ -97,18 +97,8 @@ class ResHostSpace : public Kokkos::HostSpace {
 
     typedef Kokkos::Device<execution_space, memory_space> device_type; // Preferred device type
 
-    // Default memory space instance
-    ResHostSpace();
-    ResHostSpace( ResHostSpace && rhs )      = default;
-    ResHostSpace( const ResHostSpace & rhs ) = default;
-    ResHostSpace & operator = ( ResHostSpace && ) = default;
-    ResHostSpace & operator = ( const ResHostSpace & ) = default;
-    ~ResHostSpace()                           = default;
-
-    static void clear_duplicates_list();
-
-    //TODO: MAP STUFF HERE
-    //static std::map<std::string, KokkosResilience::DuplicateTracker * > duplicate_map;
+    // Use parent class constructors
+    using Kokkos::HostSpace::HostSpace;
 
   private:
 
@@ -266,75 +256,26 @@ namespace Impl {
 
 template <>
 class SharedAllocationRecord< KokkosResilience::ResHostSpace , void >
-  : public SharedAllocationRecord< void , void >
+  : public SharedAllocationRecord< HostSpace , void >
 {
 private:
   friend SharedAllocationRecord< Kokkos::HostSpace , void >;
 
-  typedef SharedAllocationRecord< void, void> RecordBase;
-
   SharedAllocationRecord( const SharedAllocationRecord & ) = delete;
   SharedAllocationRecord & operator = ( const SharedAllocationRecord & ) = delete;
 
-  static void deallocate( RecordBase * );
+  using RecordBase = SharedAllocationRecord< void , void >;
 
-#ifdef KOKKOS_ENABLE_DEBUG
-  // Root record for tracked allocations from this ResHostSpace instance
-  static RecordBase s_root_record;
-#endif
+ protected:
 
-  const KokkosResilience::ResHostSpace m_space;
-
-protected:
-  ~SharedAllocationRecord()
-
-#if defined( \
-    KOKKOS_IMPL_INTEL_WORKAROUND_NOEXCEPT_SPECIFICATION_VIRTUAL_FUNCTION)
-      noexcept
-#endif
-      ;
   SharedAllocationRecord() = default;
 
   SharedAllocationRecord(
       const KokkosResilience::ResHostSpace               & arg_space,
       const std::string                                  & arg_label,
       const size_t                                    arg_alloc_size,
-      const RecordBase::function_type    arg_dealloc = & deallocate);
-
-public:
-  inline std::string get_label() const {
-    return std::string(RecordBase::head()->m_label);
-  }
-
-  KOKKOS_INLINE_FUNCTION static SharedAllocationRecord* allocate(
-      const KokkosResilience::ResHostSpace& arg_space, const std::string& arg_label,
-      const size_t arg_alloc_size) {
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
-    return new SharedAllocationRecord(arg_space, arg_label, arg_alloc_size);
-#else
-    (void)arg_space;
-    (void)arg_label;
-    (void)arg_alloc_size;
-    return (SharedAllocationRecord*)0;
-#endif
-  }
-
-  // Allocate tracked memory in the space
-  static void* allocate_tracked(const KokkosResilience::ResHostSpace& arg_space,
-                                 const std::string& arg_label,
-                                 const size_t arg_alloc_size);
-
-  // Reallocate tracked memory in the space
-  static void* reallocate_tracked(void* const arg_alloc_ptr,
-                                  const size_t arg_alloc_size);
-
-  // Deallocate tracked memory in the space
-  static void deallocate_tracked(void* const arg_alloc_ptr);
-
-  static SharedAllocationRecord* get_record(void* arg_alloc_ptr);
-
-  static void print_records(std::ostream&, const KokkosResilience::ResHostSpace&,
-                            bool detail = false);
+      const RecordBase::function_type    arg_dealloc = & deallocate)
+  :SharedAllocationRecord< Kokkos::HostSpace, void >(arg_space,arg_label,arg_alloc_size,arg_dealloc){}
 
 }; // class SharedAllocationRecord
 

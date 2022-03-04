@@ -247,6 +247,16 @@ struct ResilientDuplicatesSubscriber {
       c.copy[c.duplicate_count++] = self;
     }
   }
+
+  // Added to comply with Subscriber format
+  template <typename View>
+  static void move_constructed(View &self, const View &other) {}
+
+  template <typename View>
+  static void move_assigned(View &self, const View &other) {}
+
+  template <typename View>
+  static void copy_assigned(View &self, const View &other) {}
 };
 
 KOKKOS_INLINE_FUNCTION
