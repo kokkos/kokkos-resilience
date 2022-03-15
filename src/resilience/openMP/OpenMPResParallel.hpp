@@ -125,10 +125,11 @@ class ParallelFor< FunctorType
 
     while(success==0 && repeats > 0){
 
+      auto work_size = m_policy.end() - m_policy.begin();
+      auto offset = m_policy.begin();
 
-      // TODO: SHOULD THERE BE A GUARD ON THE END SIZE? AND IF SO WHAT BEHAVIOR DESIRED?
       surrogate_policy wrapper_policy;
-      wrapper_policy = surrogate_policy(m_policy.begin(), 3 * m_policy.end());
+      wrapper_policy = surrogate_policy(0, 3 * work_size );
 
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
@@ -137,34 +138,31 @@ class ParallelFor< FunctorType
       auto m_functor_2 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
+      // Bug is here.
+      // 1) iterators not passing into correct loops all the time in (n,m) range policy loops
+      // 2) Iterators continuing past cutoff in  parallel_for loop of type (0,m) where m=/= array end, but not assigning value
+      // 3) Iterators assigning value in array before n in (n,m) type loop, but only in copies
+      // 4) Sometimes attempting to access inacessible memory space?
       auto wrapper_functor = [&](auto i){
-        if (i < m_policy.end())
+        if (i < work_size)
         {
-          m_functor_0 (i);
+          m_functor_0 (i + offset);
         }
-        else if (( m_policy.end() <= i) && (i < 2 * m_policy.end()))
+        else if (( work_size <= i) && (i < (2 * work_size)))
         {
-          m_functor_1 (i - m_policy.end());
+          m_functor_1 (i + offset - work_size);
         }
         else
         {
-           m_functor_2 (i - ( 2 * m_policy.end()));
+           m_functor_2 (i + offset - ( 2 * work_size));
         }
-    // TODO: Massively change comment to reflect changed paradigm
-    //! Somewhere (possibly after the } of execute) a long comment describe execute, such as:
-    //! The execute() function in this class performs an OpenMP execution of parallel for
-    //! with triple modular redundancy. Views equipped with the necessary subscribers are
-    //! duplicated and three concurrent executions divided equally between the available pool
-    //! of OpenMP threads proceed. Duplicate views are combined back into a single view by calling
-    //! a combiner to majority vote on the correct values. This process is repeated until
-    //! a value is voted correct or a given number of attempts is exceeded.
+
       };
 
       // toggle the shared allocation tracking off again
       // Allows for user-intended view behavior in main body of parallel_for
       //Kokkos::Impl::shared_allocation_tracking_disable();
 
-      // TODO:
       // ALL THREAD SCHEDULING HANDLED BY KOKKOS HERE, ITERATION HANDLING BY US
       // Attempt to feed in a three-times as long range policy (wrapper-policy)
       // With a wrapped functor, so that the iterations are bound to the duplicated functors/views
@@ -176,7 +174,7 @@ class ParallelFor< FunctorType
 
 
       Kokkos::fence();
-      // KokkosResilience::print_duplicates_map();
+       KokkosResilience::print_duplicates_map();
       Kokkos::fence();
 
       // Combine the duplicate views and majority vote on correctness

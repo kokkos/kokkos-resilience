@@ -23,7 +23,8 @@
 
 //#ifdef KR_ENABLE_OPENMP
 
-#define N 25
+#define N 200
+#define N_2 100
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace2 KokkosResilience::ResOpenMP
 
@@ -234,6 +235,54 @@ TEST(TestResOpenMP, TestResilientForInsertError)
   });
 ,"Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
 
+  printf("\n\n\n");
+  fflush(stdout);
+}
+
+// gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
+// Expect counter to count iterations.
+TEST(TestResOpenMP, TestResilientNonZeroRange)
+{
+
+  std::cout << "KokkosResilient NonZeroRange" << std::endl;
+
+  // range policy with resilient execution space
+  using range_policy = Kokkos::RangePolicy<ExecSpace2>;
+
+  using subscriber_vector_double_type = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
+                                                     Kokkos::Experimental::SubscribableViewHooks<
+                                                         KokkosResilience::ResilientDuplicatesSubscriber > >;
+
+  // Allocate y, x vectors.
+  subscriber_vector_double_type y( "y", N );
+  subscriber_vector_double_type x( "x", N );
+
+  printf("GTEST: Thread %d reports doubles vectors declared.\n", omp_get_thread_num());
+  fflush(stdout);
+
+  Kokkos::Timer timer;
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy (0, N_2), KOKKOS_LAMBDA ( const int i) {
+        y ( i ) = 1;
+      });
+  Kokkos::fence();
+
+  Kokkos::parallel_for( range_policy (N_2, N), KOKKOS_LAMBDA ( const int i) {
+        y ( i ) = 500;
+      });
+
+  double time = timer.seconds();
+  Kokkos::deep_copy(x, y);
+
+  for ( int i = 0; i < N; i++) {
+    if (i<N_2) {
+      ASSERT_EQ(x(i), 1);
+    } else {
+      ASSERT_EQ (x(i), 500);
+    }
+  }
+  printf("GTEST: Thread %d reports test parallel_for completed. Data assignment was correct.\n", omp_get_thread_num());
+  fflush(stdout);
   printf("\n\n\n");
   fflush(stdout);
 }
