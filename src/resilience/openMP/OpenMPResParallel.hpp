@@ -174,7 +174,7 @@ class ParallelFor< FunctorType
 
 
       Kokkos::fence();
-       KokkosResilience::print_duplicates_map();
+     //  KokkosResilience::print_duplicates_map();
       Kokkos::fence();
 
       // Combine the duplicate views and majority vote on correctness

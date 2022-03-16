@@ -138,7 +138,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   bool execute() override
   {
-    success(0) = false;
+    success(0) = true;
 
     if (duplicate_count < 3){
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
@@ -182,10 +182,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
         if (check_equality.compare(copy[k](i),
                        original(i)))  // just need 2 that are the same
         {
-          //printf("match found: %d - %d\n", k, j);
-          //printf("Original value after compare at index %d is %lf\n", i, original(i));
-          //printf("Copy[%d] value after compare at index %d is %lf\n", k, i, copy[k](i));
-          Kokkos::atomic_assign(&success(0), true);
           return;
         }
       }
@@ -193,7 +189,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
     //No match found, all three executions return different number
     //printf("no match found: %i\n", i);
-    Kokkos::atomic_assign(&success(0), false);
+    success(0) = false;
   }
 
 };
