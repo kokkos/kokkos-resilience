@@ -121,6 +121,7 @@ namespace KokkosResilience{
 struct CombineDuplicatesBase
 {
   // Virtual bool to return success flag
+  virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
   virtual void print() = 0;
 };
@@ -209,7 +210,37 @@ struct ResilientDuplicatesSubscriber {
 
   // Creating map for duplicates
   using key_type = void *;  // key_type should be data() pointer
-  static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_map;
+  static std::unordered_map<key_type, CombineDuplicatesBase * > duplicates_map;
+  static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
+
+  template< typename View >
+  static CombineDuplicates< View > *
+  get_duplicate_for( const View &original )
+  {
+    bool inserted = false;
+    auto pos = duplicates_cache.find( original.data() );
+    if ( pos == duplicates_cache.end() )
+    {
+      inserted = true;
+      pos = duplicates_cache.emplace(std::piecewise_construct,
+                               std::forward_as_tuple(original.data()),
+                               std::forward_as_tuple(std::make_unique< CombineDuplicates< View > >()) ).first;
+    }
+
+    auto &res = *static_cast< CombineDuplicates< View > * >( pos->second.get() );
+
+    if ( inserted )
+    {
+      res.original = original;
+
+      // Reinitialize self to be like other (same dimensions, etc)
+      for ( int i = 0; i < 3; ++i ) {
+        ViewMatching(res.copy[i], original, i);
+      }
+    }
+
+    return &res;
+  }
 
   // Function which initializes the dimensions of the duplicating view
   template <typename View>
@@ -227,21 +258,22 @@ struct ResilientDuplicatesSubscriber {
     if (in_resilient_parallel_loop) {
 
       //This won't be triggered if the entry already exists
+      auto *combiner = get_duplicate_for(  other);
       auto res = duplicates_map.emplace(std::piecewise_construct,
                                         std::forward_as_tuple(other.data()),
-                                        std::forward_as_tuple(std::make_unique< CombineDuplicates< View > >()) );
+                                        std::forward_as_tuple(combiner) );
       auto &c = dynamic_cast< CombineDuplicates < View >& > (*res.first->second);
 
-      if (res.second){c.original = other;}
+      // The first copy constructor in a parallel for for the given view
+      if (res.second)
+      {
+        c.duplicate_count = 0;
+      }
 
-      // Reinitialize self to be like other (same dimensions, etc)
-      ViewMatching(self, other, c.duplicate_count);
+      self = c.copy[c.duplicate_count++];
 
       // Copy all data
       Kokkos::deep_copy(self, other);
-
-      // Reference counting can be turned off here for performance reasons
-      c.copy[c.duplicate_count++] = self;
     }
   }
 

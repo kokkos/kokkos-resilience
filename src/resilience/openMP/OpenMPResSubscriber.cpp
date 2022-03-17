@@ -10,7 +10,8 @@ namespace KokkosResilience {
 
 bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-std::unordered_map < ResilientDuplicatesSubscriber::key_type, std::unique_ptr<CombineDuplicatesBase> > ResilientDuplicatesSubscriber::duplicates_map;
+std::unordered_map< ResilientDuplicatesSubscriber::key_type, CombineDuplicatesBase * > ResilientDuplicatesSubscriber::duplicates_map;
+std::unordered_map< ResilientDuplicatesSubscriber::key_type, std::unique_ptr< CombineDuplicatesBase > > ResilientDuplicatesSubscriber::duplicates_cache;
 
 }
 
