@@ -45,7 +45,7 @@ class StdFileContext : public ContextBase {
   Backend &backend() { return m_backend; }
 
   void register_hashes(
-      const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views,
+      const std::vector< KokkosResilience::ViewHolder > &views,
       const std::vector<Detail::CrefImpl> &crefs) override {
     m_backend.register_hashes(views, crefs);
   }
@@ -55,13 +55,13 @@ class StdFileContext : public ContextBase {
   }
 
   void restart(const std::string &label, int version,
-               const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>>
+               const std::vector< KokkosResilience::ViewHolder >
                    &views) override {
     m_backend.restart(label, version, views);
   }
 
   void checkpoint(const std::string &label, int version,
-                  const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>>
+                  const std::vector< KokkosResilience::ViewHolder >
                       &views) override {
     m_backend.checkpoint(label, version, views);
   }
