@@ -25,7 +25,7 @@ public:
     auto e = std::default_random_engine( 0 );
     auto ud = std::uniform_real_distribution< double >( -10.0, 10.0 );
     
-    using view_type = Kokkos::View< double **, Layout, memory_space >;
+    using view_type = KokkosResilience::View< double **, Layout, memory_space >;
     
     view_type main_view( "main_view", dimx, dimy );
     auto host_mirror = Kokkos::create_mirror_view( main_view );

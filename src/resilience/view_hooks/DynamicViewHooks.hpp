@@ -171,6 +171,9 @@ struct DynamicViewHooksSubscriber {
     Impl::DynamicViewHooksCaller<View>::call_move_assign_hooks(self);
   }
 };
+
+template< typename... Args >
+using View = Kokkos::View< Args..., Kokkos::Experimental::SubscribableViewHooks< KokkosResilience::DynamicViewHooksSubscriber > >;
 }  // namespace KokkosResilience
 
 #endif  // INC_RESILIENCE_DYNAMICVIEWHOOKS_HPP
