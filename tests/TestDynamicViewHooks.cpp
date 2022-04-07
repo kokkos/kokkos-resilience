@@ -2,6 +2,10 @@
 #include <resilience/view_hooks/ViewHolder.hpp>
 #include <resilience/view_hooks/DynamicViewHooks.hpp>
 
+/*
+ * For each hook -- copy construct, move construct, copy assign, and move
+ * assign, test the capture of both const and non-const types.
+ */
 template< typename Device >
 class TestDynamicViewHooks : public ::testing::Test
 {
@@ -47,12 +51,16 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyConstruct )
           });
 
   test_view_type testa("testa", 10, 10);
+
+  // Trigger the non-const copy-construct callback
   test_view_type testb(testa);
   EXPECT_EQ(testa.data(), holder.data());
   EXPECT_EQ(const_holder.data(), nullptr);
   const_test_view_type testa_const(
       testa);  // Won't trigger the callback since this is not a copy
                // constructor call
+
+  // Trigger the const copy-construct callback
   const_test_view_type testb_const(testa_const);
   EXPECT_EQ(testa_const.data(), const_holder.data());
 }
@@ -81,12 +89,16 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveConstruct )
 
   test_view_type testa("testa", 10, 10);
   void *cmp = testa.data();
+
+  // Trigger the non-const move-construct callback
   test_view_type testb(std::move(testa));
   EXPECT_EQ(cmp, holder.data());
   EXPECT_EQ(const_holder.data(), nullptr);
   const_test_view_type testa_const(
       testb);  // Won't trigger the callback since this is not a copy
                // constructor call
+
+  // Trigger the const move-construct callback
   const_test_view_type testb_const(std::move(testa_const));
   EXPECT_EQ(cmp, const_holder.data());
 }
@@ -114,6 +126,8 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyAssign )
 
   test_view_type testa("testa", 10, 10);
   test_view_type testb;
+
+  // Trigger the non-const copy assign callback
   testb = testa;
   EXPECT_EQ(testa.data(), holder.data());
   EXPECT_EQ(const_holder.data(), nullptr);
@@ -121,6 +135,8 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyAssign )
       testa);  // Won't trigger the callback since this is not a copy
                // constructor call
   const_test_view_type testb_const;
+
+  // Trigger the const copy assign callback
   testb_const = testa_const;
   EXPECT_EQ(testa_const.data(), const_holder.data());
 }
@@ -150,6 +166,8 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveAssign )
   test_view_type testa("testa", 10, 10);
   void *cmp = testa.data();
   test_view_type testb;
+
+  // Trigger the non-const move assign callback
   testb = std::move(testa);
   EXPECT_EQ(cmp, holder.data());
   EXPECT_EQ(const_holder.data(), nullptr);
@@ -157,6 +175,8 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveAssign )
       testa);  // Won't trigger the callback since this is not a copy
                // constructor call
   const_test_view_type testb_const;
+
+  // Trigger the const move assign callback
   testb_const = std::move(testa_const);
   EXPECT_EQ(cmp, const_holder.data());
 }

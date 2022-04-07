@@ -30,12 +30,6 @@ using unmanaged_view_type_like =
 template <class DataType, class... Properties>
 unmanaged_view_type_like<DataType, Properties...> make_unmanaged_view_like(
     Kokkos::View<DataType, Properties...> view, unsigned char *buff) {
-  static_assert(
-      !std::is_same<
-          typename Kokkos::View<DataType, Properties...>::traits::memory_space,
-          Kokkos::AnonymousSpace>::value,
-      "make_unmanaged_view_like can't create an anonymous space view");
-
   using new_view_type = unmanaged_view_type_like<DataType, Properties...>;
 
   return new_view_type(
