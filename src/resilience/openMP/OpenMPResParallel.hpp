@@ -90,7 +90,7 @@ namespace KokkosResilience{
 namespace Kokkos {
     namespace Impl {
 
-// Range policy implementation   
+// Range policy implementation
         template <class FunctorType, class... Traits>
         class ParallelFor< FunctorType
                 , Kokkos::RangePolicy< Traits... >
@@ -110,6 +110,7 @@ namespace Kokkos {
 
         public:
             inline void execute() const {
+
                 //! This comment describes the 4th implementation: update to 5th implementation
                 //! Somewhere (possibly after the } of execute) a long comment describe execute, such as:
                 //! The execute() function in this class performs an OpenMP execution of parallel for
@@ -134,7 +135,7 @@ namespace Kokkos {
                     KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
                     auto m_functor_0 = m_functor;
                     auto m_functor_1 = m_functor;
-                    auto m_functor_2 = m_functor;
+                    //auto m_functor_2 = m_functor;
                     KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
                     // Bug is here.
@@ -145,15 +146,15 @@ namespace Kokkos {
                     auto wrapper_functor = [&](auto i){
                         if (i < work_size)
                         {
-                            m_functor_0 (i + offset);
+                            m_functor (i + offset);
                         }
                         else if (( work_size <= i) && (i < (2 * work_size)))
                         {
-                            m_functor_1 (i + offset - work_size);
+                            m_functor_0 (i + offset - work_size);
                         }
                         else
                         {
-                            m_functor_2 (i + offset - ( 2 * work_size));
+                            m_functor_1 (i + offset - ( 2 * work_size));
                         }
 
                     };
@@ -170,7 +171,7 @@ namespace Kokkos {
                     // Execute it.
                     closure.execute();
 
-                    // KokkosResilience::print_duplicates_map();
+                    KokkosResilience::print_duplicates_map();
                     // Combine the duplicate views and majority vote on correctness
                     success = KokkosResilience::combine_resilient_duplicates();
 
