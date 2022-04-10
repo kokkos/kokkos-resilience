@@ -286,3 +286,41 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
   printf("\n\n\n");
   fflush(stdout);
 }
+
+TEST(TestResOpenMP, TestConstViewSubscriber)
+{
+  std::cout << "KokkosResilient Test Constant View Subscriber" << std::endl;
+
+  // range policy with resilient execution space
+  using range_policy = Kokkos::RangePolicy<ExecSpace2>;
+
+  using sub_view_double_type = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
+                                             Kokkos::Experimental::SubscribableViewHooks<
+                                             KokkosResilience::ResilientDuplicatesSubscriber > >;
+
+  using const_sub_view_double_type = Kokkos::View< const double*, Kokkos::LayoutRight, MemSpace,
+                                                   Kokkos::Experimental::SubscribableViewHooks<
+                                                   KokkosResilience::ResilientDuplicatesSubscriber > >;
+
+  sub_view_double_type x( "x", N );
+  sub_view_double_type y( "y", N );
+
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    x ( i ) = i;
+  });
+
+  const_sub_view_double_type x_const = x;
+
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 2 * x_const (i);
+  });
+
+  KokkosResilience::clear_duplicates_cache();
+
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(y(i), 2 * i);
+  }
+
+  std::cout << "Success! The computation was correct! View debug info for constant view copying." << std::endl;
+  std::cout << std::endl << std::endl << std::endl;
+}

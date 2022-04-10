@@ -221,38 +221,34 @@ namespace KokkosResilience {
         // Creating map for duplicates: used for duplicate resolution per-kernel
         // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
         // only once. Re-initialize copies to be like original view only if original not in cache map
-        // Re-initialization on resize a consideration
-        //delete + re-emplace, original.size =/= first ->len(0)
         using key_type = void *;  // key_type should be data() pointer
-        static std::unordered_map<key_type, CombineDuplicatesBase * > duplicates_map;
+        static std::unordered_map<key_type, CombineDuplicatesBase *> duplicates_map;
         static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
 
-        template< typename View >
-        static CombineDuplicates< View > *
-        get_duplicate_for( const View &original )
-        {
+        template<typename View>
+        static CombineDuplicates<View> *
+        get_duplicate_for( const View &original) {
             bool inserted = false;
-            auto pos = duplicates_cache.find( original.data() );
+            auto pos = duplicates_cache.find(original.data());
 
             // True if got to end of cache and view wasn't found
-            if (pos == duplicates_cache.end())
-            {
+            if (pos == duplicates_cache.end()) {
                 // Insert view into cache map and flag
                 inserted = true;
                 pos = duplicates_cache.emplace(std::piecewise_construct,
                                                std::forward_as_tuple(original.data()),
-                                               std::forward_as_tuple(std::make_unique< CombineDuplicates< View > >()) ).first;
+                                               std::forward_as_tuple(
+                                                       std::make_unique<CombineDuplicates<View> >())).first;
             }
 
-            auto &res = *static_cast< CombineDuplicates< View > * >( pos->second.get() );
+            auto &res = *static_cast< CombineDuplicates<View> * >( pos->second.get());
 
             // If inserted in the cache map then create copies and reinitialize
-            if ( inserted )
-            {
+            if (inserted) {
                 res.original = original;
 
                 // Reinitialize self to be like other (same dimensions, etc)
-                for ( int i = 0; i < 2; ++i ) {
+                for (int i = 0; i < 2; ++i) {
                     ViewMatching(res.copy[i], original, i);
                 }
             }
@@ -261,7 +257,7 @@ namespace KokkosResilience {
         }
 
         // Function which initializes the dimensions of the duplicating view
-        template <typename View>
+        template<typename View>
         KOKKOS_INLINE_FUNCTION
         static void ViewMatching(View &self, const View &other, int duplicate_count) {
 
@@ -271,29 +267,44 @@ namespace KokkosResilience {
 
         }
 
-        template <typename View>
-        static void copy_constructed(View &self, const View &other) {
+        //A template argument V (view), a template itself, having at least one parameter
+        //the first one (T), to determine between the const/non-const copy constructor in overload
+        // Class because C++14
+        template<template<typename, typename ...> class V, typename T, typename... Args>
+        static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
+            //If View is constant do nothing, not triggering the rest of the subscriber.
+
+        }
+
+        //template<typename View>
+        //static void copy_constructed(View &self, const View &other) {
+        template< template< typename, typename ...> class V, typename T, typename... Args>
+        static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
+        {
+            //If view is non-constant and in the parallel loop, cascade the rest of the subscriber
             if (in_resilient_parallel_loop) {
 
                 //This won't be triggered if the entry already exists
-                auto *combiner = get_duplicate_for(  other);
+                //try_emplace? V emplace?
+                auto *combiner = get_duplicate_for(other);
                 auto res = duplicates_map.emplace(std::piecewise_construct,
                                                   std::forward_as_tuple(other.data()),
-                                                  std::forward_as_tuple(combiner) );
-                auto &c = dynamic_cast< CombineDuplicates < View >& > (*res.first->second);
+                                                  std::forward_as_tuple(combiner));
+                auto &c = dynamic_cast< CombineDuplicates< V<T*, Args...> > & > (*res.first->second);
 
                 // The first copy constructor in a parallel_for for the given view
-                if (res.second)
-                {
+                if (res.second) {
                     c.duplicate_count = 0;
                 }
 
                 self = c.copy[c.duplicate_count++];
-
                 // Copy all data, every time
                 Kokkos::deep_copy(self, other);
             }
         }
+
+
+
 
         // Added to comply with new Subscriber format
         template <typename View>
