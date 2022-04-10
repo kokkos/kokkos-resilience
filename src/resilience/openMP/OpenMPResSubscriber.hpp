@@ -134,15 +134,15 @@ namespace KokkosResilience{
 
         int duplicate_count = 0;
         View original;
-        View copy[3];
+        View copy[2];
         Kokkos::View <bool*> success{"success", 1};
 
         bool execute() override
         {
             success(0) = true;
 
-            if (duplicate_count < 3){
-                Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
+            if (duplicate_count < 2){
+                Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
             }
             else {
 
@@ -156,13 +156,13 @@ namespace KokkosResilience{
             std::cout << "This is the original data pointer " << original.data() << std::endl;
             std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
             std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
-            std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
+            //std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
 
             for (int i=0; i<original.size();i++){
                 std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
                 std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
                 std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
-                std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
+                //std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
 
             }
         }
@@ -171,22 +171,32 @@ namespace KokkosResilience{
         KOKKOS_FUNCTION
         void operator ()(int i) const {
 
-            for (int j = 0; j < 3; j++) {
+            /*for (int j = 0; j < 3; j++) {
                 //printf("Original value before compare at index %d is %lf\n", i, original(i));
                 //printf("Copy[%d] value before compare at index %d is %lf\n", j, i, copy[j](i));
                 //printf("Outer iteration: %d - %d \n", i, j);
-                original(i) = copy[j](i);
+              original(i) = copy[j](i);
 
-                for (int r = 0; r < 2; r++) {
-                    int k = (j+r+1)%3;
+              for (int r = 0; r < 2; r++) {
+                int k = (j+r+1)%3;
 
-                    if (check_equality.compare(copy[k](i),
-                                               original(i)))  // just need 2 that are the same
-                    {
-                        return;
-                    }
+                if (check_equality.compare(copy[k](i),
+                               original(i)))  // just need 2 that are the same
+                {
+                  return;
+                }
+              }
+            }*/
+            for (int j = 0; j < 2; j ++) {
+                //printf("Original index %d is %lf\n", i, original(i));
+                //printf("Copy[%d] at index %d is %lf\n", j, i, copy[j](i));
+                if (check_equality.compare(copy[j](i), original(i))) {
+                    return;
                 }
             }
+
+            if (check_equality.compare(copy[1](i), copy[2](i)))  // just need 2 that are the same
+                return;
 
             //No match found, all three executions return different number
             //printf("no match found: %i\n", i);
@@ -242,7 +252,7 @@ namespace KokkosResilience {
                 res.original = original;
 
                 // Reinitialize self to be like other (same dimensions, etc)
-                for ( int i = 0; i < 3; ++i ) {
+                for ( int i = 0; i < 2; ++i ) {
                     ViewMatching(res.copy[i], original, i);
                 }
             }
@@ -272,7 +282,7 @@ namespace KokkosResilience {
                                                   std::forward_as_tuple(combiner) );
                 auto &c = dynamic_cast< CombineDuplicates < View >& > (*res.first->second);
 
-                // The first copy constructor in a parallel for for the given view
+                // The first copy constructor in a parallel_for for the given view
                 if (res.second)
                 {
                     c.duplicate_count = 0;
@@ -285,7 +295,7 @@ namespace KokkosResilience {
             }
         }
 
-        // Added to comply with Subscriber format
+        // Added to comply with new Subscriber format
         template <typename View>
         static void move_constructed(View &self, const View &other) {}
 
