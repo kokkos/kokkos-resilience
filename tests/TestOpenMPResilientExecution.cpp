@@ -23,8 +23,8 @@
 
 //#ifdef KR_ENABLE_OPENMP
 
-#define N 200
-#define N_2 100
+#define N 20
+#define N_2 10
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace2 KokkosResilience::ResOpenMP
 
@@ -114,7 +114,7 @@ TEST(TestResOpenMP, TestResilientForDouble)
 
   });
 
-  Kokkos::fence();
+  KokkosResilience::clear_duplicates_cache();
 
   double time = timer.seconds();
   printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
@@ -177,8 +177,6 @@ TEST(TestResOpenMP, TestResilientForInteger)
 
     });
 
-    Kokkos::fence();
-
     double time = timer.seconds();
     printf("GTEST: Thread %d reports counter is %d. It should be %d.\n", omp_get_thread_num(), counter(0), N);
     fflush(stdout);
@@ -188,6 +186,7 @@ TEST(TestResOpenMP, TestResilientForInteger)
     for ( int i = 0; i < N; i++) {
         ASSERT_EQ(x(i), i);
     }
+    KokkosResilience::clear_duplicates_cache();
 
     printf("GTEST: Thread %d reports test parallel_for completed. Data assignment was correct.\n", omp_get_thread_num());
     fflush(stdout);
@@ -236,7 +235,7 @@ TEST(TestResOpenMP, TestResilientForInsertError)
 ,"Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
 
   printf("\n\n\n");
-  fflush(stdout);
+  fflush(stdout);      //Add cache-clear
 }
 
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
@@ -265,7 +264,6 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
   Kokkos::parallel_for( range_policy (0, N_2), KOKKOS_LAMBDA ( const int i) {
         y ( i ) = 1;
       });
-  Kokkos::fence();
 
   Kokkos::parallel_for( range_policy (N_2, N), KOKKOS_LAMBDA ( const int i) {
         y ( i ) = 500;
@@ -273,6 +271,8 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
 
   double time = timer.seconds();
   Kokkos::deep_copy(x, y);
+
+    KokkosResilience::clear_duplicates_cache();
 
   for ( int i = 0; i < N; i++) {
     if (i<N_2) {
