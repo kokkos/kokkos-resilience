@@ -92,6 +92,10 @@ if (Kokkos_ENABLE_Cuda)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 
+if (KR_ENABLE_THREE_COPIES)
+    target_compile_definitions(resilience PUBLIC KR_ENABLE_THREE_COPIES)
+endif()
+
 # Set up find_package config and version file
 # Allow same major version compatibility
 # Possibly in the future find_package(Kokkos REQUIRED COMPONENTS reslience)

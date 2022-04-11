@@ -66,13 +66,13 @@
 
 namespace KokkosResilience {
 
-    struct ResilientDuplicatesSubscriber;
+  struct ResilientDuplicatesSubscriber;
 
-// Generate usable error message
-    static_assert(Kokkos::Experimental::is_hooks_policy<
-                          Kokkos::Experimental::SubscribableViewHooks<
-                                  ResilientDuplicatesSubscriber> >::value,
-                  "Must be a hooks policy");
+  // Generate usable error message
+  static_assert(Kokkos::Experimental::is_hooks_policy<
+                Kokkos::Experimental::SubscribableViewHooks<
+                ResilientDuplicatesSubscriber> >::value, "Must be a hooks policy");
+
 }
 
 /*----------------------------------------------------------------------------
@@ -81,129 +81,136 @@ namespace KokkosResilience {
 
 namespace KokkosResilience {
 
-    template <class Type, class Enabled = void>
-    struct CheckDuplicateEquality;
+template <class Type, class Enabled = void>
+struct CheckDuplicateEquality;
 
 // Checks equality of individual element on floating points
-    template <class Type>
-    struct CheckDuplicateEquality<
-            Type, typename std::enable_if< std::is_floating_point < Type >::value, void >::type > {
+template <class Type>
+struct CheckDuplicateEquality<
+Type, typename std::enable_if< std::is_floating_point < Type >::value, void >::type > {
 
-        KOKKOS_INLINE_FUNCTION
-        CheckDuplicateEquality() = default;
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality() = default;
 
-        KOKKOS_INLINE_FUNCTION
-        CheckDuplicateEquality(const CheckDuplicateEquality& cde) = default;
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality(const CheckDuplicateEquality& cde) = default;
 
-        KOKKOS_INLINE_FUNCTION
-        bool compare(Type a, Type b) const { return (abs(a - b) < 0.00000001); }
-    };
+  KOKKOS_INLINE_FUNCTION
+  bool compare(Type a, Type b) const { return (abs(a - b) < 0.00000001); }
+};
 
 // Checks on non-floating points, user can create own checker for custom structs
-    template <class Type>
-    struct CheckDuplicateEquality<
-            Type, typename std::enable_if< !std::is_floating_point < Type >::value, void >::type > {
+template <class Type>
+struct CheckDuplicateEquality<
+Type, typename std::enable_if< !std::is_floating_point < Type >::value, void >::type > {
 
-        KOKKOS_INLINE_FUNCTION
-        CheckDuplicateEquality() = default;
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality() = default;
 
-        KOKKOS_INLINE_FUNCTION
-        CheckDuplicateEquality(const CheckDuplicateEquality& cde) {}
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality(const CheckDuplicateEquality& cde) {}
 
-        KOKKOS_INLINE_FUNCTION
-        bool compare(Type a, Type b) const { return (a == b); }
-    };
+  KOKKOS_INLINE_FUNCTION
+  bool compare(Type a, Type b) const { return (a == b); }
+};
 
 } // namespace KokkosResilience
 
 namespace KokkosResilience{
 
-    struct CombineDuplicatesBase
-    {
-        // Virtual bool to return success flag
-        virtual ~CombineDuplicatesBase() = default;
-        virtual bool execute() = 0;
-        virtual void print() = 0;
-    };
+struct CombineDuplicatesBase
+{
+  // Virtual bool to return success flag
+  virtual ~CombineDuplicatesBase() = default;
+  virtual bool execute() = 0;
+  virtual void print() = 0;
+};
 
-    template< typename View >
-    struct CombineDuplicates: public CombineDuplicatesBase
-    {
-        using EqualityType = CheckDuplicateEquality<typename View::value_type>;
-        EqualityType check_equality;
+template< typename View >
+struct CombineDuplicates: public CombineDuplicatesBase
+{
+  using EqualityType = CheckDuplicateEquality<typename View::value_type>;
+  EqualityType check_equality;
 
-        int duplicate_count = 0;
-        View original;
-        View copy[2];
-        Kokkos::View <bool*> success{"success", 1};
+  int duplicate_count = 0;
+  View original;
 
-        bool execute() override
+#ifdef KR_ENABLE_THREE_COPIES
+  View copy[3];
+#else
+  View copy[2];
+#endif
+
+  Kokkos::View <bool*> success{"success", 1};
+
+  bool execute() override
+  {
+    success(0) = true;
+
+#ifdef KR_ENABLE_THREE_COPIES
+    if (duplicate_count < 3){
+      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
+    }
+#else
+    if (duplicate_count < 2) {
+      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
+    }
+#endif
+    else {
+
+      Kokkos::parallel_for(original.size(), *this);
+      Kokkos::fence();
+    }
+    return success(0);
+  }
+
+  void print () override {
+    std::cout << "This is the original data pointer " << original.data() << std::endl;
+    std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+    std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
+#ifdef KR_ENABLE_THREE_COPIES
+    std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
+#endif
+    for (int i=0; i<original.size();i++){
+      std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+      std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+      std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
+#ifdef KR_ENABLE_THREE_COPIES
+      std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
+#endif
+    }
+  }
+
+  // Looping over duplicates to check for equality
+  KOKKOS_FUNCTION
+  void operator ()(int i) const {
+#ifdef KR_ENABLE_THREE_COPIES
+    for (int j = 0; j < 3; j++) {
+      original(i) = copy[j](i);
+      for (int r = 0; r < 2; r++) {
+        int k = (j+r+1)%3;
+        if (check_equality.compare(copy[k](i),
+                                   original(i)))  // just need 2 that are the same
         {
-            success(0) = true;
-
-            if (duplicate_count < 2){
-                Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
-            }
-            else {
-
-                Kokkos::parallel_for(original.size(), *this);
-                Kokkos::fence();
-            }
-            return success(0);
+          return;
         }
+      }
+    }
+    success(0) = false;
+#else
+    for (int j = 0; j < 2; j ++) {
+      if (check_equality.compare(copy[j](i), original(i))) {
+        return;
+      }
+    }
+    if (check_equality.compare(copy[1](i), copy[2](i)))  // just need 2 that are the same
+      return;
+    //No match found, all three executions return different number
+    success(0) = false;
+#endif
+  }
 
-        void print () override {
-            std::cout << "This is the original data pointer " << original.data() << std::endl;
-            std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
-            std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
-            //std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
-
-            for (int i=0; i<original.size();i++){
-                std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
-                std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
-                std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
-                //std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
-
-            }
-        }
-
-        // Looping over duplicates to check for equality
-        KOKKOS_FUNCTION
-        void operator ()(int i) const {
-
-            /*for (int j = 0; j < 3; j++) {
-                //printf("Original value before compare at index %d is %lf\n", i, original(i));
-                //printf("Copy[%d] value before compare at index %d is %lf\n", j, i, copy[j](i));
-                //printf("Outer iteration: %d - %d \n", i, j);
-              original(i) = copy[j](i);
-
-              for (int r = 0; r < 2; r++) {
-                int k = (j+r+1)%3;
-
-                if (check_equality.compare(copy[k](i),
-                               original(i)))  // just need 2 that are the same
-                {
-                  return;
-                }
-              }
-            }*/
-            for (int j = 0; j < 2; j ++) {
-                //printf("Original index %d is %lf\n", i, original(i));
-                //printf("Copy[%d] at index %d is %lf\n", j, i, copy[j](i));
-                if (check_equality.compare(copy[j](i), original(i))) {
-                    return;
-                }
-            }
-
-            if (check_equality.compare(copy[1](i), copy[2](i)))  // just need 2 that are the same
-                return;
-
-            //No match found, all three executions return different number
-            //printf("no match found: %i\n", i);
-            success(0) = false;
-        }
-
-    };
+};
 
 } // namespace KokkosResilience
 
@@ -213,126 +220,125 @@ namespace KokkosResilience{
 
 namespace KokkosResilience {
 
-    struct ResilientDuplicatesSubscriber {
+struct ResilientDuplicatesSubscriber {
 
-        // Gating for using subscriber only inside resilient parallel loops
-        static bool in_resilient_parallel_loop;
+  // Gating for using subscriber only inside resilient parallel loops
+  static bool in_resilient_parallel_loop;
 
-        // Creating map for duplicates: used for duplicate resolution per-kernel
-        // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
-        // only once. Re-initialize copies to be like original view only if original not in cache map
-        using key_type = void *;  // key_type should be data() pointer
-        static std::unordered_map<key_type, CombineDuplicatesBase *> duplicates_map;
-        static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
+  // Creating map for duplicates: used for duplicate resolution per-kernel
+  // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
+  // only once. Re-initialize copies to be like original view only if original not in cache map
+  using key_type = void *;  // key_type should be data() pointer
+  static std::unordered_map<key_type, CombineDuplicatesBase *> duplicates_map;
+  static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
 
-        template<typename View>
-        static CombineDuplicates<View> *
-        get_duplicate_for( const View &original) {
-            bool inserted = false;
-            auto pos = duplicates_cache.find(original.data());
+  template<typename View>
+  static CombineDuplicates<View> *
+  get_duplicate_for( const View &original) {
+    bool inserted = false;
+    auto pos = duplicates_cache.find(original.data());
 
-            // True if got to end of cache and view wasn't found
-            if (pos == duplicates_cache.end()) {
-                // Insert view into cache map and flag
-                inserted = true;
-                pos = duplicates_cache.emplace(std::piecewise_construct,
-                                               std::forward_as_tuple(original.data()),
-                                               std::forward_as_tuple(
-                                                       std::make_unique<CombineDuplicates<View> >())).first;
-            }
-
-            auto &res = *static_cast< CombineDuplicates<View> * >( pos->second.get());
-
-            // If inserted in the cache map then create copies and reinitialize
-            if (inserted) {
-                res.original = original;
-
-                // Reinitialize self to be like other (same dimensions, etc)
-                for (int i = 0; i < 2; ++i) {
-                    ViewMatching(res.copy[i], original, i);
-                }
-            }
-
-            return &res;
-        }
-
-        // Function which initializes the dimensions of the duplicating view
-        template<typename View>
-        KOKKOS_INLINE_FUNCTION
-        static void ViewMatching(View &self, const View &other, int duplicate_count) {
-
-            std::stringstream label_ss;
-            label_ss << other.label() << duplicate_count;
-            self = View(label_ss.str(), other.layout());
-
-        }
-
-        //A template argument V (view), a template itself, having at least one parameter
-        //the first one (T), to determine between the const/non-const copy constructor in overload
-        // Class because C++14
-        template<template<typename, typename ...> class V, typename T, typename... Args>
-        static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
-            //If View is constant do nothing, not triggering the rest of the subscriber.
-
-        }
-
-        //template<typename View>
-        //static void copy_constructed(View &self, const View &other) {
-        template< template< typename, typename ...> class V, typename T, typename... Args>
-        static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
-        {
-            //If view is non-constant and in the parallel loop, cascade the rest of the subscriber
-            if (in_resilient_parallel_loop) {
-
-                //This won't be triggered if the entry already exists
-                //try_emplace? V emplace?
-                auto *combiner = get_duplicate_for(other);
-                auto res = duplicates_map.emplace(std::piecewise_construct,
-                                                  std::forward_as_tuple(other.data()),
-                                                  std::forward_as_tuple(combiner));
-                auto &c = dynamic_cast< CombineDuplicates< V<T*, Args...> > & > (*res.first->second);
-
-                // The first copy constructor in a parallel_for for the given view
-                if (res.second) {
-                    c.duplicate_count = 0;
-                }
-
-                self = c.copy[c.duplicate_count++];
-                // Copy all data, every time
-                Kokkos::deep_copy(self, other);
-            }
-        }
-
-
-
-
-        // Added to comply with new Subscriber format
-        template <typename View>
-        static void move_constructed(View &self, const View &other) {}
-
-        template <typename View>
-        static void move_assigned(View &self, const View &other) {}
-
-        template <typename View>
-        static void copy_assigned(View &self, const View &other) {}
-    };
-
-    KOKKOS_INLINE_FUNCTION
-    void clear_duplicates_map() {
-        KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.clear();
+    // True if got to end of cache and view wasn't found
+    if (pos == duplicates_cache.end()) {
+      // Insert view into cache map and flag
+      inserted = true;
+      pos = duplicates_cache.emplace(std::piecewise_construct,
+                                     std::forward_as_tuple(original.data()),
+                                     std::forward_as_tuple(
+                                             std::make_unique<CombineDuplicates<View> >())).first;
     }
 
-    KOKKOS_INLINE_FUNCTION
-    void clear_duplicates_cache() {
-        KokkosResilience::ResilientDuplicatesSubscriber::duplicates_cache.clear();
-    }
+    auto &res = *static_cast< CombineDuplicates<View> * >( pos->second.get());
 
-    KOKKOS_INLINE_FUNCTION
-    void print_duplicates_map(){
-        for(auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-            entry.second->print();
-        }
+    // If inserted in the cache map then create copies and reinitialize
+    if (inserted) {
+      res.original = original;
+
+#ifdef KR_ENABLE_THREE_COPIES
+      // Reinitialize self to be like other (same dimensions, etc)
+      for (int i = 0; i < 3; ++i) {
+        ViewMatching(res.copy[i], original, i);
+      }
+#else
+      for (int i = 0; i < 2; ++i) {
+        ViewMatching(res.copy[i], original, i);
+      }
+#endif
     }
+    return &res;
+  }
+
+  // Function which initializes the dimensions of the duplicating view
+  template<typename View>
+  KOKKOS_INLINE_FUNCTION
+  static void ViewMatching(View &self, const View &other, int duplicate_count) {
+
+    std::stringstream label_ss;
+    label_ss << other.label() << duplicate_count;
+    self = View(label_ss.str(), other.layout());
+
+  }
+
+  //A template argument V (view), a template itself, having at least one parameter
+  //the first one (T), to determine between the const/non-const copy constructor in overload
+  // Class because C++14
+  template<template<typename, typename ...> class V, typename T, typename... Args>
+  static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
+
+    //If View is constant do nothing, not triggering the rest of the subscriber.
+  }
+
+  template< template< typename, typename ...> class V, typename T, typename... Args>
+  static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
+  {
+    //If view is non-constant and in the parallel loop, cascade the rest of the subscriber
+    if (in_resilient_parallel_loop) {
+
+      //This won't be triggered if the entry already exists
+      auto *combiner = get_duplicate_for(other);
+      auto res = duplicates_map.emplace(std::piecewise_construct,
+                                        std::forward_as_tuple(other.data()),
+                                        std::forward_as_tuple(combiner));
+      auto &c = dynamic_cast< CombineDuplicates< V<T*, Args...> > & > (*res.first->second);
+
+      // The first copy constructor in a parallel_for for the given view
+      if (res.second) {
+        c.duplicate_count = 0;
+      }
+
+      self = c.copy[c.duplicate_count++];
+      // Copy all data, every time
+      Kokkos::deep_copy(self, other);
+    }
+  }
+
+  // Added to comply with new Subscriber format
+  template <typename View>
+  static void move_constructed(View &self, const View &other) {}
+
+  template <typename View>
+  static void move_assigned(View &self, const View &other) {}
+
+  template <typename View>
+  static void copy_assigned(View &self, const View &other) {}
+};
+
+KOKKOS_INLINE_FUNCTION
+void clear_duplicates_map() {
+  KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.clear();
+}
+
+KOKKOS_INLINE_FUNCTION
+void clear_duplicates_cache() {
+  KokkosResilience::ResilientDuplicatesSubscriber::duplicates_cache.clear();
+}
+
+KOKKOS_INLINE_FUNCTION
+void print_duplicates_map(){
+  for(auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+    entry.second->print();
+  }
+}
 
 } //namespace KokkosResilience
 
