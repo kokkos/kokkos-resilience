@@ -52,7 +52,7 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
+                                       const std::vector< KokkosResilience::ViewHolder > &_views )
   {
     bool status = true;
     
@@ -61,7 +61,7 @@ namespace KokkosResilience
     {
       std::string label = get_canonical_label( view->label() );
 
-      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      if ( !view->span_is_contiguous() || !view->is_host_space() )
       {
         auto pos = m_registry.find( label );
         if ( pos != m_registry.end())
@@ -107,7 +107,7 @@ namespace KokkosResilience
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
+    const std::vector< KokkosResilience::ViewHolder > &_views )
   {
     auto lab = get_canonical_label( label );
     VELOC_SAFE_CALL( VELOC_Restart_begin( lab.c_str(), version ));
@@ -122,7 +122,7 @@ namespace KokkosResilience
     for ( auto &&view : _views )
     {
       auto vl = get_canonical_label( view->label() );
-      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      if ( !view->span_is_contiguous() || !view->is_host_space() )
       {
         auto pos = m_registry.find( vl );
         if ( pos != m_registry.end() )
@@ -149,7 +149,7 @@ namespace KokkosResilience
   }
   
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+  VeloCMemoryBackend::register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
                                        const std::vector< Detail::CrefImpl > &crefs  )
   {
     // Clear protected bits
@@ -177,7 +177,7 @@ namespace KokkosResilience
         iter->second.element_size = view->data_type_size();
         iter->second.size = view->span();
 
-        if ( !view->is_hostspace() || !view->span_is_contiguous() )
+        if ( !view->is_host_space() || !view->span_is_contiguous() )
         {
           // Can't reference memory directly, allocate memory for a watch buffer
           iter->second.buff.assign( iter->second.size * iter->second.element_size, 0x00 );
@@ -255,13 +255,13 @@ namespace KokkosResilience
   }
 
   void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views )
+  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views )
   {
     // No-op, don't do anything
   }
 
   void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views)
+  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views)
   {
     // No-op, don't do anything
   }
@@ -280,7 +280,7 @@ namespace KokkosResilience
   
   void
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
+                                const std::vector< KokkosResilience::ViewHolder > &views )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait());
@@ -335,7 +335,7 @@ namespace KokkosResilience
   }
   
   void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
+                                  const std::vector< KokkosResilience::ViewHolder > &views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     

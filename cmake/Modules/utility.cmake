@@ -21,6 +21,7 @@ function(target_resources _target)
       # between _target and the file
       add_custom_command(OUTPUT ${_res_path}
           COMMAND ${CMAKE_COMMAND} -E copy "${_res_full_path}" "${_absolute_bin_path}"
+          DEPENDS ${_res_full_path}
           )
     endforeach()
 

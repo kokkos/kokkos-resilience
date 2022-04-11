@@ -14,7 +14,7 @@
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
-#include <Kokkos_ViewHooks.hpp>
+#include "view_hooks/ViewHolder.hpp"
 #ifdef KR_ENABLE_MPI_BACKENDS
 #include <mpi.h>
 #endif
@@ -38,13 +38,13 @@ namespace KokkosResilience
 
     virtual ~ContextBase() = default;
 
-    virtual void register_hashes(const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+    virtual void register_hashes(const std::vector< KokkosResilience::ViewHolder > &views,
                                  const std::vector< Detail::CrefImpl > &crefs) = 0;
     virtual bool restart_available( const std::string &label, int version ) = 0;
     virtual void restart( const std::string &label, int version,
-                          const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
+                          const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
     virtual void checkpoint( const std::string &label, int version,
-                             const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views ) = 0;
+                             const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
 
     virtual int latest_version( const std::string &label ) const noexcept = 0;
     virtual void register_alias( const std::string &original, const std::string &alias ) = 0;

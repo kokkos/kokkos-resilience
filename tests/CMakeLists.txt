@@ -2,7 +2,7 @@
 include(FetchContent)
 FetchContent_Declare(googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG 10b1902d893ea8cc43c69541d70868f91af3646b
+    GIT_TAG release-1.11.0
     )
 
 FetchContent_MakeAvailable(googletest)
@@ -11,6 +11,8 @@ add_executable(resilience_tests
                TestMain.cpp
                TestResilience.cpp
                TestLambdaCapture.cpp
+               TestHooks.cpp
+               TestDynamicViewHooks.cpp
                )
 
 if (KR_ENABLE_VELOC)
