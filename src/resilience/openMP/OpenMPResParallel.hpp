@@ -177,5 +177,198 @@ class ParallelFor< FunctorType
 } // namespace Impl
 } // namespace Kokkos
 
+/*--------------------------------------------------------------------------*/
+/*********************** RESILIENT PARALLEL REDUCES *************************/
+/*--------------------------------------------------------------------------*/
+
+namespace Kokkos {
+namespace Impl {
+
+// Will eventually need enable_if to partially specialize on the different reducer types
+// This specialization is for view type only, but written as only instantiation for now
+
+// Range policy implementation
+template <class FunctorType, class ReducerType, class... Traits>
+class ParallelReduce< FunctorType
+                    , Kokkos::RangePolicy< Traits... >
+                    , ReducerType
+                    , KokkosResilience::ResOpenMP>{
+
+ private:
+  using Policy    = Kokkos::RangePolicy<Traits...>;
+  using WorkTag   = typename Policy::work_tag;
+
+
+  OpenMPExec* m_instance;
+  FunctorType m_functor;
+  const Policy m_policy;
+  using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
+
+  ParallelReduce() = delete;
+  ParallelReduce & operator = ( const ParallelReduce & ) = delete;
+
+  //primary template
+  struct ReduceResultCombinerBase
+  {
+    // A pure virtual function, given a functor reference (from the constructor)
+    virtual void execute_resilient_reduction( const FunctorType &f
+                                            , const FunctorType &f0
+                                            , const FunctorType &f1
+                                            , const surrogate_policy & pass_policy) = 0;
+
+    virtual bool combine_reducers () = 0;
+    virtual void print() = 0;
+  };
+
+  // Unique pointer to combinerbase struct
+  std::unique_ptr<ReduceResultCombinerBase> m_combiner;
+
+  //templated on ViewType, will override void function with triplicate execution for ViewTypes
+  template< typename ViewType >
+  struct ReduceResultCombiner : ReduceResultCombinerBase
+  {
+    using ManagedViewType = Kokkos::View<typename ViewType::data_type
+                            , typename ViewType::array_layout
+                            , Kokkos::OpenMP>;
+
+    static ManagedViewType ViewMatching(ViewType reducer_view, int duplicate_count) {
+
+      std::stringstream label_ss;
+      label_ss << reducer_view.label() << duplicate_count;
+      return ManagedViewType(label_ss.str(), reducer_view.layout());
+
+    }
+
+    ReduceResultCombiner( ViewType reducer_view )
+    {
+      original = reducer_view;
+      reducer_copy[0] = ViewMatching (reducer_view, 1);
+      reducer_copy[1] = ViewMatching (reducer_view, 2);
+    }
+
+    ManagedViewType reducer_copy[2];
+    ViewType original;
+
+    void execute_resilient_reduction( const FunctorType &f
+                                    , const FunctorType &f0
+                                    , const FunctorType &f1
+                                    , const surrogate_policy & pass_policy) override
+    {
+
+      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure1{ f, pass_policy, original };
+      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
+      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure3{ f1, pass_policy, reducer_copy[1] };
+
+      closure1.execute();
+      closure2.execute();
+      closure3.execute();
+
+    }
+
+    bool combine_reducers () {
+
+      using EqualityType = KokkosResilience::CheckDuplicateEquality<typename ViewType::value_type>;
+      EqualityType check_equality;
+
+      bool success = true;
+
+      for (int j = 0; j < 2; j ++) {
+        if (check_equality.compare(reducer_copy[j](), original())) {
+          return success;
+        }
+      }
+      if (check_equality.compare(reducer_copy[0](), reducer_copy[1]())) // just need 2 that are the same
+        return success;
+        //No match found, all three executions return different number
+      success = false;
+      return success;
+    }
+
+    void print() override {
+
+      std::cout << std::endl;
+      std::cout << original() << std::endl;
+      std::cout << reducer_copy[0]() << std::endl;
+      std::cout << reducer_copy[1]() << std::endl;
+      std::cout << std::endl;
+
+    }
+  };
+
+ public:
+  void execute() {
+
+    int repeats = 5; //! This integer represents the maximum number of attempts to reach consensus allowed.
+    bool success = 0; //! This bool indicates that all views successfully reached a consensus.
+
+    while(success==0 && repeats > 0){
+
+      surrogate_policy pass_policy;
+      pass_policy = surrogate_policy(m_policy.begin(), m_policy.end());
+
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
+      auto m_functor_0 = m_functor;
+      auto m_functor_1 = m_functor;
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+
+      m_combiner->execute_resilient_reduction(m_functor, m_functor_0, m_functor_1, pass_policy);
+      m_combiner->print();
+
+      KokkosResilience::print_duplicates_map();
+      // Combine the duplicate views and majority vote on correctness
+      success = KokkosResilience::combine_resilient_duplicates();
+
+      // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
+      KokkosResilience::clear_duplicates_map();
+      repeats--;
+
+    }// while (!success & repeats left)
+
+    if(success==0 && repeats == 0){
+      // Abort if 5 repeated tries at executing failed to find acceptable match
+      Kokkos::abort("Aborted in resilient parallel_reduce.");
+    }
+  } //execute
+
+  template< typename ViewType >
+  inline ParallelReduce(const FunctorType &f
+                , Policy arg_policy
+                , const ViewType &view_arg)
+                : m_functor( f )
+                , m_policy(arg_policy)
+  {
+    m_combiner = std::make_unique<ReduceResultCombiner< ViewType > >( view_arg );
+  }
+
+/*
+  template <class ViewType>
+  inline ParallelReduce(const FunctorType& arg_functor,
+                        Policy arg_policy,
+                        const ViewType& arg_view,
+                        typename std::enable_if<Kokkos::is_view<ViewType>::value &&
+                                      !Kokkos::is_reducer_type<ReducerType>::value, void*>::type = nullptr)
+                      : m_instance(t_openmp_instance),
+                        m_functor(arg_functor),
+                        m_policy(arg_policy),
+                        m_reducer(arg_functor)
+                        //,m_result_ptr(arg_view.data())
+                        {
+  }
+/*
+  inline ParallelReduce(const FunctorType& arg_functor,
+                        Policy arg_policy,
+                        const ReducerType& reducer)
+                        : m_instance(t_openmp_instance),
+                          m_functor(arg_functor),
+                          m_policy(arg_policy),
+                          m_reducer(reducer),
+                          m_result_ptr(reducer.view().data()) {
+  }*/
+
+};// range policy implementation
+
+} // namespace Impl
+} // namespace Kokkos
+
 #endif // KOKKOS_ENABLE_OPENMP
 #endif // INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
