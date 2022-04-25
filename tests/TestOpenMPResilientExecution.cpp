@@ -194,6 +194,10 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N_2), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = 1;
+  /*  if (i==1) {
+      std::cout << "Threads:" << omp_get_num_threads();
+      std::cout << std::endl;
+    }*/
   });
 
   Kokkos::parallel_for( range_policy (N_2, N), KOKKOS_LAMBDA ( const int i) {
@@ -237,5 +241,79 @@ TEST(TestResOpenMP, TestConstViewSubscriber)
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(y(i), 2 * i);
   }
+
+}
+
+// gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
+TEST(TestResOpenMP, TestKokkosReduceDouble)
+{
+  std::cout << "Kokkos parallel_reduce dot product test." << std::endl;
+
+  ViewVectorType y ( "y", N );
+  ViewVectorType x ( "x", N );
+
+  Kokkos::Timer timer;
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 1.0;
+  });
+
+  Kokkos::deep_copy(x,y);
+
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(range_policy2(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+  double time = timer.seconds();
+
+  KokkosResilience::clear_duplicates_cache();
+
+  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports parallel_reduce completed in time " << time << "." << std::endl;
+  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+
+  ASSERT_EQ(dot_product, N);
+
+}
+
+// gTest runs parallel_reduce with resilient Kokkos to get a dot product.
+TEST(TestResOpenMP, TestResilientReduceDouble)
+{
+  std::cout << "Kokkos resilient parallel_reduce dot product test." << std::endl;
+
+  // Allocate y, x vectors.
+  ViewVectorDoubleSubscriber y( "y", N );
+  ViewVectorDoubleSubscriber x( "x", N );
+
+  Kokkos::Timer timer;
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 1.0;
+  });
+
+  Kokkos::deep_copy(x,y);
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+  double time = timer.seconds();
+
+  KokkosResilience::clear_duplicates_cache();
+
+  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports parallel_reduce completed in time " << time << "." << std::endl;
+  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+
+  ASSERT_EQ(dot_product, N);
 
 }
