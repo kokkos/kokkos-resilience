@@ -3,3 +3,5 @@ build/
 .idea/
 *.swp
 build-*/
+
+CMakeUserPresets.json
