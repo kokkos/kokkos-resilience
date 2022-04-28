@@ -77,12 +77,12 @@ class ResOpenMP : public Kokkos::OpenMP {
   public:
 
     //Type declarations for execution spaces following API
-    typedef ResOpenMP                                execution_space; //Tag class as Kokkos execution space
-    typedef ResHostSpace                                memory_space; //Preferred memory space
-    typedef Kokkos::Device<execution_space,memory_space> device_type; //Preferred device_type
-    typedef memory_space::size_type                        size_type; //Preferred size_type
-    typedef Kokkos::LayoutRight                         array_layout; //Preferred array layout
-    typedef Kokkos::ScratchMemorySpace<OpenMP>  scratch_memory_space; //Preferred scratch memory
+    using execution_space      = ResOpenMP;                          //Tag class as Kokkos execution space
+    using memory_space         = ResHostSpace;                       //Preferred memory space
+    using device_type          = Kokkos::Device<execution_space,memory_space>; //Preferred device_type
+    using size_type            = memory_space::size_type;            //Preferred size_type
+    using array_layout         = Kokkos::LayoutRight;                //Preferred array layout
+    using scratch_memory_space = Kokkos::ScratchMemorySpace<OpenMP>; //Preferred scratch memory
 
 /*------------------------------------*/
 
@@ -109,8 +109,6 @@ class ResOpenMP : public Kokkos::OpenMP {
     // This is a no-op on OpenMP
     static void impl_static_fence(OpenMP const& = OpenMP()) noexcept;
 
-    //void fence();
-
     // Does the given instance return immediately after launching
     // a parallel algorithm
     // This always returns false on OpenMP
@@ -119,7 +117,7 @@ class ResOpenMP : public Kokkos::OpenMP {
     // Partition the default instance into new instances without creating new masters
     // This is a no-op on OpenMP since the default instance cannot be partitioned
     // without promoting other threads to 'master'
-    static std::vector<OpenMP> partition(...);
+    static std::vector<ResOpenMP> partition(...);
 
     // Non-default instances should be ref-counted so that when the last
     // is destroyed the instance resources are released
@@ -178,27 +176,11 @@ template <>
 struct MemorySpaceAccess
   < KokkosResilience::ResHostSpace
   , Kokkos::OpenMP::scratch_memory_space
-  >
-{
-  enum { assignable = false };
-  enum { accessible = true };
-  enum { deepcopy = false };
-};
+  > : MemorySpaceAccess
+  < Kokkos::HostSpace
+  , Kokkos::OpenMP::scratch_memory_space >
+{};
 
-/*------------------------------------------------------------------------*/
-/*
-// Specialized to ResHostSpace, extend to more
-template <>
-struct VerifyExecutionCanAccessMemorySpace
-  < KokkosResilience::ResHostSpace
-  , KokkosResilience::ResOpenMP::scratch_memory_space
-  >
-{
-  enum { value = true };
-  KOKKOS_INLINE_FUNCTION static void verify( void) { }
-  KOKKOS_INLINE_FUNCTION static void verify( const void * ) { }
-};
-*/
 }  // namespace Impl
 }  // namespace Kokkos
 
@@ -226,10 +208,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
 #include <OpenMP/Kokkos_OpenMP_Task.hpp>
 
-//#include <KokkosExp_MDRangePolicy.hpp>
-
 /*------------------------------------------------------------------------*/
 
 #endif //#if defined( KOKKOS_ENABLE_OPENMP )
 #endif //INC_RESILIENCE_OPENMP_RESOPENMP_HPP
-

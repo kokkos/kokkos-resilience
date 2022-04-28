@@ -108,14 +108,15 @@ class ParallelFor< FunctorType
  public:
   inline void execute() const {
 
-    //! This comment describes the 4th implementation: update to 5th implementation
-    //! Somewhere (possibly after the } of execute) a long comment describe execute, such as:
-    //! The execute() function in this class performs an OpenMP execution of parallel for
-    //! with triple modular redundancy. Views equipped with the necessary subscribers are
+    //! The execution() function in this class performs an OpenMP execution of parallel for with
+    //! triple modular redundancy. Non-constant views equipped with the triggering subscribers are
     //! duplicated and three concurrent executions divided equally between the available pool
     //! of OpenMP threads proceed. Duplicate views are combined back into a single view by calling
     //! a combiner to majority vote on the correct values. This process is repeated until
     //! a value is voted correct or a given number of attempts is exceeded.
+    //! There are some subtleties regarding which views are copied per kernel in the default subscriber
+    //! See KokkosResilience::ResilienctDuplicatesSubscriber::duplicates_cache for details
+
     int repeats = 5; //! This integer represents the maximum number of attempts to reach consensus allowed.
     bool success = 0; //! This bool indicates that all views successfully reached a consensus.
 
@@ -131,28 +132,8 @@ class ParallelFor< FunctorType
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
       auto m_functor_0 = m_functor;
       auto m_functor_1 = m_functor;
-#ifdef KR_ENABLE_THREE_COPIES
-      auto m_functor_2 = m_functor;
-#endif
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-#ifdef KR_ENABLE_THREE_COPIES
-      auto wrapper_functor = [&](auto i){
-        if (i < work_size)
-        {
-          m_functor_0 (i + offset);
-        }
-        else if (( work_size <= i) && (i < (2 * work_size)))
-        {
-          m_functor_1 (i + offset - work_size);
-        }
-        else
-        {
-          m_functor_2 (i + offset - ( 2 * work_size));
-        }
-
-      };
-#else
       auto wrapper_functor = [&](auto i){
         if (i < work_size)
         {
@@ -168,14 +149,13 @@ class ParallelFor< FunctorType
         }
 
       };
-#endif
+
       // Feed in three-times as long range policy (wrapper-policy)
       // With wrapped functor, so that the iterations are bound to the duplicated functors/views
       Impl::ParallelFor< decltype(wrapper_functor) , surrogate_policy, Kokkos::OpenMP > closure( wrapper_functor , wrapper_policy );
 
       closure.execute();
 
-      KokkosResilience::print_duplicates_map();
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
 

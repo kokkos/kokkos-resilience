@@ -123,7 +123,6 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
-  virtual void print() = 0;
 };
 
 template< typename View >
@@ -134,70 +133,25 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   int duplicate_count = 0;
   View original;
-
-#ifdef KR_ENABLE_THREE_COPIES
-  View copy[3];
-#else
   View copy[2];
-#endif
-
   Kokkos::View <bool*> success{"success", 1};
 
   bool execute() override
   {
     success(0) = true;
-
-#ifdef KR_ENABLE_THREE_COPIES
-    if (duplicate_count < 3){
-      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
-    }
-#else
     if (duplicate_count < 2) {
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
     }
-#endif
     else {
-
       Kokkos::parallel_for(original.size(), *this);
       Kokkos::fence();
     }
     return success(0);
   }
 
-  void print () override {
-    std::cout << "This is the original data pointer " << original.data() << std::endl;
-    std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
-    std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
-#ifdef KR_ENABLE_THREE_COPIES
-    std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
-#endif
-    for (int i=0; i<original.size();i++){
-      std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
-      std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
-      std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
-#ifdef KR_ENABLE_THREE_COPIES
-      std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
-#endif
-    }
-  }
-
   // Looping over duplicates to check for equality
   KOKKOS_FUNCTION
   void operator ()(int i) const {
-#ifdef KR_ENABLE_THREE_COPIES
-    for (int j = 0; j < 3; j++) {
-      original(i) = copy[j](i);
-      for (int r = 0; r < 2; r++) {
-        int k = (j+r+1)%3;
-        if (check_equality.compare(copy[k](i),
-                                   original(i)))  // just need 2 that are the same
-        {
-          return;
-        }
-      }
-    }
-    success(0) = false;
-#else
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](i), original(i))) {
         return;
@@ -209,7 +163,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     //No match found, all three executions return different number
     success(0) = false;
-#endif
   }
 
 };
@@ -256,16 +209,9 @@ struct ResilientDuplicatesSubscriber {
     if (inserted) {
       res.original = original;
 
-#ifdef KR_ENABLE_THREE_COPIES
-      // Reinitialize self to be like other (same dimensions, etc)
-      for (int i = 0; i < 3; ++i) {
-        ViewMatching(res.copy[i], original, i);
-      }
-#else
       for (int i = 0; i < 2; ++i) {
-        ViewMatching(res.copy[i], original, i);
+          set_duplicate_view(res.copy[i], original, i);
       }
-#endif
     }
     return &res;
   }
@@ -273,30 +219,28 @@ struct ResilientDuplicatesSubscriber {
   // Function which initializes the dimensions of the duplicating view
   template<typename View>
   KOKKOS_INLINE_FUNCTION
-  static void ViewMatching(View &self, const View &other, int duplicate_count) {
+  static void set_duplicate_view(View &duplicate, const View &original, int duplicate_count) {
 
     std::stringstream label_ss;
-    label_ss << other.label() << duplicate_count;
-    self = View(label_ss.str(), other.layout());
-
+    label_ss << original.label() << duplicate_count;
+    duplicate = View(label_ss.str(), original.layout());
   }
 
-  //A template argument V (view), a template itself, having at least one parameter
-  //the first one (T), to determine between the const/non-const copy constructor in overload
+  // A template argument V (view), a template itself, having at least one parameter
+  // the first one (T), to determine between the const/non-const copy constructor in overload
   // Class because C++14
   template<template<typename, typename ...> class V, typename T, typename... Args>
   static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
-
-    //If View is constant do nothing, not triggering the rest of the subscriber.
+    // If View is constant do nothing, not triggering the rest of the subscriber.
   }
 
   template< template< typename, typename ...> class V, typename T, typename... Args>
   static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
   {
-    //If view is non-constant and in the parallel loop, cascade the rest of the subscriber
+    // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
     if (in_resilient_parallel_loop) {
 
-      //This won't be triggered if the entry already exists
+      // This won't be triggered if the entry already exists
       auto *combiner = get_duplicate_for(other);
       auto res = duplicates_map.emplace(std::piecewise_construct,
                                         std::forward_as_tuple(other.data()),
@@ -333,13 +277,6 @@ void clear_duplicates_map() {
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_cache() {
   KokkosResilience::ResilientDuplicatesSubscriber::duplicates_cache.clear();
-}
-
-KOKKOS_INLINE_FUNCTION
-void print_duplicates_map(){
-  for(auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-    entry.second->print();
-  }
 }
 
 } //namespace KokkosResilience

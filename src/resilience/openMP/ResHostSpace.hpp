@@ -58,14 +58,10 @@
 // Not including KOKKOS_ENABLE_OPENMP because it's host space, may
 // desire it to work with other spaces later.
 
-//#include <impl/TrackDuplicates.hpp>
 #include <Kokkos_HostSpace.hpp>
 #include <Kokkos_CudaSpace.hpp>
 #include <typeinfo>
 #include <map>
-
-//Fix this if included
-//#include <openmp/OpenMPResSubscriber.hpp>
 
 /*--------------------------------------------------------------------------*/
 
@@ -80,16 +76,16 @@ class ResHostSpace : public Kokkos::HostSpace {
   public:
 
     // Type declarations for execution spaces following API
-    typedef ResHostSpace        memory_space; // Tag class as Kokkos memory space
-    typedef size_t              size_type; // Preferred size type
-    typedef Kokkos::OpenMP      execution_space; // Preferred execution space
-    using   resilient_space =   ResHostSpace;
+    using memory_space    = ResHostSpace;   // Tag class as Kokkos memory space
+    using size_type       = size_t;         // Preferred size type
+    using execution_space = Kokkos::OpenMP; // Preferred execution space
+    using resilient_space = ResHostSpace;
 
     // Every memory space has a default execution space.  This is
     // useful for things like initializing a View (which happens in
     // parallel using the View's default execution space).
 
-    typedef Kokkos::Device<execution_space, memory_space> device_type; // Preferred device type
+    using device_type = Kokkos::Device<execution_space, memory_space>; // Preferred device type
 
     // Use parent class constructors
     using Kokkos::HostSpace::HostSpace;
@@ -188,43 +184,6 @@ struct DeepCopy< KokkosResilience::ResHostSpace, Kokkos::HostSpace, ExecutionSpa
 
 } // namespace Impl
 } // namespace Kokkos
-
-/*--------------------------------------------------------------------------*/
-
-namespace Kokkos {
-
-namespace Impl {
-
-/*
-#if defined ( KOKKOS_ENABLE_CUDA )
-// Running in ResHostSpace, attempting to access CudaSpace
-template<>
-struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResHostSpace , Kokkos::CudaSpace >
-{
-  enum { value = false };
-  inline static void verify( void ) { KokkosResilience::ResHostSpace::access_error(); }
-  inline static void verify( const void * p ) { KokkosResilience::ResHostSpace::access_error(p); }
-};
-#endif
-
-// Running in ResHostSpace and attempting to access an unknown space: throw error
-template< class OtherSpace >
-struct VerifyExecutionCanAccessMemorySpace<
-  typename std::enable_if< ! std::is_same<KokkosResilience::ResHostSpace,OtherSpace>::value , KokkosResilience::ResHostSpace >::type ,
-  OtherSpace >
-{
-  enum { value = false };
-  inline static void verify( void )
-    { Kokkos::abort("resilient OpenMP code attempted to access unknown space memory"); }
-  inline static void verify( const void * )
-    { Kokkos::abort("resilient OpenMP code attempted to access unknown space memory"); }
-};
-*/
-} // namespace Impl
-
-} // namespace Kokkos
-
-/*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
 

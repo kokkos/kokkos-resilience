@@ -41,8 +41,6 @@ using range_policy2 = Kokkos::RangePolicy<Kokkos::OpenMP>;
 // gTest runs parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestKokkosFor)
 {
-  std::cout << "KokkosFor Test" << std::endl;
-
   // Allocate y, x vectors.
   ViewVectorType y2( "y", N );
   ViewVectorType x2( "x", N );
@@ -58,20 +56,12 @@ TEST(TestResOpenMP, TestKokkosFor)
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x2(i), i);
   }
-
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports Kokkos parallel_for took " << time << " seconds." << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-
 }
 
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
 {
-  std::cout << "KokkosResilient For Doubles" << std::endl;
-
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
   ViewVectorDoubleSubscriber x( "x", N );
@@ -91,30 +81,19 @@ TEST(TestResOpenMP, TestResilientForDouble)
 
   KokkosResilience::clear_duplicates_cache();
   double time = timer.seconds();
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports Kokkos parallel_for took " << time << " seconds." << std::endl;
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports counter is " << counter(0) << ". It should be " << N << "." << std::endl;
 
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
 
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports test parallel_for completed. Data assignment was correct." << std::endl;
-
   ASSERT_EQ(counter(0), N);
-
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-
 }
 
 // gTest runs parallel_for with resilient Kokkos integer assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForInteger)
 {
-  std::cout << "KokkosResilient For Integers" << std::endl;
-
   // Allocate y, x vectors.
   ViewVectorIntSubscriber  y( "y", N );
   ViewVectorIntSubscriber  x( "x", N );
@@ -132,8 +111,6 @@ TEST(TestResOpenMP, TestResilientForInteger)
     Kokkos::atomic_increment(&counter(0));
   });
   double time = timer.seconds();
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports Kokkos parallel_for took " << time << " seconds." << std::endl;
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports counter is " << counter(0) << ". It should be " << N << "." << std::endl;
 
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
@@ -141,13 +118,7 @@ TEST(TestResOpenMP, TestResilientForInteger)
   }
   KokkosResilience::clear_duplicates_cache();
 
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports test parallel_for completed. Data assignment was correct." << std::endl;
-
   ASSERT_EQ(counter(0), N);
-
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
 }
 
 // gTest attempts to trigger all 3 executions generating different data.
@@ -155,7 +126,6 @@ TEST(TestResOpenMP, TestResilientForInteger)
 // Should repeat user-specified number of times (in context file) and then abort.
 TEST(TestResOpenMP, TestResilientForInsertError)
 {
-  std::cout << "KokkosResilient For OMP Thread Error" << std::endl;
 
   ViewVectorIntSubscriber counter ( "DataAccesses", 1);
 
@@ -180,7 +150,6 @@ TEST(TestResOpenMP, TestResilientForInsertError)
 // Uses a non-zero range start
 TEST(TestResOpenMP, TestResilientNonZeroRange)
 {
-  std::cout << "KokkosResilient NonZeroRange" << std::endl;
 
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
@@ -207,17 +176,12 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
     }
   }
 
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports test parallel_for completed. Data assignment was correct." << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
 }
 
 // Test runs parallel_for with a const view. Expect const view to trigger const view subscriber, a no-op
 // Expect non-const view to trigger copies and majority voting resiliency subscriber
 TEST(TestResOpenMP, TestConstViewSubscriber)
 {
-  std::cout << "KokkosResilient Test Constant View Subscriber" << std::endl;
 
   ViewVectorDoubleSubscriber x( "x", N );
   ViewVectorDoubleSubscriber y( "y", N );
@@ -238,6 +202,4 @@ TEST(TestResOpenMP, TestConstViewSubscriber)
     ASSERT_EQ(y(i), 2 * i);
   }
 
-  std::cout << "Success! The computation was correct! View debug info for constant view copying." << std::endl;
-  std::cout << std::endl << std::endl << std::endl;
 }
