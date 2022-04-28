@@ -203,8 +203,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
         return;
       }
     }
-    if (check_equality.compare(copy[1](i), copy[2](i)))  // just need 2 that are the same
+    if (check_equality.compare(copy[0](i), copy[1](i))) {
+      original(i) = copy[0](i);  // just need 2 that are the same
       return;
+    }
     //No match found, all three executions return different number
     success(0) = false;
 #endif
