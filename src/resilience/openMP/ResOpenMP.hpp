@@ -102,28 +102,6 @@ class ResOpenMP : public Kokkos::OpenMP {
     // Print configuration information to the given output stream.
     static void print_configuration(std::ostream&, const bool verbose = false);
 
-    // The instance running a parallel algorithm
-    inline static bool in_parallel(OpenMP const& = OpenMP()) noexcept;
-
-    // Wait until all dispatched functors complete on the given instance
-    // This is a no-op on OpenMP
-    static void impl_static_fence(OpenMP const& = OpenMP()) noexcept;
-
-    // Does the given instance return immediately after launching
-    // a parallel algorithm
-    // This always returns false on OpenMP
-    inline static bool is_asynchronous(OpenMP const& = OpenMP()) noexcept;
-
-    // Partition the default instance into new instances without creating new masters
-    // This is a no-op on OpenMP since the default instance cannot be partitioned
-    // without promoting other threads to 'master'
-    static std::vector<ResOpenMP> partition(...);
-
-    // Non-default instances should be ref-counted so that when the last
-    // is destroyed the instance resources are released
-    // This is a no-op on OpenMP since a non default instance cannot be created
-    static OpenMP create_instance(...);
-
     // use UniqueToken
     static int concurrency();
 
