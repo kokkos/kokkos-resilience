@@ -1,8 +1,0 @@
-//
-// Created by elisabethgiem on 1/27/22.
-//
-
-#ifndef KOKKOS_RESILIENCE_TESTMDRANGE_HPP
-#define KOKKOS_RESILIENCE_TESTMDRANGE_HPP
-
-#endif  // KOKKOS_RESILIENCE_TESTMDRANGE_HPP

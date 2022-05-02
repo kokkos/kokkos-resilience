@@ -124,13 +124,6 @@ class ResOpenMP : public Kokkos::OpenMP {
     // This is a no-op on OpenMP since a non default instance cannot be created
     static OpenMP create_instance(...);
 
-    // Partition the default instance and call 'f' on each new 'master' thread
-    // Func is a functor with the following signature
-    // void( int partition_id, int num_partitions )
-    template <typename F>
-    static void partition_master(F const& f, int requested_num_partitions = 0,
-                                 int requested_partition_size = 0);
-
     // use UniqueToken
     static int concurrency();
 
@@ -141,21 +134,6 @@ class ResOpenMP : public Kokkos::OpenMP {
 
     // Free any resources being consumed by the default execution space
     static void impl_finalize();
-
-    inline static int impl_thread_pool_size() noexcept;
-
-    // The rank of the executing thread in this thread pool
-    KOKKOS_INLINE_FUNCTION static int impl_thread_pool_rank() noexcept;
-
-    inline static int impl_thread_pool_size(int depth);
-
-    // use UniqueToken
-    inline static int impl_max_hardware_threads() noexcept;
-
-    // use UniqueToken
-    KOKKOS_INLINE_FUNCTION static int impl_hardware_thread_id() noexcept;
-
-    static int impl_get_current_max_threads() noexcept;
 
     static const char* name();
     uint32_t impl_instance_id() const noexcept { return 0; }

@@ -11,8 +11,6 @@
 #include <omp.h>
 #include <cstdio>
 
-//#ifdef KR_ENABLE_OPENMP
-
 #define N 20
 #define N_2 10
 #define MemSpace KokkosResilience::ResHostSpace
