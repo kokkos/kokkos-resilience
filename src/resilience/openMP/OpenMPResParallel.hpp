@@ -96,7 +96,6 @@ class ParallelFor< FunctorType
   using Policy    = Kokkos::RangePolicy<Traits...>;
   using WorkTag   = typename Policy::work_tag;
 
-  OpenMPExec* m_instance;
   const FunctorType &  m_functor;
   const Policy m_policy;
 
@@ -107,6 +106,9 @@ class ParallelFor< FunctorType
 
  public:
   inline void execute() const {
+
+    if (KokkosResilience::ResOpenMP::in_parallel())
+      Kokkos::abort("Cannot call resilient parallel_for inside a parallel construct.");
 
     //! The execution() function in this class performs an OpenMP execution of parallel for with
     //! triple modular redundancy. Non-constant views equipped with the triggering subscribers are
@@ -166,7 +168,7 @@ class ParallelFor< FunctorType
     }// while (!success & repeats left)
 
     if(success==0 && repeats == 0){
-      // Abort if 5 repeated tries at executing failed to find acceptable match
+      // Abort if 5 repeKokkos::abort(ated tries at executing failed to find acceptable match
       Kokkos::abort("Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
     }
 
@@ -174,8 +176,7 @@ class ParallelFor< FunctorType
 
   inline ParallelFor(const FunctorType & arg_functor,
                      Policy arg_policy)
-                    : m_instance(t_openmp_instance),
-                      m_functor(arg_functor),
+                    : m_functor(arg_functor),
                       m_policy(arg_policy) {
   }
 

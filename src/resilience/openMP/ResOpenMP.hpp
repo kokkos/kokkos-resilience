@@ -98,23 +98,10 @@ class ResOpenMP : public Kokkos::OpenMP {
 
 /*------------------------------------*/
 
-
     // Print configuration information to the given output stream.
     static void print_configuration(std::ostream&, const bool verbose = false);
 
-    // use UniqueToken
-    static int concurrency();
-
-    static void impl_initialize(int thread_count = -1);
-
-    // The default execution space initialized for current 'master' thread
-    static bool impl_is_initialized() noexcept;
-
-    // Free any resources being consumed by the default execution space
-    static void impl_finalize();
-
     static const char* name();
-    uint32_t impl_instance_id() const noexcept { return 0; }
 
 }; //template class ResOpenMP execution space
 

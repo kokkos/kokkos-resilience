@@ -140,46 +140,27 @@ namespace Impl {
 
 // Template deep copy: ResHost -> ResHost 
 template <class ExecutionSpace>
-struct DeepCopy< KokkosResilience::ResHostSpace, KokkosResilience::ResHostSpace, ExecutionSpace> {
-  DeepCopy(void* dst, const void* src, size_t n) {
-    hostspace_parallel_deepcopy(dst, src, n);
-  }
-
-  DeepCopy(const ExecutionSpace& exec, void* dst, const void* src, size_t n) {
-    exec.fence();
-    hostspace_parallel_deepcopy(dst, src, n);
-    exec.fence();
-  }
+struct DeepCopy< KokkosResilience::ResHostSpace, KokkosResilience::ResHostSpace, ExecutionSpace>
+     : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>
+{
+  using DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>::DeepCopy;
 };
 
 // Template deep copy: Host -> ResHost
 template <class ExecutionSpace>
-struct DeepCopy< Kokkos::HostSpace, KokkosResilience::ResHostSpace, ExecutionSpace> {
-  DeepCopy(void* dst, const void* src, size_t n) {
-    hostspace_parallel_deepcopy(dst, src, n);
-  }
-
-  DeepCopy(const ExecutionSpace& exec, void* dst, const void* src, size_t n) {
-    exec.fence();
-    hostspace_parallel_deepcopy(dst, src, n);
-    exec.fence();
-  }
+struct DeepCopy< Kokkos::HostSpace, KokkosResilience::ResHostSpace, ExecutionSpace>
+     : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>
+{
+  using DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>::DeepCopy;
 };
 
 // Template deep copy: ResHost -> Host
 // Absolutely essential for ViewHooks wrapper
 template <class ExecutionSpace>
-struct DeepCopy< KokkosResilience::ResHostSpace, Kokkos::HostSpace, ExecutionSpace> :
-       DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace > {
-  DeepCopy(void* dst, const void* src, size_t n) {
-    hostspace_parallel_deepcopy(dst, src, n);
-  }
-
-  DeepCopy(const ExecutionSpace& exec, void* dst, const void* src, size_t n) {
-    exec.fence();
-    hostspace_parallel_deepcopy(dst, src, n);
-    exec.fence();
-  }
+struct DeepCopy< KokkosResilience::ResHostSpace, Kokkos::HostSpace, ExecutionSpace>
+     : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>
+{
+  using DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>::DeepCopy;
 };
 
 } // namespace Impl

@@ -70,31 +70,6 @@
 
 namespace KokkosResilience {
 
-int ResOpenMP::concurrency()
-{ return OpenMP::concurrency();}
-
-// Has been initialized: possible noexcept syntax in Kokkos::OpenMP
-inline bool ResOpenMP::impl_is_initialized() noexcept {
-  return Kokkos::OpenMP::impl_is_initialized();
-}
-
-void ResOpenMP::impl_finalize() {
-  Kokkos::OpenMP::impl_finalize();
-
-  #if defined(KOKKOS_ENABLE_PROFILING)
-Kokkos::Profiling::finalize();
-  #endif
-}
-
-void ResOpenMP::impl_initialize(int thread_count) {
-  Kokkos::OpenMP::impl_initialize( thread_count );
-
-  #if defined(KOKKOS_ENABLE_PROFILING)
-    Kokkos::Profiling::initialize();
-  #endif
-
-}
-
 ResOpenMP::ResOpenMP()
   : OpenMP() {
 }
@@ -122,12 +97,4 @@ void ResOpenMP::print_configuration( std::ostream & s , const bool )
 const char* ResOpenMP::name() { return "ResOpenMP"; }
 
 } // namespace KokkosResilience
-
-#else
-
-void KOKKOS_CORE_SRC_OPENMP_EXEC_PREVENT_LINK_ERROR() {}
-
-/*------------------------------------------------------------------------*/
-
 #endif // KOKKOS_ENABLE_OPENMP
-
