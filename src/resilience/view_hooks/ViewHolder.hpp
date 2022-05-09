@@ -21,16 +21,51 @@ struct is_always_assignable_impl;
 namespace KokkosResilience {
 namespace Impl {
 
-template <class DataType, class... Properties>
-using unmanaged_view_type_like =
-    Kokkos::View<typename Kokkos::View<DataType, Properties...>::traits::non_const_data_type,
-         typename Kokkos::View<DataType, Properties...>::traits::array_layout,
-                 Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+template <class View>
+struct unmanaged_view_type_like_impl;
 
-template <class DataType, class... Properties>
-unmanaged_view_type_like<DataType, Properties...> make_unmanaged_view_like(
-    Kokkos::View<DataType, Properties...> view, unsigned char *buff) {
-  using new_view_type = unmanaged_view_type_like<DataType, Properties...>;
+template <template <class, class...> class ViewType, class DataType,
+          class... Properties>
+struct unmanaged_view_type_like_impl<ViewType<DataType, Properties...>> {
+  using original_type = ViewType<DataType, Properties...>;
+  using type =
+      ViewType<typename original_type::traits::non_const_data_type,
+               typename original_type::traits::array_layout, Kokkos::HostSpace,
+               Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+  using const_type =
+      ViewType<typename original_type::traits::const_data_type,
+               typename original_type::traits::array_layout, Kokkos::HostSpace,
+               Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+};
+
+template <class ViewType>
+using unmanaged_view_type_like =
+    typename unmanaged_view_type_like_impl<ViewType>::type;
+
+template <class ViewType>
+using const_unmanaged_view_type_like =
+    typename unmanaged_view_type_like_impl<ViewType>::const_type;
+
+template <class ViewType>
+auto make_unmanaged_view_like(const ViewType &view, unsigned char *buff) {
+  using new_view_type = unmanaged_view_type_like<ViewType>;
+
+  return new_view_type(
+      reinterpret_cast<typename new_view_type::pointer_type>(buff),
+      view.rank_dynamic > 0 ? view.extent(0) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 1 ? view.extent(1) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 2 ? view.extent(2) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 3 ? view.extent(3) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 4 ? view.extent(4) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 5 ? view.extent(5) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 6 ? view.extent(6) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+      view.rank_dynamic > 7 ? view.extent(7) : KOKKOS_IMPL_CTOR_DEFAULT_ARG);
+}
+
+template <class ViewType>
+auto make_const_unmanaged_view_like(const ViewType &view,
+                                    const unsigned char *buff) {
+  using new_view_type = const_unmanaged_view_type_like<ViewType>;
 
   return new_view_type(
       reinterpret_cast<typename new_view_type::pointer_type>(buff),
@@ -134,12 +169,14 @@ struct ViewHolderImplDeepCopyImpl<SrcViewType, DstViewType,
                                   std::enable_if_t<Kokkos::is_always_assignable_impl<
                                       DstViewType, SrcViewType>::value>> {
   static void copy_to_unmanaged(SrcViewType &_src, void *_buff) {
-    auto dst = make_unmanaged_view_like(_src, _buff);
+    auto dst = make_unmanaged_view_like(
+        _src, reinterpret_cast<unsigned char *>(_buff));
     deep_copy(dst, _src);
   }
 
   static void copy_from_unmanaged(DstViewType &_dst, const void *_buff) {
-    auto src = Impl::make_unmanaged_view_like(_dst, _buff);
+    auto src = Impl::make_const_unmanaged_view_like(
+        _dst, reinterpret_cast<const unsigned char *>(_buff));
     deep_copy(_dst, src);
   }
 };
