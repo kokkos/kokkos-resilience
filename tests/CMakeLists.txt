@@ -39,6 +39,9 @@ if (KR_ENABLE_HDF5)
                  )
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(resilience_tests PRIVATE "-Werror" "-Wall")
+endif()
 
 target_link_libraries(resilience_tests PRIVATE gtest)
 target_link_libraries(resilience_tests PRIVATE resilience)

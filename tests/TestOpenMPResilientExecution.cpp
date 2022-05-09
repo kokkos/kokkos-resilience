@@ -45,10 +45,8 @@ TEST(TestResOpenMP, TestKokkosFor)
 
   Kokkos::Timer timer;
   // Initialize y vector on host using parallel_for
-  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( int i) {
-    y2 ( i ) = i;
-  });
-  double time = timer.seconds();
+  Kokkos::parallel_for(
+      range_policy2(0, N), KOKKOS_LAMBDA(int i) { y2(i) = i; });
 
   Kokkos::deep_copy(x2, y2);
   for ( int i = 0; i < N; i++) {
@@ -78,7 +76,6 @@ TEST(TestResOpenMP, TestResilientForDouble)
   });
 
   KokkosResilience::clear_duplicates_cache();
-  double time = timer.seconds();
 
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
@@ -108,7 +105,6 @@ TEST(TestResOpenMP, TestResilientForInteger)
     y ( i ) = i;
     Kokkos::atomic_increment(&counter(0));
   });
-  double time = timer.seconds();
 
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {

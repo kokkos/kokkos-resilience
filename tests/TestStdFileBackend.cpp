@@ -100,9 +100,6 @@ TYPED_TEST( TestStdFileBackend, veloc_mem )
   //cfg["backends"]["stdfile"]["config"].set( "data/stdfile_test.cfg"s );
   KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend > ctx( "data/stdfile/stdfile_test"s, cfg );
   
-  using exec_space = typename TestFixture::exec_space;
-  using memory_space = typename exec_space::memory_space;
-  
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
   {
     for ( std::size_t dimy = 1; dimy < 5; ++dimy )
