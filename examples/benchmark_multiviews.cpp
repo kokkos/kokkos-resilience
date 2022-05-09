@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[]) {
    int rank, nbProcs, nbLines, M;
-   double wtime, memSize, localerror, globalerror = 1;
+   double wtime, memSize;
 
    auto options = cxxopts::Options("heatdis", "Sample heat distribution code");
    options.add_options()
@@ -46,8 +46,8 @@ int main(int argc, char *argv[]) {
    const auto precision = args["precision"].as< double >();
    const auto chk_interval = args["checkpoint-interval"].as< int >();
    const auto num_views =  args["views"].as< std::size_t >();
-   int strong, str_ret;
-   printf("NUM VIEWS %d\n",num_views);
+   int strong              = 0;
+   std::cout << "NUM VIEWS " << num_views << '\n';
    std::string scale;
    scale = args["scale"].as< std::string >();
    if (scale == "strong") {
@@ -96,15 +96,18 @@ int main(int argc, char *argv[]) {
       memSize = num_views * M * nbLines * sizeof(double) / (1024 * 1024);
 
       if (rank == 0) {
-         if (!strong) {
-            printf("Local data size is %d x %d = %f MB (%lu) %d Views.\n", M, nbLines, memSize, mem_size, num_views);
-         } else {
-            printf("Local data size is %d x %d = %f MB (%lu) %d Views.\n", M, nbLines, memSize, mem_size / nbProcs,
-                   num_views);
-         }
-         printf("Target precision : %f \n", precision);
-         printf("Maximum number of iterations : %lu \n", nsteps);
-         printf("Array size : %lu \n",  M*nbLines);
+        if (!strong) {
+          std::cout << "Local data size is " << M << " x " << nbLines << " = "
+                    << memSize << " MB (" << mem_size << ") " << num_views
+                    << " Views.\n";
+        } else {
+          std::cout << "Local data size is " << M << " x " << nbLines << " = "
+                    << memSize << " MB (" << mem_size / nbProcs << ") "
+                    << num_views << " Views.\n";
+        }
+        std::cout << "Target precision: " << precision << '\n';
+        std::cout << "Maximum number of iterations: " << nsteps << '\n';
+        std::cout << "Array size: " << M * nbLines << '\n';
       }
 
       wtime = MPI_Wtime();
