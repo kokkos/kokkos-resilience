@@ -46,26 +46,9 @@ template <class ViewType>
 using const_unmanaged_view_type_like =
     typename unmanaged_view_type_like_impl<ViewType>::const_type;
 
-template <class ViewType>
-auto make_unmanaged_view_like(const ViewType &view, unsigned char *buff) {
+template <class ViewType, typename PtrType>
+auto make_unmanaged_view_like(const ViewType &view, PtrType *buff) {
   using new_view_type = unmanaged_view_type_like<ViewType>;
-
-  return new_view_type(
-      reinterpret_cast<typename new_view_type::pointer_type>(buff),
-      view.rank_dynamic > 0 ? view.extent(0) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 1 ? view.extent(1) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 2 ? view.extent(2) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 3 ? view.extent(3) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 4 ? view.extent(4) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 5 ? view.extent(5) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 6 ? view.extent(6) : KOKKOS_IMPL_CTOR_DEFAULT_ARG,
-      view.rank_dynamic > 7 ? view.extent(7) : KOKKOS_IMPL_CTOR_DEFAULT_ARG);
-}
-
-template <class ViewType>
-auto make_const_unmanaged_view_like(const ViewType &view,
-                                    const unsigned char *buff) {
-  using new_view_type = const_unmanaged_view_type_like<ViewType>;
 
   return new_view_type(
       reinterpret_cast<typename new_view_type::pointer_type>(buff),
@@ -127,7 +110,7 @@ class ViewHolderImplBase {
   bool is_host_space() const noexcept { return m_is_host_space; }
 
   virtual void deep_copy_to_buffer(unsigned char *buff)   = 0;
-  virtual void deep_copy_from_buffer(unsigned char *buff) = 0;
+  virtual void deep_copy_from_buffer(const unsigned char *buff) = 0;
   virtual ViewHolderImplBase *clone() const               = 0;
 
  protected:
@@ -175,7 +158,7 @@ struct ViewHolderImplDeepCopyImpl<SrcViewType, DstViewType,
   }
 
   static void copy_from_unmanaged(DstViewType &_dst, const void *_buff) {
-    auto src = Impl::make_const_unmanaged_view_like(
+    auto src = Impl::make_unmanaged_view_like(
         _dst, reinterpret_cast<const unsigned char *>(_buff));
     deep_copy(_dst, src);
   }
@@ -202,8 +185,8 @@ class ViewHolderImpl : public ViewHolderImplBase {
     ViewHolderImplDeepCopyImpl<View, dst_type>::copy_to_unmanaged(m_view, buff);
   }
 
-  void deep_copy_from_buffer(unsigned char *buff) override {
-    using src_type = unmanaged_view_type_like<View>;
+  void deep_copy_from_buffer(const unsigned char *buff) override {
+    using src_type = const_unmanaged_view_type_like<View>;
     ViewHolderImplDeepCopyImpl<src_type, View>::copy_from_unmanaged(m_view,
                                                                     buff);
   }
