@@ -50,7 +50,6 @@
 #include <iostream>
 
 #include <OpenMP/Kokkos_OpenMP_Exec.hpp>
-#include <impl/Kokkos_FunctorAdapter.hpp>
 
 #include <KokkosExp_MDRangePolicy.hpp>
 

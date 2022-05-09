@@ -52,7 +52,6 @@
 #include <iostream>
 #include <Kokkos_OpenMP.hpp>
 #include <KokkosExp_MDRangePolicy.hpp>
-#include <impl/Kokkos_FunctorAdapter.hpp>
 #include <Kokkos_Parallel.hpp>
 #include <cmath>
 #include <map>
