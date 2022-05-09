@@ -39,12 +39,11 @@ namespace KokkosResilience
       using duration_type = std::chrono::steady_clock::duration;
       using time_point_type = std::chrono::steady_clock::time_point;
 
-      template< typename Rep, typename Period >
-      explicit TimeFilter( std::chrono::duration< Rep, Period > duration )
-          : checkpoint_interval( std::chrono::duration_cast< duration_type >( duration ) ),
-            start( clock_type::now() )
-      {
-      }
+      template <typename Rep, typename Period>
+      explicit TimeFilter(std::chrono::duration<Rep, Period> duration)
+          : start(clock_type::now()),
+            checkpoint_interval(
+                std::chrono::duration_cast<duration_type>(duration)) {}
 
       bool operator()( int ) const
       {

@@ -13,6 +13,10 @@ if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
   target_compile_features(resilience PUBLIC cxx_std_14)
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(resilience PRIVATE "-Werror" "-Wall")
+endif()
+
 target_include_directories(resilience PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>

@@ -24,7 +24,7 @@ std::string full_filename(std::string const &filename, std::string const &label,
 
 StdFileBackend::StdFileBackend(StdFileContext<StdFileBackend> &ctx,
                                std::string const &filename)
-    : m_context(ctx), m_filename(filename) {}
+    : m_filename(filename), m_context(ctx) {}
 
 StdFileBackend::~StdFileBackend() = default;
 

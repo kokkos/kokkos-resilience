@@ -160,9 +160,7 @@ namespace KokkosResilience
     void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
 
   private:
-  
-    MPI_Comm m_mpi_comm;
-    MPIContext< VeloCFileBackend > *m_context;
+      MPIContext< VeloCFileBackend > *m_context;
   };
 }
 
