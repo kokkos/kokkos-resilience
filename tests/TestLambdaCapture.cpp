@@ -81,7 +81,8 @@ TEST(LambdaCapture, holder)
 
   auto captures = get_view_list( [=]() mutable { ref->work(); } );
 
-  auto *vd = dat.x.data();
+  // Variable not used but we need to assign to it
+  [[maybe_unused]] auto *vd = dat.x.data();
 
   EXPECT_TRUE( dat.y );
   EXPECT_TRUE( capture_list_contains( captures, dat.x ) );

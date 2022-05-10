@@ -101,9 +101,6 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
   KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend > ctx( MPI_COMM_WORLD, cfg );
   
-  using exec_space = typename TestFixture::exec_space;
-  using memory_space = typename exec_space::memory_space;
-  
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
   {
     for ( std::size_t dimy = 1; dimy < 5; ++dimy )

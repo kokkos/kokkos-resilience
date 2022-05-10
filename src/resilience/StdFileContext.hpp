@@ -11,7 +11,7 @@ template <typename Backend>
 class StdFileContext : public ContextBase {
  public:
   explicit StdFileContext(std::string const &filename, Config &cfg)
-      : ContextBase(cfg), m_backend(*this, filename), m_filename(filename) {}
+      : ContextBase(cfg), m_filename(filename), m_backend(*this, filename) {}
 
   StdFileContext(const StdFileContext &) = delete;
   StdFileContext(StdFileContext &&)      = default;

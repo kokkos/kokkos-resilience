@@ -16,6 +16,10 @@ function(add_example _target)
   if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
      target_link_libraries(${_target} PRIVATE MPI::MPI_CXX)
   endif()
+
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(${_target} PRIVATE "-Werror" "-Wall")
+  endif()
 endfunction()
 
 if (KR_ENABLE_VELOC)

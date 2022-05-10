@@ -9,16 +9,16 @@ namespace KokkosResilience {
 template <typename Backend>
 class MPIContext : public ContextBase {
 public:
-  explicit MPIContext(MPI_Comm comm, Config &cfg)
-      : ContextBase(cfg), m_backend(*this, comm), m_comm(comm) {}
+ explicit MPIContext(MPI_Comm comm, Config &cfg)
+     : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
 
-  MPIContext(const MPIContext &) = delete;
-  MPIContext(MPIContext &&) noexcept = default;
+ MPIContext(const MPIContext &)     = delete;
+ MPIContext(MPIContext &&) noexcept = default;
 
-  MPIContext &operator=(const MPIContext &) = delete;
-  MPIContext &operator=(MPIContext &&) noexcept = default;
+ MPIContext &operator=(const MPIContext &) = delete;
+ MPIContext &operator=(MPIContext &&) noexcept = default;
 
-  virtual ~MPIContext() {
+ virtual ~MPIContext() {
 #ifdef KR_ENABLE_TRACING
     int rank = -1;
     MPI_Comm_rank(m_comm, &rank);
@@ -42,7 +42,7 @@ public:
     picojson::value(root).serialize(std::ostream_iterator<char>(meta_out),
                                     true);
 #endif
-  }
+ }
 
   MPI_Comm comm() const noexcept { return m_comm; }
 
