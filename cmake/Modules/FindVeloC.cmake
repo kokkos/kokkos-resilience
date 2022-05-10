@@ -84,7 +84,7 @@ set_target_properties(veloc::veloc PROPERTIES
                       INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX"
                       )
 
-if (NOT VELOC_BAREBONE)
+if (NOT KR_VELOC_BAREBONE)
   set_target_properties(veloc::veloc PROPERTIES
                         INTERFACE_LINK_LIBRARIES "veloc::axl;veloc::er;veloc::rankstr"
                         )
