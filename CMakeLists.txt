@@ -30,6 +30,9 @@ target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
 
+include(CMakeDependentOption)
+
+cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF "KR_ENABLE_VELOC" OFF)
 
 # VeloC backend
 if (KR_ENABLE_VELOC)
@@ -38,7 +41,7 @@ if (KR_ENABLE_VELOC)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
   set(KR_ENABLE_MPI_BACKENDS ON)
 
-  if (VELOC_BAREBONE)
+  if (KR_VELOC_BAREBONE)
     target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
   endif()
 endif()
@@ -62,15 +65,25 @@ option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )
 option( KR_ENABLE_HDF5 "add HDF5 support" OFF )
 option( KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
 
+if (KR_ENABLE_STDIO)
+  set(KR_ENABLE_MANUAL_CHECKPOINT ON)
+endif()
+
 if (KR_ENABLE_HDF5_PARALLEL)
   set(KR_ENABLE_HDF5 ON)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5_PARALLEL)
+  set(KR_ENABLE_MANUAL_CHECKPOINT ON)
 endif()
 
 if (KR_ENABLE_HDF5)
    find_package(HDF5 REQUIRED)
    target_link_libraries(resilience PUBLIC HDF5::HDF5)
    target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5)
+   set(KR_ENABLE_MANUAL_CHECKPOINT ON)
+endif()
+
+if (KR_ENABLE_MANUAL_CHECKPOINT)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_MANUAL_CHECKPOINT)
 endif()
 
 # MPI requirement

@@ -10,7 +10,7 @@
       "name": "kr_auto_checkpoint_veloc",
       "hidden": true,
       "cacheVariables": {
-        "VELOC_BAREBONE": {
+        "KR_VELOC_BAREBONE": {
           "type": "BOOL",
           "value": "ON"
         },
