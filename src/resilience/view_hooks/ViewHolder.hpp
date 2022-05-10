@@ -21,16 +21,34 @@ struct is_always_assignable_impl;
 namespace KokkosResilience {
 namespace Impl {
 
-template <class DataType, class... Properties>
-using unmanaged_view_type_like =
-    Kokkos::View<typename Kokkos::View<DataType, Properties...>::traits::non_const_data_type,
-         typename Kokkos::View<DataType, Properties...>::traits::array_layout,
-                 Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+template <class View>
+struct unmanaged_view_type_like_impl;
 
-template <class DataType, class... Properties>
-unmanaged_view_type_like<DataType, Properties...> make_unmanaged_view_like(
-    Kokkos::View<DataType, Properties...> view, unsigned char *buff) {
-  using new_view_type = unmanaged_view_type_like<DataType, Properties...>;
+template <template <class, class...> class ViewType, class DataType,
+          class... Properties>
+struct unmanaged_view_type_like_impl<ViewType<DataType, Properties...>> {
+  using original_type = ViewType<DataType, Properties...>;
+  using type =
+      ViewType<typename original_type::traits::non_const_data_type,
+               typename original_type::traits::array_layout, Kokkos::HostSpace,
+               Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+  using const_type =
+      ViewType<typename original_type::traits::const_data_type,
+               typename original_type::traits::array_layout, Kokkos::HostSpace,
+               Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+};
+
+template <class ViewType>
+using unmanaged_view_type_like =
+    typename unmanaged_view_type_like_impl<ViewType>::type;
+
+template <class ViewType>
+using const_unmanaged_view_type_like =
+    typename unmanaged_view_type_like_impl<ViewType>::const_type;
+
+template <class ViewType, typename PtrType>
+auto make_unmanaged_view_like(const ViewType &view, PtrType *buff) {
+  using new_view_type = unmanaged_view_type_like<ViewType>;
 
   return new_view_type(
       reinterpret_cast<typename new_view_type::pointer_type>(buff),
@@ -92,7 +110,7 @@ class ViewHolderImplBase {
   bool is_host_space() const noexcept { return m_is_host_space; }
 
   virtual void deep_copy_to_buffer(unsigned char *buff)   = 0;
-  virtual void deep_copy_from_buffer(unsigned char *buff) = 0;
+  virtual void deep_copy_from_buffer(const unsigned char *buff) = 0;
   virtual ViewHolderImplBase *clone() const               = 0;
 
  protected:
@@ -134,12 +152,14 @@ struct ViewHolderImplDeepCopyImpl<SrcViewType, DstViewType,
                                   std::enable_if_t<Kokkos::is_always_assignable_impl<
                                       DstViewType, SrcViewType>::value>> {
   static void copy_to_unmanaged(SrcViewType &_src, void *_buff) {
-    auto dst = make_unmanaged_view_like(_src, _buff);
+    auto dst = make_unmanaged_view_like(
+        _src, reinterpret_cast<unsigned char *>(_buff));
     deep_copy(dst, _src);
   }
 
   static void copy_from_unmanaged(DstViewType &_dst, const void *_buff) {
-    auto src = Impl::make_unmanaged_view_like(_dst, _buff);
+    auto src = Impl::make_unmanaged_view_like(
+        _dst, reinterpret_cast<const unsigned char *>(_buff));
     deep_copy(_dst, src);
   }
 };
@@ -165,8 +185,8 @@ class ViewHolderImpl : public ViewHolderImplBase {
     ViewHolderImplDeepCopyImpl<View, dst_type>::copy_to_unmanaged(m_view, buff);
   }
 
-  void deep_copy_from_buffer(unsigned char *buff) override {
-    using src_type = unmanaged_view_type_like<View>;
+  void deep_copy_from_buffer(const unsigned char *buff) override {
+    using src_type = const_unmanaged_view_type_like<View>;
     ViewHolderImplDeepCopyImpl<src_type, View>::copy_from_unmanaged(m_view,
                                                                     buff);
   }
