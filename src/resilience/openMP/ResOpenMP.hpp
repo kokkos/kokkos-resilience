@@ -43,7 +43,7 @@
 #define INC_RESILIENCE_OPENMP_RESOPENMP_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined( KOKKOS_ENABLE_OPENMP ) 
+#if defined( KOKKOS_ENABLE_OPENMP )
 
 #include <Kokkos_Core_fwd.hpp>
 
@@ -59,8 +59,8 @@
 
 //This space specific
 #include <Kokkos_Serial.hpp>
-#include <Kokkos_OpenMP.hpp> //Kokkos-fork 
-#include <Kokkos_HostSpace.hpp> //Kokkos-fork 
+#include <Kokkos_OpenMP.hpp> //Kokkos-fork
+#include <Kokkos_HostSpace.hpp> //Kokkos-fork
 #include "ResHostSpace.hpp" //Resilient
 
 /*------------------------------------------------------------------------*/
@@ -81,8 +81,6 @@ class ResOpenMP : public Kokkos::OpenMP {
     using scratch_memory_space = Kokkos::ScratchMemorySpace<OpenMP>; //Preferred scratch memory
 
 /*------------------------------------*/
-
-    //Do not delete constructor, defined in cpp
 
     ~ResOpenMP() {}
     ResOpenMP();
@@ -113,11 +111,8 @@ namespace Impl {
 // Specialized to ResHostSpace, may need to extend to more
 template <>
 struct MemorySpaceAccess
-  < KokkosResilience::ResHostSpace
-  , Kokkos::OpenMP::scratch_memory_space
-  > : MemorySpaceAccess
-  < Kokkos::HostSpace
-  , Kokkos::OpenMP::scratch_memory_space >
+  < KokkosResilience::ResHostSpace, Kokkos::OpenMP::scratch_memory_space> : MemorySpaceAccess
+  < Kokkos::HostSpace, Kokkos::OpenMP::scratch_memory_space >
 {};
 
 }  // namespace Impl
@@ -135,8 +130,8 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
   static constexpr DeviceType id = DeviceType::OpenMP;
   static int device_id(const OpenMP&) {return 0;}
 };
-}  // namespace Experimental 
-}  // namespace Tools 
+}  // namespace Experimental
+}  // namespace Tools
 }  // namespace Kokkos
 
 /*------------------------------------------------------------------------*/

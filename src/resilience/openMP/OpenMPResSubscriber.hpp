@@ -131,15 +131,29 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   int duplicate_count = 0;
   View original;
+
+  // Note: 2 copies allocated even in DMR
   View copy[2];
+
   Kokkos::View <bool*> success{"success", 1};
 
   bool execute() override
   {
     success(0) = true;
+
+#ifdef KR_ENABLE_DMR
+    if (duplicate_count < 1){
+      Kokkos::abort("Aborted in CombineDuplicates, no duplicate created");
+    }
+    /*else if((duplicate_count < 2) && ResilientDuplicatesSubscriber::dmr_failover_to_tmr){
+      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
+    }*/
+#else
     if (duplicate_count < 2) {
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
     }
+#endif
+
     else {
       Kokkos::parallel_for(original.size(), *this);
       Kokkos::fence();
@@ -147,9 +161,68 @@ struct CombineDuplicates: public CombineDuplicatesBase
     return success(0);
   }
 
+  void print () override {
+#ifdef KR_ENABLE_DMR
+    // Indicates dmr_failover_to_tmr has tripped
+    if(duplicate_count == 2){
+      std::cout << "This is the original data pointer " << original.data() << std::endl;
+      std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+      std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
+
+      for (int i=0; i<original.size();i++){
+        std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+        std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+        std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
+      }
+    }
+    else{
+      std::cout << "This is the original data pointer " << original.data() << std::endl;
+      std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+
+      for (int i=0; i<original.size();i++){
+        std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+        std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+      }
+    }
+#else
+    std::cout << "This is the original data pointer " << original.data() << std::endl;
+    std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+    std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
+
+    for (int i=0; i<original.size();i++){
+      std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+      std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+      std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
+    }
+#endif
+  }
+
   // Looping over duplicates to check for equality
   KOKKOS_FUNCTION
   void operator ()(int i) const {
+#ifdef KR_ENABLE_DMR
+    //Indicates dmr_failover_to_tmr tripped
+    if(duplicate_count == 2 ){
+      for (int j = 0; j < 2; j ++) {
+        if (check_equality.compare(copy[j](i), original(i))) {
+          return;
+        }
+      }
+      if (check_equality.compare(copy[0](i), copy[1](i))){
+        original(i) = copy[0](i);  // just need 2 that are the same
+        return;
+      }
+      //No match found, all three executions return different number
+      success(0) = false;
+    }
+    // DMR has not failed over, only 1 copy exists, check and maybe trip tmr
+    else{
+      if (check_equality.compare(copy[0](i), original(i))){
+        return;
+      }
+    }
+
+#else
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](i), original(i))) {
         return;
@@ -177,6 +250,11 @@ struct ResilientDuplicatesSubscriber {
 
   // Gating for using subscriber only inside resilient parallel loops
   static bool in_resilient_parallel_loop;
+
+#ifdef KR_ENABLE_DMR
+  static bool dmr_failover_to_tmr;
+
+#endif
 
   // Creating map for duplicates: used for duplicate resolution per-kernel
   // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
@@ -207,13 +285,33 @@ struct ResilientDuplicatesSubscriber {
     if (inserted) {
       res.original = original;
 
+#ifdef KR_ENABLE_DMR
+
+      // DMR variant initialization of copies
+      // only 1 initially, 2 on fail
+      if (dmr_failover_to_tmr){
+        // Reinitialize self to be like other (same dimensions, etc)
+        for (int i = 0; i < 2; ++i) {
+          ViewMatching(res.copy[i], original, i);
+        }
+      }
+      else{
+        // Reinitialize self to be like other (same dimensions, etc)
+        ViewMatching(res.copy[0], original, 0);
+      }
+
+#else
+
+      // Reinitialize self to be like other (same dimensions, etc)
       for (int i = 0; i < 2; ++i) {
           set_duplicate_view(res.copy[i], original, i);
       }
+
+#endif
+
     }
     return &res;
   }
-
   // Function which initializes the dimensions of the duplicating view
   template<typename View>
   KOKKOS_INLINE_FUNCTION
