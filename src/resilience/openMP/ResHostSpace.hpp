@@ -1,4 +1,3 @@
-/*
 //@HEADER
 // ************************************************************************
 //
@@ -40,9 +39,7 @@
 //
 // ************************************************************************
 //@HEADER
-*/
 
-// Header guard, format: directory_directory_filename
 #ifndef INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
 #define INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
 
@@ -53,19 +50,14 @@
 
 #include <Kokkos_Core_fwd.hpp>
 
-// Resilience 
 #include <Kokkos_Macros.hpp>
 // Not including KOKKOS_ENABLE_OPENMP because it's host space, may
 // desire it to work with other spaces later.
 
-//#include <impl/TrackDuplicates.hpp>
 #include <Kokkos_HostSpace.hpp>
 #include <Kokkos_CudaSpace.hpp>
 #include <typeinfo>
 #include <map>
-
-//Fix this if included
-//#include <openmp/OpenMPResSubscriber.hpp>
 
 /*--------------------------------------------------------------------------*/
 
@@ -80,16 +72,16 @@ class ResHostSpace : public Kokkos::HostSpace {
   public:
 
     // Type declarations for execution spaces following API
-    typedef ResHostSpace        memory_space; // Tag class as Kokkos memory space
-    typedef size_t              size_type; // Preferred size type
-    typedef Kokkos::OpenMP      execution_space; // Preferred execution space
-    using   resilient_space =   ResHostSpace;
+    using memory_space    = ResHostSpace;   // Tag class as Kokkos memory space
+    using size_type       = size_t;         // Preferred size type
+    using execution_space = Kokkos::OpenMP; // Preferred execution space
+    using resilient_space = ResHostSpace;
 
     // Every memory space has a default execution space.  This is
     // useful for things like initializing a View (which happens in
     // parallel using the View's default execution space).
 
-    typedef Kokkos::Device<execution_space, memory_space> device_type; // Preferred device type
+    using device_type = Kokkos::Device<execution_space, memory_space>; // Preferred device type
 
     // Use parent class constructors
     using Kokkos::HostSpace::HostSpace;
@@ -144,87 +136,31 @@ namespace Impl {
 
 // Template deep copy: ResHost -> ResHost 
 template <class ExecutionSpace>
-struct DeepCopy< KokkosResilience::ResHostSpace, KokkosResilience::ResHostSpace, ExecutionSpace> {
-  DeepCopy(void* dst, const void* src, size_t n) {
-    hostspace_parallel_deepcopy(dst, src, n);
-  }
-
-  DeepCopy(const ExecutionSpace& exec, void* dst, const void* src, size_t n) {
-    exec.fence();
-    hostspace_parallel_deepcopy(dst, src, n);
-    exec.fence();
-  }
+struct DeepCopy< KokkosResilience::ResHostSpace, KokkosResilience::ResHostSpace, ExecutionSpace>
+     : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>
+{
+  using DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>::DeepCopy;
 };
 
 // Template deep copy: Host -> ResHost
-// Absolutely essential for ViewHooks wrapper 
 template <class ExecutionSpace>
-struct DeepCopy< Kokkos::HostSpace, KokkosResilience::ResHostSpace, ExecutionSpace> {
-  DeepCopy(void* dst, const void* src, size_t n) {
-    hostspace_parallel_deepcopy(dst, src, n);
-  }
-
-  DeepCopy(const ExecutionSpace& exec, void* dst, const void* src, size_t n) {
-    exec.fence();
-    hostspace_parallel_deepcopy(dst, src, n);
-    exec.fence();
-  }
+struct DeepCopy< Kokkos::HostSpace, KokkosResilience::ResHostSpace, ExecutionSpace>
+     : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>
+{
+  using DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>::DeepCopy;
 };
 
 // Template deep copy: ResHost -> Host
 // Absolutely essential for ViewHooks wrapper
 template <class ExecutionSpace>
-struct DeepCopy< KokkosResilience::ResHostSpace, Kokkos::HostSpace, ExecutionSpace> {
-  DeepCopy(void* dst, const void* src, size_t n) {
-    hostspace_parallel_deepcopy(dst, src, n);
-  }
-
-  DeepCopy(const ExecutionSpace& exec, void* dst, const void* src, size_t n) {
-    exec.fence();
-    hostspace_parallel_deepcopy(dst, src, n);
-    exec.fence();
-  }
+struct DeepCopy< KokkosResilience::ResHostSpace, Kokkos::HostSpace, ExecutionSpace>
+     : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>
+{
+  using DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>::DeepCopy;
 };
 
 } // namespace Impl
 } // namespace Kokkos
-
-/*--------------------------------------------------------------------------*/
-
-namespace Kokkos {
-
-namespace Impl {
-
-/*
-#if defined ( KOKKOS_ENABLE_CUDA )
-// Running in ResHostSpace, attempting to access CudaSpace
-template<>
-struct VerifyExecutionCanAccessMemorySpace< KokkosResilience::ResHostSpace , Kokkos::CudaSpace >
-{
-  enum { value = false };
-  inline static void verify( void ) { KokkosResilience::ResHostSpace::access_error(); }
-  inline static void verify( const void * p ) { KokkosResilience::ResHostSpace::access_error(p); }
-};
-#endif
-
-// Running in ResHostSpace and attempting to access an unknown space: throw error
-template< class OtherSpace >
-struct VerifyExecutionCanAccessMemorySpace<
-  typename std::enable_if< ! std::is_same<KokkosResilience::ResHostSpace,OtherSpace>::value , KokkosResilience::ResHostSpace >::type ,
-  OtherSpace >
-{
-  enum { value = false };
-  inline static void verify( void )
-    { Kokkos::abort("resilient OpenMP code attempted to access unknown space memory"); }
-  inline static void verify( const void * )
-    { Kokkos::abort("resilient OpenMP code attempted to access unknown space memory"); }
-};
-*/
-} // namespace Impl
-
-} // namespace Kokkos
-
-/*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
 

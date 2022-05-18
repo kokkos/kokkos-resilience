@@ -92,8 +92,12 @@ if (Kokkos_ENABLE_Cuda)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 
-if (KR_ENABLE_THREE_COPIES)
-    target_compile_definitions(resilience PUBLIC KR_ENABLE_THREE_COPIES)
+if (KR_ENABLE_TMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_TMR)
+endif()
+
+if (KR_ENABLE_DMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_DMR)
 endif()
 
 # Set up find_package config and version file

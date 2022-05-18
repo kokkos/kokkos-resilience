@@ -189,6 +189,10 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N_2), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = 1;
+  /*  if (i==1) {
+      std::cout << "Threads:" << omp_get_num_threads();
+      std::cout << std::endl;
+    }*/
   });
 
   Kokkos::parallel_for( range_policy (N_2, N), KOKKOS_LAMBDA ( const int i) {

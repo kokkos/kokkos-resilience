@@ -52,7 +52,6 @@
 #include <iostream>
 #include <Kokkos_OpenMP.hpp>
 #include <KokkosExp_MDRangePolicy.hpp>
-#include <impl/Kokkos_FunctorAdapter.hpp>
 #include <Kokkos_Parallel.hpp>
 #include <cmath>
 #include <map>
@@ -135,11 +134,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
   int duplicate_count = 0;
   View original;
 
-#ifdef KR_ENABLE_THREE_COPIES
-  View copy[3];
-#else
+  // Note: 2 copies allocated even in DMR
   View copy[2];
-#endif
 
   Kokkos::View <bool*> success{"success", 1};
 
@@ -147,15 +143,19 @@ struct CombineDuplicates: public CombineDuplicatesBase
   {
     success(0) = true;
 
-#ifdef KR_ENABLE_THREE_COPIES
-    if (duplicate_count < 3){
-      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 3");
+#ifdef KR_ENABLE_DMR
+    if (duplicate_count < 1){
+      Kokkos::abort("Aborted in CombineDuplicates, no duplicate created"); 
     }
+    /*else if((duplicate_count < 2) && ResilientDuplicatesSubscriber::dmr_failover_to_tmr){
+      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2"); 
+    }*/
 #else
     if (duplicate_count < 2) {
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
     }
 #endif
+
     else {
 
       Kokkos::parallel_for(original.size(), *this);
@@ -165,46 +165,76 @@ struct CombineDuplicates: public CombineDuplicatesBase
   }
 
   void print () override {
+#ifdef KR_ENABLE_DMR
+    // Indicates dmr_failover_to_tmr has tripped
+    if(duplicate_count == 2){
+      std::cout << "This is the original data pointer " << original.data() << std::endl;
+      std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+      std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
+
+      for (int i=0; i<original.size();i++){
+        std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+        std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+        std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
+      }
+    }
+    else{
+      std::cout << "This is the original data pointer " << original.data() << std::endl;
+      std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
+
+      for (int i=0; i<original.size();i++){
+        std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
+        std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
+      }
+    }
+#else
     std::cout << "This is the original data pointer " << original.data() << std::endl;
     std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
     std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
-#ifdef KR_ENABLE_THREE_COPIES
-    std::cout << "This is copy[2]  data pointer " << copy[2].data() << std::endl;
-#endif
+
     for (int i=0; i<original.size();i++){
       std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
       std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
       std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
-#ifdef KR_ENABLE_THREE_COPIES
-      std::cout << "This is copy[2] at index " << i << " with value" << copy[2](i) << std::endl;
-#endif
     }
+#endif
   }
 
   // Looping over duplicates to check for equality
   KOKKOS_FUNCTION
   void operator ()(int i) const {
-#ifdef KR_ENABLE_THREE_COPIES
-    for (int j = 0; j < 3; j++) {
-      original(i) = copy[j](i);
-      for (int r = 0; r < 2; r++) {
-        int k = (j+r+1)%3;
-        if (check_equality.compare(copy[k](i),
-                                   original(i)))  // just need 2 that are the same
-        {
+#ifdef KR_ENABLE_DMR
+    //Indicates dmr_failover_to_tmr tripped
+    if(duplicate_count == 2 ){
+      for (int j = 0; j < 2; j ++) {
+        if (check_equality.compare(copy[j](i), original(i))) {
           return;
         }
       }
+      if (check_equality.compare(copy[0](i), copy[1](i))){
+        original(i) = copy[0](i);  // just need 2 that are the same
+        return;
+      }  
+      //No match found, all three executions return different number
+      success(0) = false;
     }
-    success(0) = false;
+    // DMR has not failed over, only 1 copy exists, check and maybe trip tmr
+    else{
+      if (check_equality.compare(copy[0](i), original(i))){
+        return;
+      }
+    }
+
 #else
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](i), original(i))) {
         return;
       }
     }
-    if (check_equality.compare(copy[1](i), copy[2](i)))  // just need 2 that are the same
+    if (check_equality.compare(copy[0](i), copy[1](i))){
+      original(i) = copy[0](i);  // just need 2 that are the same
       return;
+    }
     //No match found, all three executions return different number
     success(0) = false;
 #endif
@@ -224,6 +254,11 @@ struct ResilientDuplicatesSubscriber {
 
   // Gating for using subscriber only inside resilient parallel loops
   static bool in_resilient_parallel_loop;
+
+#ifdef KR_ENABLE_DMR
+  static bool dmr_failover_to_tmr;
+
+#endif
 
   // Creating map for duplicates: used for duplicate resolution per-kernel
   // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
@@ -254,20 +289,33 @@ struct ResilientDuplicatesSubscriber {
     if (inserted) {
       res.original = original;
 
-#ifdef KR_ENABLE_THREE_COPIES
-      // Reinitialize self to be like other (same dimensions, etc)
-      for (int i = 0; i < 3; ++i) {
-        ViewMatching(res.copy[i], original, i);
+#ifdef KR_ENABLE_DMR
+
+      // DMR variant initialization of copies
+      // only 1 initially, 2 on fail
+      if (dmr_failover_to_tmr){
+        // Reinitialize self to be like other (same dimensions, etc)
+        for (int i = 0; i < 2; ++i) {
+          ViewMatching(res.copy[i], original, i);
+        }
       }
+      else{  
+        // Reinitialize self to be like other (same dimensions, etc)
+        ViewMatching(res.copy[0], original, 0);
+      }
+
 #else
+
+      // Reinitialize self to be like other (same dimensions, etc)
       for (int i = 0; i < 2; ++i) {
         ViewMatching(res.copy[i], original, i);
       }
+
 #endif
+
     }
     return &res;
   }
-
   // Function which initializes the dimensions of the duplicating view
   template<typename View>
   KOKKOS_INLINE_FUNCTION
