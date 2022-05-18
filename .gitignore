@@ -3,3 +3,6 @@ build/
 .idea/
 *.swp
 build-*/
+
+settings.json
+launch.json
