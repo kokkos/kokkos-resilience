@@ -64,5 +64,7 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
+    },
+    "files.exclude": {
     }
 }

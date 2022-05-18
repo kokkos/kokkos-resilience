@@ -5,3 +5,6 @@ build/
 build-*/
 
 CMakeUserPresets.json
+settings.json
+launch.json
+.vscode-*/
