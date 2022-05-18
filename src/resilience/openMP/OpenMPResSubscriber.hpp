@@ -294,13 +294,11 @@ struct ResilientDuplicatesSubscriber {
       // DMR variant initialization of copies
       // only 1 initially, 2 on fail
       if (dmr_failover_to_tmr){
-        // Reinitialize self to be like other (same dimensions, etc)
-        for (int i = 0; i < 2; ++i) {
-          ViewMatching(res.copy[i], original, i);
-        }
+        // Create second copy
+        ViewMatching(res.copy[1], original, 1);
       }
       else{  
-        // Reinitialize self to be like other (same dimensions, etc)
+        // Create first copy
         ViewMatching(res.copy[0], original, 0);
       }
 

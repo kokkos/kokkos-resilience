@@ -308,7 +308,7 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
 
   double time = timer.seconds();
 
-  KokkosResilience::clear_duplicates_cache();
+  
 
   std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports parallel_reduce completed in time " << time << "." << std::endl;
   std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
@@ -317,5 +317,5 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
   std::cout << std::endl;
 
   ASSERT_EQ(dot_product, N);
-
+  KokkosResilience::clear_duplicates_cache();
 }
