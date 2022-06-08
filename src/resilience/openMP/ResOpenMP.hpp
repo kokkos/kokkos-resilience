@@ -125,9 +125,7 @@ struct MemorySpaceAccess
 
 /*------------------------------------------------------------------------*/
 
-// This is the specialization which corrects the profiling error
-// In the future, it should be corrected by a new implementation in main Kokkos
-// which is more general. For now this will suffice.
+// This is the specialization which corrects the profiling error.
 
 namespace Kokkos {
 namespace Tools {
@@ -135,6 +133,7 @@ namespace Experimental {
 template <>
 struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
   static constexpr DeviceType id = DeviceType::OpenMP;
+  static int device_id(const OpenMP&) {return 0;}
 };
 }  // namespace Experimental 
 }  // namespace Tools 
