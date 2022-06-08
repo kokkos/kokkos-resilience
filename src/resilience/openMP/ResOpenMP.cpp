@@ -60,7 +60,7 @@
 #include <impl/Kokkos_ConcurrentBitset.hpp>
 
 #include <Kokkos_OpenMP.hpp>
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
+#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include "ResOpenMP.hpp"
 
 /*------------------------------------------------------------------------*/
@@ -78,8 +78,7 @@ void ResOpenMP::print_configuration( std::ostream & s , const bool )
   const bool is_initialized = Kokkos::Impl::t_openmp_instance != nullptr;
 
   if (is_initialized) {
-    Kokkos::Impl::OpenMPExec::verify_is_master("ResOpenMP::print_configuration");
-
+    
     const int numa_count      = 1;
     const int core_per_numa   = Kokkos::Impl::g_openmp_hardware_max_threads;
     const int thread_per_core = 1;
