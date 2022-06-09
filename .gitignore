@@ -6,4 +6,8 @@ build-*/
 
 settings.json
 launch.json
+<<<<<<< HEAD
 .vscode-*/
+=======
+.vscode-*/
+>>>>>>> 5802becd07f147ba5ca4e14ddee1c902321bed0e

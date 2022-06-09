@@ -49,7 +49,7 @@
 #include <omp.h>
 #include <iostream>
 
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
+#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include <KokkosExp_MDRangePolicy.hpp>
 
 #include <Kokkos_Parallel.hpp>
@@ -280,7 +280,7 @@ class ParallelReduce< FunctorType
   using WorkTag   = typename Policy::work_tag;
 
 
-  OpenMPExec* m_instance;
+  //OpenMPExec* m_instance;
   FunctorType m_functor;
   const Policy m_policy;
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
@@ -435,7 +435,7 @@ class ParallelReduce< FunctorType
                         //,m_result_ptr(arg_view.data())
                         {
   }
-/*
+
   inline ParallelReduce(const FunctorType& arg_functor,
                         Policy arg_policy,
                         const ReducerType& reducer)

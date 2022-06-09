@@ -132,6 +132,7 @@ namespace Experimental {
 template <>
 struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
   static constexpr DeviceType id = DeviceType::OpenMP;
+  static int device_id(const OpenMP&) {return 0;}
 };
 }  // namespace Experimental 
 }  // namespace Tools 
@@ -139,7 +140,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 
 /*------------------------------------------------------------------------*/
 
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
+#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include <OpenMP/Kokkos_OpenMP_Team.hpp>
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
 #include <OpenMP/Kokkos_OpenMP_Task.hpp>
