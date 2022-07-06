@@ -71,27 +71,22 @@ StdFileBackend::~StdFileBackend() = default;
 void StdFileBackend::checkpoint(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
-  try {
-    std::string filename = detail::full_filename(m_filename, label, version);
-    std::ofstream file(filename, std::ios::binary);
+  std::string filename = detail::full_filename(m_filename, label, version);
+  std::ofstream file(filename, std::ios::binary);
 
 #ifdef KR_ENABLE_TRACING
-    auto write_trace =
+  auto write_trace =
         Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "write");
 #endif
-    for (auto &&v : views) {
-      char *bytes     = static_cast<char *>(v->data());
-      std::size_t len = v->span() * v->data_type_size();
+  for (auto &&v : views) {
+    char *bytes     = static_cast<char *>(v->data());
+    std::size_t len = v->span() * v->data_type_size();
 
-      file.write(bytes, len);
-    }
-#ifdef KR_ENABLE_TRACING
-    write_trace.end();
-#endif
-  } catch (...) {
-    status = false;
+    file.write(bytes, len);
   }
+#ifdef KR_ENABLE_TRACING
+  write_trace.end();
+#endif
 }
 
 bool StdFileBackend::restart_available(const std::string &label, int version) {
@@ -114,26 +109,21 @@ int StdFileBackend::latest_version(const std::string &label) const noexcept {
 void StdFileBackend::restart(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
-  try {
-    std::string filename = detail::full_filename(m_filename, label, version);
-    std::ifstream file(filename, std::ios::binary);
+  std::string filename = detail::full_filename(m_filename, label, version);
+  std::ifstream file(filename, std::ios::binary);
 
 #ifdef KR_ENABLE_TRACING
-    auto read_trace =
+  auto read_trace =
         Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "read");
 #endif
-    for (auto &&v : views) {
-      char *bytes     = static_cast<char *>(v->data());
-      std::size_t len = v->span() * v->data_type_size();
+  for (auto &&v : views) {
+    char *bytes     = static_cast<char *>(v->data());
+    std::size_t len = v->span() * v->data_type_size();
 
-      file.read(bytes, len);
-    }
-#ifdef KR_ENABLE_TRACING
-    read_trace.end();
-#endif
-  } catch (...) {
-    status = false;
+    file.read(bytes, len);
   }
+#ifdef KR_ENABLE_TRACING
+  read_trace.end();
+#endif
 }
 }  // namespace KokkosResilience
