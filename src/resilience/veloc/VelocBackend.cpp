@@ -1,3 +1,43 @@
+/*
+ *
+ *                        Kokkos v. 3.0
+ *       Copyright (2020) National Technology & Engineering
+ *               Solutions of Sandia, LLC (NTESS).
+ *
+ * Under the terms of Contract DE-NA0003525 with NTESS,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * Kokkos is licensed under 3-clause BSD terms of use:
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the Corporation nor the names of the
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY NTESS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL NTESS OR THE
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
+ */
 #include "VelocBackend.hpp"
 
 #include <sstream>
@@ -37,14 +77,13 @@ namespace KokkosResilience
         veloc_internal_error_throw( e, name, file, line );
     }
   }
-  
-  VeloCMemoryBackend::VeloCMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm )
-    : m_mpi_comm( mpi_comm ), m_context( &ctx ), m_last_id( 0 )
-  {
+
+  VeloCMemoryBackend::VeloCMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
+      : m_context(&ctx), m_last_id(0) {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, vconf.c_str() ) );
   }
-  
+
   VeloCMemoryBackend::~VeloCMemoryBackend()
   {
     VELOC_Checkpoint_wait();
@@ -52,7 +91,7 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
+                                       const std::vector< KokkosResilience::ViewHolder > &_views )
   {
     bool status = true;
     
@@ -61,7 +100,7 @@ namespace KokkosResilience
     {
       std::string label = get_canonical_label( view->label() );
 
-      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      if ( !view->span_is_contiguous() || !view->is_host_space() )
       {
         auto pos = m_registry.find( label );
         if ( pos != m_registry.end())
@@ -107,7 +146,7 @@ namespace KokkosResilience
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &_views )
+    const std::vector< KokkosResilience::ViewHolder > &_views )
   {
     auto lab = get_canonical_label( label );
     VELOC_SAFE_CALL( VELOC_Restart_begin( lab.c_str(), version ));
@@ -122,7 +161,7 @@ namespace KokkosResilience
     for ( auto &&view : _views )
     {
       auto vl = get_canonical_label( view->label() );
-      if ( !view->span_is_contiguous() || !view->is_hostspace() )
+      if ( !view->span_is_contiguous() || !view->is_host_space() )
       {
         auto pos = m_registry.find( vl );
         if ( pos != m_registry.end() )
@@ -149,7 +188,7 @@ namespace KokkosResilience
   }
   
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views,
+  VeloCMemoryBackend::register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
                                        const std::vector< Detail::CrefImpl > &crefs  )
   {
     // Clear protected bits
@@ -177,7 +216,7 @@ namespace KokkosResilience
         iter->second.element_size = view->data_type_size();
         iter->second.size = view->span();
 
-        if ( !view->is_hostspace() || !view->span_is_contiguous() )
+        if ( !view->is_host_space() || !view->span_is_contiguous() )
         {
           // Can't reference memory directly, allocate memory for a watch buffer
           iter->second.buff.assign( iter->second.size * iter->second.element_size, 0x00 );
@@ -255,24 +294,24 @@ namespace KokkosResilience
   }
 
   void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views )
+  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views )
   {
     // No-op, don't do anything
   }
 
   void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<std::unique_ptr<Kokkos::ViewHolderBase>> &views)
+  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views)
   {
     // No-op, don't do anything
   }
 
-  VeloCFileBackend::VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm,
-                                      const std::string &veloc_config )
-    : m_mpi_comm( mpi_comm ), m_context( &ctx )
-  {
+  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &ctx,
+                                     MPI_Comm mpi_comm,
+                                     const std::string &veloc_config)
+      : m_context(&ctx) {
     VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str()));
   }
-  
+
   VeloCFileBackend::~VeloCFileBackend()
   {
     VELOC_Finalize( false );
@@ -280,7 +319,7 @@ namespace KokkosResilience
   
   void
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::vector< std::unique_ptr< Kokkos::ViewHolderBase > > &views )
+                                const std::vector< KokkosResilience::ViewHolder > &views )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait());
@@ -335,7 +374,7 @@ namespace KokkosResilience
   }
   
   void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::vector< std::unique_ptr< Kokkos::ViewHolderBase>> &views )
+                                  const std::vector< KokkosResilience::ViewHolder > &views )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
     

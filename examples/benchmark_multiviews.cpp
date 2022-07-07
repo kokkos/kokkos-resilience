@@ -1,19 +1,43 @@
-//@HEADER
-// ************************************************************************
-//     Resilient Extension of Kokkos
-//     by Sandia National Laboratories
-//
-// Sandia National Laboratories is a multimission laboratory managed
-// and operated by National Technology and Engineering Solutions of Sandia,
-// LLC, a wholly owned subsidiary of Honeywell International, Inc., for the
-// U.S. Department of Energy's National Nuclear Security Administration under
-// contract DE-NA0003525.
-//
-// Copyright 2017 National Technology & Engineering Solutions of Sandia, LLC
-// (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
-// Government retains certain rights in this software.
-// ************************************************************************
-//@HEADER
+/*
+ *
+ *                        Kokkos v. 3.0
+ *       Copyright (2020) National Technology & Engineering
+ *               Solutions of Sandia, LLC (NTESS).
+ *
+ * Under the terms of Contract DE-NA0003525 with NTESS,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * Kokkos is licensed under 3-clause BSD terms of use:
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the Corporation nor the names of the
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY NTESS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL NTESS OR THE
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
+ */
 
 
 #include <cxxopts.hpp>
@@ -26,7 +50,7 @@
 
 int main(int argc, char *argv[]) {
    int rank, nbProcs, nbLines, M;
-   double wtime, memSize, localerror, globalerror = 1;
+   double wtime, memSize;
 
    auto options = cxxopts::Options("heatdis", "Sample heat distribution code");
    options.add_options()
@@ -46,8 +70,8 @@ int main(int argc, char *argv[]) {
    const auto precision = args["precision"].as< double >();
    const auto chk_interval = args["checkpoint-interval"].as< int >();
    const auto num_views =  args["views"].as< std::size_t >();
-   int strong, str_ret;
-   printf("NUM VIEWS %d\n",num_views);
+   int strong              = 0;
+   std::cout << "NUM VIEWS " << num_views << '\n';
    std::string scale;
    scale = args["scale"].as< std::string >();
    if (scale == "strong") {
@@ -96,15 +120,18 @@ int main(int argc, char *argv[]) {
       memSize = num_views * M * nbLines * sizeof(double) / (1024 * 1024);
 
       if (rank == 0) {
-         if (!strong) {
-            printf("Local data size is %d x %d = %f MB (%lu) %d Views.\n", M, nbLines, memSize, mem_size, num_views);
-         } else {
-            printf("Local data size is %d x %d = %f MB (%lu) %d Views.\n", M, nbLines, memSize, mem_size / nbProcs,
-                   num_views);
-         }
-         printf("Target precision : %f \n", precision);
-         printf("Maximum number of iterations : %lu \n", nsteps);
-         printf("Array size : %lu \n",  M*nbLines);
+        if (!strong) {
+          std::cout << "Local data size is " << M << " x " << nbLines << " = "
+                    << memSize << " MB (" << mem_size << ") " << num_views
+                    << " Views.\n";
+        } else {
+          std::cout << "Local data size is " << M << " x " << nbLines << " = "
+                    << memSize << " MB (" << mem_size / nbProcs << ") "
+                    << num_views << " Views.\n";
+        }
+        std::cout << "Target precision: " << precision << '\n';
+        std::cout << "Maximum number of iterations: " << nsteps << '\n';
+        std::cout << "Array size: " << M * nbLines << '\n';
       }
 
       wtime = MPI_Wtime();

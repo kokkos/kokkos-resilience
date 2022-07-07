@@ -16,7 +16,7 @@ find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
 
 if (@KR_ENABLE_VELOC@)
    set(VeloC_DIR @VeloC_DIR@)
-   set(VELOC_BAREBONE @VELOC_BAREBONE@)
+   set(KR_VELOC_BAREBONE @KR_VELOC_BAREBONE@)
    find_dependency(VeloC REQUIRED)
 endif()
 
