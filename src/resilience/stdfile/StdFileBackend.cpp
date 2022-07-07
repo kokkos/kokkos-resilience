@@ -87,6 +87,7 @@ void StdFileBackend::checkpoint(
     for (auto &&v : views) {
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
+std::cerr << "Checkpointing \"" << v->label() << "\"" << std::endl;
 
       file.write(bytes, len);
     }
@@ -107,7 +108,6 @@ int StdFileBackend::latest_version(const std::string &label) const noexcept {
   int result = -1;
   std::string filename = detail::versionless_filename(m_filename, label);
   boost::filesystem::path dir(filename);
-
   filename = dir.filename().string();
 
   dir = boost::filesystem::absolute(dir).parent_path();
@@ -145,6 +145,8 @@ void StdFileBackend::restart(
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
 
+std::cerr << "Recovering \"" << v->label() << "\"" << std::endl;
+      
       file.read(bytes, len);
     }
 #ifdef KR_ENABLE_TRACING

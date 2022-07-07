@@ -67,6 +67,7 @@
 namespace KokkosResilience
 {
 
+  
   template< typename Context >
   int latest_version( Context &ctx, const std::string &label )
   {
@@ -75,9 +76,19 @@ namespace KokkosResilience
   }
 
   namespace Detail
-  {
+  { 
+    void removeDuplicateViews(std::vector< std::unique_ptr<Kokkos::ViewHolderBase>> &viewVec);
+
+    extern std::vector< KokkosResilience::Viewholder > views;
+    extern bool iter_is_unfiltered;
+    
+    //Capture only means don't do any checkpointing/recovering here, we're just capturing for a larger checkpoint
+    //scope.
+    //chkpt_gathering indicates that we are calling gather_views within this function. Needed to make sure the
+    //function is run before we try restarting.
     template< typename Context, typename F, typename FilterFunc >
-    void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
+    void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter,
+            bool chkpt_internal, bool chkpt_captured, bool capture_only, bool chkpt_gathering)
     {
   #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
 
@@ -92,43 +103,80 @@ namespace KokkosResilience
 
       using fun_type = typename std::remove_reference< F >::type;
 
-      if ( filter( iteration ) )
-      {
-        // Copy the functor, since if it has any views we can turn on view tracking
-        std::vector< KokkosResilience::ViewHolder > views;
+      //On capture only calls use the surrounding scope's filter.
+      if(!capture_only){
+          iter_is_unfiltered = filter(iteration);
+      }
 
+      if ( iter_is_unfiltered )
+      {
         // Don't do anything with const views since they can never be checkpointed in this context
         KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const KokkosResilience::ViewHolder &view ) {
           views.emplace_back( view );
         } );
 
         std::vector< Detail::CrefImpl > crefs;
-        Detail::Cref::check_ref_list = &crefs;
+        //Detail::Cref::check_ref_list = &crefs; //TODO: Figure out why this is broken w/ chckpt_internal
 
-        fun_type f = fun;
+        if(chkpt_captured){
+            // Copy the functor, since if it has any views we can turn on view tracking
+            fun_type f = fun;
+        }
 
-        Detail::Cref::check_ref_list = nullptr;
+        if(!chkpt_internal){
+          Detail::Cref::check_ref_list = nullptr;
 
-        KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
+          KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
+        }
+
+        if(chkpt_internal || chkpt_gathering){
+            // Execute functor and checkpoint
+  #ifdef KR_ENABLE_TRACING
+            auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
+  #endif
+            fun();
+  #ifdef KR_ENABLE_TRACING
+            Kokkos::fence();  // Get accurate measurements for function_trace end
+            function_trace.end();
+  #endif
+        }
+        
+        if(chkpt_internal){
+          Detail::Cref::check_ref_list = nullptr;
+
+          KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
+        }
+          
+
+        if(!capture_only && (chkpt_internal || chkpt_gathering)){
+            removeDuplicateViews(views);
+        }
 
   #ifdef KR_ENABLE_TRACING
         auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
   #endif
         // Register any views that haven't already been registered
         ctx.register_hashes( views, crefs );
-
+  
   #ifdef KR_ENABLE_TRACING
-        reg_hashes.end();
-        auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
+          reg_hashes.end();
   #endif
 
-        bool restart_available = ctx.restart_available( label, iteration );
+        bool restart_available;
+        if(!capture_only){
   #ifdef KR_ENABLE_TRACING
-        check_restart.end();
-        overhead_trace.end();
+          auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
   #endif
+          restart_available = ctx.restart_available( label, iteration );
+  #ifdef KR_ENABLE_TRACING
+          check_restart.end();
+          overhead_trace.end();
+  #endif
+        } else {
+          restart_available = false;
+        }
 
-        if ( restart_available )
+        if (restart_available)
         {
           // Load views with data
   #ifdef KR_ENABLE_TRACING
@@ -137,17 +185,23 @@ namespace KokkosResilience
           ctx.restart( label, iteration, views );
         } else
         {
-          // Execute functor and checkpoint
+          if(!chkpt_internal && !chkpt_gathering){
+              // Execute functor and checkpoint
   #ifdef KR_ENABLE_TRACING
-          auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
+              auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
   #endif
-          fun();
+              fun();
   #ifdef KR_ENABLE_TRACING
-          Kokkos::fence();  // Get accurate measurements for function_trace end
-          function_trace.end();
+              Kokkos::fence();  // Get accurate measurements for function_trace end
+              function_trace.end();
   #endif
+          }
 
-          {
+          if(!capture_only){
+            if(!chkpt_internal){
+              removeDuplicateViews(views);
+            }
+
   #ifdef KR_ENABLE_TRACING
             auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
   #endif
@@ -155,6 +209,10 @@ namespace KokkosResilience
             std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
             ctx.checkpoint( label, iteration, views );
           }
+        }
+      
+        if(!capture_only){
+          views.clear();
         }
       } else
       {  // Iteration is filtered, just execute
@@ -180,17 +238,42 @@ namespace KokkosResilience
     }
   }
 
+  //chkpt_internal captures all views constructed within the function for checkpointing
+  //chkpt_captured captures all views captured by the function for checkpointing
   template< typename Context, typename F, typename FilterFunc >
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter,
+          bool chkpt_internal = false, bool chkpt_captured = true)
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ) );
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), chkpt_internal, chkpt_captured, false, false);
   }
 
   template< typename Context, typename F >
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun )
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, bool chkpt_internal = false, 
+          bool chkpt_captured = true)
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter() );
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter(), chkpt_internal, chkpt_captured, false, false);
   }
+
+  template< typename Context, typename F, typename FilterFunc >
+  void checkpoint_gather( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter,
+          bool chkpt_captured = true)
+  {
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), false, chkpt_captured, false, true);
+  }
+
+  template< typename Context, typename F>
+  void checkpoint_gather( Context &ctx, const std::string &label, int iteration, F &&fun, bool chkpt_captured = true)
+  {
+    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter(), false, chkpt_captured, false, true);
+  }
+
+  template< typename Context, typename F>
+  void gather_views( Context &ctx, F &&fun, bool chkpt_internal = false, bool chkpt_captured = true)
+  {
+    Detail::checkpoint_impl( ctx, "gather", 0, std::forward< F >( fun ), ctx.default_filter(), chkpt_internal, chkpt_captured, true, false);
+  }
+
+  
 
 }
 
