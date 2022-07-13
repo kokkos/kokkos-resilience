@@ -75,7 +75,6 @@ StdFileBackend::~StdFileBackend() = default;
 void StdFileBackend::checkpoint(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ofstream file(filename, std::ios::binary);
@@ -87,7 +86,6 @@ void StdFileBackend::checkpoint(
     for (auto &&v : views) {
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
-std::cerr << "Checkpointing \"" << v->label() << "\"" << std::endl;
 
       file.write(bytes, len);
     }
@@ -95,7 +93,7 @@ std::cerr << "Checkpointing \"" << v->label() << "\"" << std::endl;
     write_trace.end();
 #endif
   } catch (...) {
-    status = false;
+      return; //TODO: error handling?
   }
 }
 
@@ -132,7 +130,6 @@ int StdFileBackend::latest_version(const std::string &label) const noexcept {
 void StdFileBackend::restart(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ifstream file(filename, std::ios::binary);
@@ -144,8 +141,6 @@ void StdFileBackend::restart(
     for (auto &&v : views) {
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
-
-std::cerr << "Recovering \"" << v->label() << "\"" << std::endl;
       
       file.read(bytes, len);
     }
@@ -153,7 +148,7 @@ std::cerr << "Recovering \"" << v->label() << "\"" << std::endl;
     read_trace.end();
 #endif
   } catch (...) {
-    status = false;
+    return; //TODO: Error handling?
   }
 }
 }  // namespace KokkosResilience

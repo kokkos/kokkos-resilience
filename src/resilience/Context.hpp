@@ -100,6 +100,8 @@ namespace KokkosResilience
     Util::detail::TraceStack  &trace() { return m_trace; };
 #endif
 
+    std::vector<KokkosResilience::ViewHolder> view_holders;
+
   private:
 
     Config m_config;

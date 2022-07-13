@@ -77,9 +77,9 @@ namespace KokkosResilience
 
   namespace Detail
   { 
-    void removeDuplicateViews(std::vector< std::unique_ptr<Kokkos::ViewHolderBase>> &viewVec);
+    void removeDuplicateViews(std::vector< KokkosResilience::ViewHolder> &viewVec);
 
-    extern std::vector< KokkosResilience::Viewholder > views;
+    extern std::vector< KokkosResilience::ViewHolder > views;
     extern bool iter_is_unfiltered;
     
     //Capture only means don't do any checkpointing/recovering here, we're just capturing for a larger checkpoint
@@ -111,8 +111,8 @@ namespace KokkosResilience
       if ( iter_is_unfiltered )
       {
         // Don't do anything with const views since they can never be checkpointed in this context
-        KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const KokkosResilience::ViewHolder &view ) {
-          views.emplace_back( view );
+        KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&ctx]( const KokkosResilience::ViewHolder &view ) {
+          ctx.view_holders.emplace_back( view );
         } );
 
         std::vector< Detail::CrefImpl > crefs;
@@ -149,14 +149,14 @@ namespace KokkosResilience
           
 
         if(!capture_only && (chkpt_internal || chkpt_gathering)){
-            removeDuplicateViews(views);
+            removeDuplicateViews(ctx.view_holders);
         }
 
   #ifdef KR_ENABLE_TRACING
         auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
   #endif
         // Register any views that haven't already been registered
-        ctx.register_hashes( views, crefs );
+        ctx.register_hashes( ctx.view_holders, crefs );
   
   #ifdef KR_ENABLE_TRACING
           reg_hashes.end();
@@ -182,7 +182,9 @@ namespace KokkosResilience
   #ifdef KR_ENABLE_TRACING
           auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
   #endif
-          ctx.restart( label, iteration, views );
+auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
+std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating restart\n";
+          ctx.restart( label, iteration, ctx.view_holders );
         } else
         {
           if(!chkpt_internal && !chkpt_gathering){
@@ -199,7 +201,7 @@ namespace KokkosResilience
 
           if(!capture_only){
             if(!chkpt_internal){
-              removeDuplicateViews(views);
+              removeDuplicateViews(ctx.view_holders);
             }
 
   #ifdef KR_ENABLE_TRACING
@@ -207,12 +209,12 @@ namespace KokkosResilience
   #endif
             auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
             std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
-            ctx.checkpoint( label, iteration, views );
+            ctx.checkpoint( label, iteration, ctx.view_holders );
           }
         }
       
         if(!capture_only){
-          views.clear();
+          ctx.view_holders.clear();
         }
       } else
       {  // Iteration is filtered, just execute
