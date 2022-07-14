@@ -323,6 +323,24 @@ class ParallelReduce< FunctorType
     ManagedViewType reducer_copy[2];
     ViewType original;
 
+#ifdef KR_ENABLE_DMR
+
+    void execute_resilient_reduction( const FunctorType &f
+                                    , const FunctorType &f0
+                                    , const FunctorType &f1
+                                    , const surrogate_policy & pass_policy) override
+    {
+
+      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure1{ f, pass_policy, original };
+      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
+
+      closure1.execute();
+      closure2.execute();
+
+    }
+
+#else
+
     void execute_resilient_reduction( const FunctorType &f
                                     , const FunctorType &f0
                                     , const FunctorType &f1
@@ -338,6 +356,8 @@ class ParallelReduce< FunctorType
       closure3.execute();
 
     }
+
+#endif
 
     bool combine_reducers () {
 
@@ -377,6 +397,23 @@ class ParallelReduce< FunctorType
 
     while(success==0 && repeats > 0){
 
+#if KR_ENABLE_DMR
+
+      surrogate_policy pass_policy;
+      pass_policy = surrogate_policy(m_policy.begin(), m_policy.end());
+
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
+      auto m_functor_0 = m_functor;
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+
+      m_combiner->execute_resilient_reduction(m_functor, m_functor_0, m_functor_1, pass_policy);
+      m_combiner->print();
+
+      success = KokkosResilience::combine_resilient_duplicates();
+ 
+// NO FAILOVER LOOP YET, STRAIGHT DMR -> logic issue in the reducer copy
+
+#else
       surrogate_policy pass_policy;
       pass_policy = surrogate_policy(m_policy.begin(), m_policy.end());
 
@@ -395,6 +432,8 @@ class ParallelReduce< FunctorType
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
       repeats--;
+
+#endif
 
     }// while (!success & repeats left)
 
