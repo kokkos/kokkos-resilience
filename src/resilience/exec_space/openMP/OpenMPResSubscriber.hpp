@@ -217,6 +217,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       if (check_equality.compare(copy[0](i), original(i))){
         return;
       }
+      success(0) = false;
     }
 
 #else
