@@ -37,7 +37,7 @@ cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF 
 # VeloC backend
 if (KR_ENABLE_VELOC)
   find_package(VeloC REQUIRED)
-  target_link_libraries(resilience PUBLIC veloc::veloc)
+  target_link_libraries(resilience PRIVATE veloc::veloc)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
   set(KR_ENABLE_MPI_BACKENDS ON)
 
