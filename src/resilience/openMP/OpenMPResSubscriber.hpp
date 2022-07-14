@@ -290,11 +290,11 @@ struct ResilientDuplicatesSubscriber {
       // only 1 initially, 2 on fail
       if (dmr_failover_to_tmr){
         // Create second copy
-        ViewMatching(res.copy[1], original, 1);
+        set_duplicate_view(res.copy[1], original, 1);
       }
       else{
         // Create first copy
-        ViewMatching(res.copy[0], original, 0);
+        set_duplicate_view(res.copy[0], original, 0);
       }
 
 #else
