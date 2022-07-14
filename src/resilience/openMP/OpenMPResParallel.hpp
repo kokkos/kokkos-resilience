@@ -311,7 +311,7 @@ class ParallelReduce< FunctorType
                             , typename ViewType::array_layout
                             , Kokkos::OpenMP>;
 
-    static ManagedViewType ViewMatching(ViewType reducer_view, int duplicate_count) {
+    static ManagedViewType create_managed_view(ViewType reducer_view, int duplicate_count) {
 
       std::stringstream label_ss;
       label_ss << reducer_view.label() << duplicate_count;
@@ -322,10 +322,10 @@ class ParallelReduce< FunctorType
     ReduceResultCombiner( ViewType reducer_view )
     {
       original = reducer_view;
-      reducer_copy[0] = ViewMatching (reducer_view, 1);
-      reducer_copy[1] = ViewMatching (reducer_view, 2);
+      reducer_copy[0] = create_managed_view (reducer_view, 1);
+      reducer_copy[1] = create_managed_view (reducer_view, 2);
     }
-
+	
     ManagedViewType reducer_copy[2];
     ViewType original;
 
