@@ -117,7 +117,7 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
-  virtual void print() const = 0;
+  virtual void print() = 0;
 };
 
 template< typename View >
@@ -158,7 +158,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     return success(0);
   }
 
-  void print() const override {
+  void print() override {
 #ifdef KR_ENABLE_DMR
     // Indicates dmr_failover_to_tmr has tripped
     if(duplicate_count == 2){
