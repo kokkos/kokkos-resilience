@@ -87,8 +87,11 @@ class ParallelFor< FunctorType
                  , Kokkos::RangePolicy< Traits... >
                  , KokkosResilience::ResOpenMP>{
  private:
-  using Policy    = Kokkos::RangePolicy<Traits...>;
-  using WorkTag   = typename Policy::work_tag;
+  using Policy       = Kokkos::RangePolicy<Traits...>;
+  using WorkTag      = typename Policy::work_tag;
+//MiniMD
+  using LaunchBounds = typename Policy::launch_bounds;
+  using Member       = typename Policy::member_type;
 
   const FunctorType &  m_functor;
   const Policy m_policy;
@@ -96,7 +99,7 @@ class ParallelFor< FunctorType
   ParallelFor() = delete ;
   ParallelFor & operator = ( const ParallelFor & ) = delete ;
 
-  using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
+  using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
  public:
   inline void execute() const {
