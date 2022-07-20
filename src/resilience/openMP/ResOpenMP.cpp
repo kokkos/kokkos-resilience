@@ -60,7 +60,6 @@
 #include <impl/Kokkos_ConcurrentBitset.hpp>
 
 #include <Kokkos_OpenMP.hpp>
-#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include "ResOpenMP.hpp"
 
 /*------------------------------------------------------------------------*/
@@ -71,7 +70,7 @@ ResOpenMP::ResOpenMP()
   : OpenMP() {
 }
 
-void ResOpenMP::print_configuration( std::ostream & s , const bool )
+void ResOpenMP::print_configuration( std::ostream & s , bool ) const
 {
   s << "KokkosResilience::ResOpenMP";
 

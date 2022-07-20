@@ -48,7 +48,7 @@
 #include <omp.h>
 #include <iostream>
 
-#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
+//#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 
 #include <KokkosExp_MDRangePolicy.hpp>
 
