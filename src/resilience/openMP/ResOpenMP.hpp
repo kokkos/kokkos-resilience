@@ -57,6 +57,8 @@
 #include <Kokkos_TaskScheduler.hpp>
 #include <Kokkos_Layout.hpp>
 
+#include <impl/Kokkos_InitializationSettings.hpp>
+
 //This space specific
 #include <Kokkos_Serial.hpp>
 #include <Kokkos_OpenMP.hpp> //Kokkos-fork 
@@ -95,7 +97,7 @@ class ResOpenMP : public Kokkos::OpenMP {
 /*------------------------------------*/
 
     // Print configuration information to the given output stream.
-    static void print_configuration(std::ostream&, const bool verbose = false);
+    void print_configuration(std::ostream& os, bool verbose = false) const;
 
     static const char* name();
 
