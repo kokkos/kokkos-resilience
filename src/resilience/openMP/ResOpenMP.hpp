@@ -57,10 +57,12 @@
 #include <Kokkos_TaskScheduler.hpp>
 #include <Kokkos_Layout.hpp>
 
+#include <impl/Kokkos_InitializationSettings.hpp>
+
 //This space specific
 #include <Kokkos_Serial.hpp>
-#include <Kokkos_OpenMP.hpp> //Kokkos-fork
-#include <Kokkos_HostSpace.hpp> //Kokkos-fork
+#include <Kokkos_OpenMP.hpp> //Kokkos-fork - now Kokkos-develop
+#include <Kokkos_HostSpace.hpp> //Kokkos-fork - now Kokkos-develop
 #include "ResHostSpace.hpp" //Resilient
 
 /*------------------------------------------------------------------------*/
@@ -93,7 +95,8 @@ class ResOpenMP : public Kokkos::OpenMP {
 /*------------------------------------*/
 
     // Print configuration information to the given output stream.
-    static void print_configuration(std::ostream&, const bool verbose = false);
+    //static void print_configuration(std::ostream&, const bool verbose = false);
+    void print_configuration(std::ostream& os, bool verbose = false) const;
 
     static const char* name();
 
@@ -136,7 +139,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 
 /*------------------------------------------------------------------------*/
 
-#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
+//#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include <OpenMP/Kokkos_OpenMP_Team.hpp>
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
 #include <OpenMP/Kokkos_OpenMP_Task.hpp>
