@@ -63,6 +63,9 @@ using ViewVectorIntSubscriber = Kokkos::View< int* , Kokkos::LayoutRight, MemSpa
 using ViewVectorDoubleSubscriber = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
         Kokkos::Experimental::SubscribableViewHooks<
                 KokkosResilience::ResilientDuplicatesSubscriber > >;
+using ViewVectorDoubleSubscriber2D = Kokkos::View< double** , Kokkos::LayoutRight, MemSpace,
+        Kokkos::Experimental::SubscribableViewHooks<
+                KokkosResilience::ResilientDuplicatesSubscriber > >;
 using ConstViewVectorDoubleSubscriber = Kokkos::View< const double*, Kokkos::LayoutRight, MemSpace,
         Kokkos::Experimental::SubscribableViewHooks<
                 KokkosResilience::ResilientDuplicatesSubscriber > >;
@@ -243,6 +246,44 @@ TEST(TestResOpenMP, TestConstViewSubscriber)
   }
 
 }
+
+// gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter,
+// on a multidimensional view.
+// Expect counter to count iterations.
+TEST(TestResOpenMP, TestResilientFor2D)
+{
+// Allocate y, x vectors.
+  ViewVectorDoubleSubscriber2D y( "y", N, N );
+  ViewVectorDoubleSubscriber2D x( "x", N, N );
+
+  //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
+  ViewVectorIntSubscriber counter( "DataAccesses", 1);
+
+  Kokkos::Timer timer;
+  counter(0) = 0;
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    for (int j = 0; j < N; j++){
+      y ( i,j ) = i+j;
+      Kokkos::atomic_increment(&counter(0));
+    }
+  });
+
+  KokkosResilience::clear_duplicates_cache();
+  Kokkos::deep_copy(x, y);
+ 
+  for ( int i = 0; i < N; i++) {
+    for ( int j = 0; j < N; j++) {
+      ASSERT_EQ(x(i,j), i+j);
+    }
+  }
+  ASSERT_EQ(counter(0), N*N);
+}
+
+/**********************************
+ *********PARALLEL REDUCES*********
+ **********************************/
 
 // gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
 TEST(TestResOpenMP, TestKokkosReduceDouble)

@@ -117,7 +117,7 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
-  virtual void print() = 0;
+  //virtual void print() = 0;
 };
 
 template< typename View >
@@ -158,7 +158,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     return success(0);
   }
 
-  void print() override {
+  /*void print() override {
 #ifdef KR_ENABLE_DMR
     // Indicates dmr_failover_to_tmr has tripped
     if(duplicate_count == 2){
@@ -192,29 +192,31 @@ struct CombineDuplicates: public CombineDuplicatesBase
       std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
     }
 #endif
-  }
+  }*/
 
   // Looping over duplicates to check for equality
+  
+  template<typename... Args> 
   KOKKOS_FUNCTION
-  void operator ()(int i) const {
+  void operator ()(Args && ... its) const {
 #ifdef KR_ENABLE_DMR
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
       for (int j = 0; j < 2; j ++) {
-        if (check_equality.compare(copy[j](i), original(i))) {
+        if (check_equality.compare(copy[j](its...), original(its...))) {
           return;
         }
       }
-      if (check_equality.compare(copy[0](i), copy[1](i))){
-        original(i) = copy[0](i);  // just need 2 that are the same
+      if (check_equality.compare(copy[0](its...), copy[1](its...))){
+        original(its...) = copy[0](its...);  // just need 2 that are the same
         return;
       }
       //No match found, all three executions return different number
       success(0) = false;
     }
-    // DMR has not failed over, only 1 copy exists, check and maybe trip tmr
+    // DMR has not failed over, only 1 copy exists
     else{
-      if (check_equality.compare(copy[0](i), original(i))){
+      if (check_equality.compare(copy[0](its...), original(its...))){
         return;
       }
       success(0) = false;
@@ -222,12 +224,12 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
 #else
     for (int j = 0; j < 2; j ++) {
-      if (check_equality.compare(copy[j](i), original(i))) {
+      if (check_equality.compare(copy[j](its...), original(its...))) {
         return;
       }
     }
-    if (check_equality.compare(copy[0](i), copy[1](i))) {
-      original(i) = copy[0](i);  // just need 2 that are the same
+    if (check_equality.compare(copy[0](its...), copy[1](its...))) {
+      original(its...) = copy[0](its...);  // just need 2 that are the same
       return;
     }
     //No match found, all three executions return different number
@@ -362,12 +364,13 @@ struct ResilientDuplicatesSubscriber {
   static void copy_assigned(View &self, const View &other) {}
 };
 
+/*
 KOKKOS_INLINE_FUNCTION
 void print_duplicates_map(){
   for (auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map){
     entry.second->print();
   }
-}
+}*/
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_map() {
