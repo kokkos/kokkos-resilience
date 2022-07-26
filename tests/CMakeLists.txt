@@ -12,6 +12,9 @@ add_executable(resilience_tests
                TestLambdaCapture.cpp
                TestHooks.cpp
                TestDynamicViewHooks.cpp
+	       TestOpenMPResilientExecution.cpp
+	       TestMiniMD.cpp
+               TestDynamicViewHooks.cpp
                )
 
 if (KR_ENABLE_VELOC_BACKEND)

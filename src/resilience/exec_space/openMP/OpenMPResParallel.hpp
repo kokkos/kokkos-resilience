@@ -169,7 +169,7 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
-      KokkosResilience::print_duplicates_map();
+      //KokkosResilience::print_duplicates_map();
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 
@@ -194,7 +194,6 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views, majority vote not triggered due to CMAKE macro
       success = KokkosResilience::combine_resilient_duplicates();
-      KokkosResilience::print_duplicates_map();
 
       if (!success)
       {
@@ -205,7 +204,6 @@ class ParallelFor< FunctorType
 
         Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
         success = KokkosResilience::combine_resilient_duplicates();
-        KokkosResilience::print_duplicates_map();
         KokkosResilience::clear_duplicates_map();
         KokkosResilience::ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
       }
@@ -223,8 +221,6 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
-
-      KokkosResilience::print_duplicates_map();
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 #endif
@@ -252,6 +248,86 @@ class ParallelFor< FunctorType
 } // namespace Impl
 } // namespace Kokkos
 
+namespace Kokkos {
+namespace Impl {
+
+// MDRange policy implementation
+template <class FunctorType, class... Traits>
+class ParallelFor<FunctorType, 
+		  Kokkos::MDRangePolicy<Traits...>,
+                  KokkosResilience::ResOpenMP> {
+ private:
+  using MDRangePolicy = Kokkos::MDRangePolicy<Traits...>;
+  using Policy        = typename MDRangePolicy::impl_range_policy;
+  using WorkTag       = typename MDRangePolicy::work_tag;
+
+  //TODO: MiniMD may need Launchbounds
+
+  using Member = typename Policy::member_type;
+
+  using index_type   = typename Policy::index_type;
+  using iterate_type = typename Kokkos::Impl::HostIterateTile<
+      MDRangePolicy, FunctorType, typename MDRangePolicy::work_tag, void>;
+
+  const iterate_type m_iter;
+
+  const FunctorType &  m_functor;
+  const MDRangePolicy m_policy;
+
+  ParallelFor() = delete ;
+  ParallelFor & operator = ( const ParallelFor & ) = delete ;
+  
+  // TODO: MiniMD may require added LaunchBounds
+  using surrogate_policy = Kokkos::MDRangePolicy < Kokkos::OpenMP, WorkTag>;
+
+ public:
+  inline void execute() const {
+
+    if (KokkosResilience::ResOpenMP::in_parallel())
+      Kokkos::abort("Cannot call resilient parallel_for inside a parallel construct.");
+
+    int repeats = 5;
+    bool success = 0;
+    while(success==0 && repeats > 0){
+  
+      surrogate_policy wrapper_policy;
+      wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
+  
+      // Trigger Subscriber constructors
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
+      auto m_functor_0 = m_functor;
+      auto m_functor_1 = m_functor;
+      KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure0(m_functor , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1(m_functor_0 , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
+
+      closure0.execute();
+      closure1.execute();
+      closure2.execute();
+
+      // Combine the duplicate views and majority vote on correctness
+      success = KokkosResilience::combine_resilient_duplicates();    
+      KokkosResilience::clear_duplicates_map();
+  
+      repeats--;
+  
+      }// while (!success & repeats left)
+
+    if(success==0 && repeats == 0){
+      Kokkos::abort("Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
+    }
+
+  } //execute
+
+  inline ParallelFor(const FunctorType& arg_functor, MDRangePolicy arg_policy)
+      : m_iter(arg_policy, arg_functor) {}
+}; // MDRange policy impl
+
+} // namespace Impl
+} // namespace Kokkos
+
 /*--------------------------------------------------------------------------*/
 /*********************** RESILIENT PARALLEL REDUCES *************************/
 /*--------------------------------------------------------------------------*/
@@ -259,22 +335,34 @@ class ParallelFor< FunctorType
 namespace Kokkos {
 namespace Impl {
 
+//TODO:: This comment invalidated by rework of Kokkos with CombinedFunctorReducerType??
 // Will eventually need enable_if to partially specialize on the different reducer types
 // This specialization is for view type only, but written as only instantiation for now
 
 // Range policy implementation
+#if 0
 template <class FunctorType, class ReducerType, class... Traits>
 class ParallelReduce< FunctorType
                     , Kokkos::RangePolicy< Traits... >
                     , ReducerType
                     , KokkosResilience::ResOpenMP>{
+#endif
+
+template <class CombinedFunctorReducerType, class... Traits>
+class ParallelReduce< CombinedFunctorReducerType
+		    , Kokkos::RangePolicy< Traits... >
+		    , KokkosResilience::ResOpenMP>{
 
  private:
-  using Policy    = Kokkos::RangePolicy<Traits...>;
-  using WorkTag   = typename Policy::work_tag;
+  using Policy      = Kokkos::RangePolicy<Traits...>;
+  //using FunctorType = typename CombinedFunctorReducerType::functor_type;
+  using WorkTag     = typename Policy::work_tag;
+  //TODO: may need to access reducer_view and may need in unieque pointer
+  //using ReducerType = typename CombinedFuctorReducerType::reducor_type; 
 
-
-  FunctorType m_functor;
+  const CombinedFunctorReducerType m_functor_reducer;
+ //const ReducerType& reducer = m_functor_reducer.get_reducer();
+  //FunctorType m_functor;
   const Policy m_policy;
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
 
@@ -285,9 +373,9 @@ class ParallelReduce< FunctorType
   struct ReduceResultCombinerBase
   {
     // A pure virtual function, given a functor reference (from the constructor)
-    virtual void execute_resilient_reduction( const FunctorType &f
-                                            , const FunctorType &f0
-                                            , const FunctorType &f1
+    virtual void execute_resilient_reduction( const CombinedFunctorReducerType &f
+                                            , const CombinedFunctorReducerType &f0
+                                            , const CombinedFunctorReducerType &f1
                                             , const surrogate_policy & pass_policy) = 0;
 
     virtual bool combine_reducers () = 0;
@@ -322,8 +410,10 @@ class ParallelReduce< FunctorType
 	
     ManagedViewType reducer_copy[2];
     ViewType original;
-
+/*
 #ifdef KR_ENABLE_DMR
+//TODO::Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure1{ f, pass_policy, original };
+//Original call with FunctorType, and ReducerType of InvalidType, no longer valid. FunctorType now represents just the functor of combinedreducerfunctor.
 
     void execute_resilient_reduction( const FunctorType &f
                                     , const FunctorType &f0
@@ -331,8 +421,8 @@ class ParallelReduce< FunctorType
                                     , const surrogate_policy & pass_policy) override
     {
 
-      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure1{ f, pass_policy, original };
-      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
+      Impl::ParallelReduce< FunctorType, surrogate_policy, Kokkos::OpenMP > closure1{ f, pass_policy, original };
+      Impl::ParallelReduce< FunctorType, surrogate_policy, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
 
       closure1.execute();
       closure2.execute();
@@ -340,16 +430,16 @@ class ParallelReduce< FunctorType
     }
 
 #else
-
-    void execute_resilient_reduction( const FunctorType &f
-                                    , const FunctorType &f0
-                                    , const FunctorType &f1
+*/
+    void execute_resilient_reduction( const CombinedFunctorReducerType &f
+                                    , const CombinedFunctorReducerType &f0
+                                    , const CombinedFunctorReducerType &f1
                                     , const surrogate_policy & pass_policy) override
     {
 
-      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure1{ f, pass_policy, original };
-      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
-      Impl::ParallelReduce< FunctorType, surrogate_policy, InvalidType, Kokkos::OpenMP > closure3{ f1, pass_policy, reducer_copy[1] };
+      Impl::ParallelReduce< CombinedFunctorReducerType, surrogate_policy, Kokkos::OpenMP > closure1{ f, pass_policy, original };
+      Impl::ParallelReduce< CombinedFunctorReducerType, surrogate_policy, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
+      Impl::ParallelReduce< CombinedFunctorReducerType, surrogate_policy, Kokkos::OpenMP > closure3{ f1, pass_policy, reducer_copy[1] };
 
       closure1.execute();
       closure2.execute();
@@ -357,7 +447,7 @@ class ParallelReduce< FunctorType
 
     }
 
-#endif
+//#endif
 
     bool combine_reducers () {
 
@@ -396,7 +486,7 @@ class ParallelReduce< FunctorType
     bool success = 0; //! This bool indicates that all views successfully reached a consensus.
 
     while(success==0 && repeats > 0){
-
+/*
 #if KR_ENABLE_DMR
 
       surrogate_policy pass_policy;
@@ -414,16 +504,17 @@ class ParallelReduce< FunctorType
 // NO FAILOVER LOOP YET, STRAIGHT DMR -> logic issue in the reducer copy
 
 #else
+*/ 
       surrogate_policy pass_policy;
       pass_policy = surrogate_policy(m_policy.begin(), m_policy.end());
 
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
-      auto m_functor_0 = m_functor;
-      auto m_functor_1 = m_functor;
+      auto m_functor_reducer_0 = m_functor_reducer;
+      auto m_functor_reducer_1 = m_functor_reducer;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      m_combiner->execute_resilient_reduction(m_functor, m_functor_0, m_functor_1, pass_policy);
-      m_combiner->print();
+      m_combiner->execute_resilient_reduction(m_functor_reducer, m_functor_reducer_0, m_functor_reducer_1, pass_policy);
+      //m_combiner->print();
 
       //KokkosResilience::print_duplicates_map();
       // Combine the duplicate views and majority vote on correctness
@@ -433,7 +524,7 @@ class ParallelReduce< FunctorType
       KokkosResilience::clear_duplicates_map();
       repeats--;
 
-#endif
+//#endif
 
     }// while (!success & repeats left)
 
@@ -442,7 +533,7 @@ class ParallelReduce< FunctorType
       Kokkos::abort("Aborted in resilient parallel_reduce.");
     }
   } //execute
-
+#if 0
   template< typename ViewType >
   inline ParallelReduce(const FunctorType &f
                 , Policy arg_policy
@@ -452,6 +543,18 @@ class ParallelReduce< FunctorType
   {
     m_combiner = std::make_unique<ReduceResultCombiner< ViewType > >( view_arg );
   }
+# endif
+
+  template < class ViewType >
+  inline ParallelReduce( const CombinedFunctorReducerType& arg_functor_reducer
+ 		       , Policy arg_policy
+		       , const ViewType& arg_view)
+                       : m_functor_reducer(arg_functor_reducer)
+                       , m_policy (arg_policy)
+  {
+    m_combiner = std::make_unique<ReduceResultCombiner< ViewType > >(arg_view);
+  }
+
 
 /*
   template <class ViewType>

@@ -53,6 +53,10 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <sstream>
+#include <utility>
+#include <array>
+#include <cstdint>
+
 
 /*--------------------------------------------------------------------------
  ******************** ERROR MESSAGE GENERATION *****************************
@@ -74,6 +78,18 @@ namespace KokkosResilience {
  ----------------------------------------------------------------------------*/
 
 namespace KokkosResilience {
+
+// Helper template used to get Rank number of 0's for MDRangePolicy
+template< std::int64_t begin >
+constexpr auto get_start_index ( std::size_t ){
+  return begin;
+}
+
+// Makes a MDRangePolicy from View extents
+template< typename View, std::size_t... Ranks >
+auto make_md_range_policy( const View &view, std::index_sequence< Ranks... >){
+  return Kokkos::MDRangePolicy<Kokkos::Rank<View::rank()>>({ get_start_index < 0 > ( Ranks ) ... }, { static_cast<std::int64_t>( view.extent ( Ranks ))... });
+}
 
 template <class Type, class Enabled = void>
 struct CheckDuplicateEquality;
@@ -117,7 +133,6 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
-  virtual void print() = 0;
 };
 
 template< typename View >
@@ -132,7 +147,13 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // Note: 2 copies allocated even in DMR
   View copy[2];
 
+  //This hack for a bool was replacable in the CUDA version and may be a c++ <17 artifact
   Kokkos::View <bool*> success{"success", 1};
+
+  static constexpr size_t rank = View::rank();
+  // The rank of the view is known at compile-time, and there
+  // is 1 subscriber per view. Therefore it is not templated on the 
+  // instantiation of the original, but on the View itself 
 
   bool execute() override
   {
@@ -142,9 +163,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     if (duplicate_count < 1){
       Kokkos::abort("Aborted in CombineDuplicates, no duplicate created");
     }
-    /*else if((duplicate_count < 2) && ResilientDuplicatesSubscriber::dmr_failover_to_tmr){
-      Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
-    }*/
 #else
     if (duplicate_count < 2) {
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
@@ -152,69 +170,43 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #endif
 
     else {
-      Kokkos::parallel_for(original.size(), *this);
-      Kokkos::fence();
+      if constexpr(rank > 1){
+            
+        auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
+
+        Kokkos::parallel_for(mdrange, *this);
+        Kokkos::fence();
+      }else{
+        Kokkos::parallel_for(original.size(), *this);
+        Kokkos::fence();
+      }
     }
     return success(0);
   }
 
-  void print() override {
-#ifdef KR_ENABLE_DMR
-    // Indicates dmr_failover_to_tmr has tripped
-    if(duplicate_count == 2){
-      std::cout << "This is the original data pointer " << original.data() << std::endl;
-      std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
-      std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
-
-      for (std::size_t i=0; i<original.size();i++){
-        std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
-        std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
-        std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
-      }
-    }
-    else{
-      std::cout << "This is the original data pointer " << original.data() << std::endl;
-      std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
-
-      for (std::size_t i=0; i<original.size();i++){
-        std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
-        std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
-      }
-    }
-#else
-    std::cout << "This is the original data pointer " << original.data() << std::endl;
-    std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
-    std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
-
-    for (std::size_t i=0; i<original.size();i++){
-      std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
-      std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
-      std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
-    }
-#endif
-  }
-
   // Looping over duplicates to check for equality
+  template<typename... Args> //template parameter pack
   KOKKOS_FUNCTION
-  void operator ()(int i) const {
+  void operator ()(Args&&... its) const { //function parameter pack
+
 #ifdef KR_ENABLE_DMR
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
       for (int j = 0; j < 2; j ++) {
-        if (check_equality.compare(copy[j](i), original(i))) {
+        if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
           return;
         }
       }
-      if (check_equality.compare(copy[0](i), copy[1](i))){
-        original(i) = copy[0](i);  // just need 2 that are the same
+      if (check_equality.compare(copy[0](std::forward<Args>(its)...), copy[1](std::forward<Args>(its)...))){
+        original(std::forward<Args>(its)...) = static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...));  // just need 2 that are the same
         return;
       }
       //No match found, all three executions return different number
       success(0) = false;
     }
-    // DMR has not failed over, only 1 copy exists, check and maybe trip tmr
+    // DMR has not failed over, only 1 copy exists
     else{
-      if (check_equality.compare(copy[0](i), original(i))){
+      if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
         return;
       }
       success(0) = false;
@@ -222,12 +214,12 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
 #else
     for (int j = 0; j < 2; j ++) {
-      if (check_equality.compare(copy[j](i), original(i))) {
+      if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
         return;
       }
     }
-    if (check_equality.compare(copy[0](i), copy[1](i))) {
-      original(i) = copy[0](i);  // just need 2 that are the same
+    if (check_equality.compare(copy[0](std::forward<Args>(its)...), copy[1](std::forward<Args>(its)...))) {
+      original(std::forward<Args>(its)...) = static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...));  // just need 2 that are the same
       return;
     }
     //No match found, all three executions return different number
@@ -361,13 +353,6 @@ struct ResilientDuplicatesSubscriber {
   template <typename View>
   static void copy_assigned(View &self, const View &other) {}
 };
-
-KOKKOS_INLINE_FUNCTION
-void print_duplicates_map(){
-  for (auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map){
-    entry.second->print();
-  }
-}
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_map() {

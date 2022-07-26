@@ -44,18 +44,15 @@
 
 #include <Kokkos_Macros.hpp>
 #if defined( KOKKOS_ENABLE_OPENMP )
+
 #include <cstddef>
 #include <iosfwd>
-
 #include <vector>
 
 #include <Kokkos_Core.hpp>
 
-#include <impl/Kokkos_InitializationSettings.hpp>
+#include "ResHostSpace.hpp" //Resilient
 
-#include <impl/Kokkos_InitializationSettings.hpp>
-
-//This space specific
 /*------------------------------------------------------------------------*/
 
 namespace KokkosResilience {
@@ -86,7 +83,8 @@ class ResOpenMP : public Kokkos::OpenMP {
 /*------------------------------------*/
 
     // Print configuration information to the given output stream.
-    void print_configuration(std::ostream& os, bool verbose = false) const;
+    //static void print_configuration(std::ostream&, const bool verbose = false);
+    //void print_configuration(std::ostream& os, bool verbose = false) const;
 
     static const char* name();
 
@@ -129,10 +127,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 
 /*------------------------------------------------------------------------*/
 
-//#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
-#include <OpenMP/Kokkos_OpenMP_Team.hpp>
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
-#include <OpenMP/Kokkos_OpenMP_Task.hpp>
 
 /*------------------------------------------------------------------------*/
 

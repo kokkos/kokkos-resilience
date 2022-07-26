@@ -47,10 +47,8 @@
 #include <iosfwd>
 #include <typeinfo>
 
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_Concepts.hpp>
-#include <Kokkos_MemoryTraits.hpp>
-#include <impl/Kokkos_SharedAlloc.hpp>
+#include <Kokkos_Core.hpp>
+#include <resilience/config/Config.hpp>
 #include "resilience/filesystem/ExternalIOInterface.hpp"
 #include <hdf5.h>
 
