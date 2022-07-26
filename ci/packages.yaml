@@ -1,0 +1,4 @@
+packages:
+  all:
+      providers:
+        mpi: [mpich, openmpi]
