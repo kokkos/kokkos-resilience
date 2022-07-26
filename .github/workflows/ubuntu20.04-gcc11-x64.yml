@@ -11,4 +11,6 @@ jobs:
         id: vars
         run: echo "::set-output name=docker_tag::$(git rev-parse --abbrev-ref ${{ github.head_ref || github.ref || 'HEAD' }} | sed 's/[^a-z0-9_-]/__/gi')"
       - name: Build the Docker image and code
-        run: docker build -t ${{ steps.vars.outputs.docker_tag }} -f ./ci/ubuntu20.04-gcc11-x64.dockerfile .
+        env:
+          DOCKER_IMAGE_TAG: ${{ steps.vars.outputs.docker_tag }}
+        run: docker-compose run build-kr-ubuntu

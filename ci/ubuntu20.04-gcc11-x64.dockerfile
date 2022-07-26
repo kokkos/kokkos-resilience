@@ -39,3 +39,16 @@ RUN apt-get update \
 RUN mkdir -p /opt/ && cd /opt/ && git clone https://github.com/spack/spack.git
 RUN . /opt/spack/share/spack/setup-env.sh && spack compiler find
 RUN . /opt/spack/share/spack/setup-env.sh && spack external find --not-buildable && spack external list
+
+ADD ./ci/spack.yaml /opt/spack-environments/spack.yaml
+RUN cd /opt/spack-environment \
+  && . /opt/spack/share/spack/setup-env.sh \
+  && spack env activate . \
+  && spack concretize -f
+
+RUN cd /opt/spack-environment \
+  && . /opt/spack/share/spack/setup-env.sh \
+  && spack env activate . \
+  && spack install --fail-fast \
+  && spack gc -y
+

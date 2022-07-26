@@ -52,6 +52,14 @@
           "value": "ON"
         }
       }
+    },
+    {
+      "name": "ci_build",
+      "inherits": ["kr_auto_checkpoint_veloc", "kdr_release"],
+      "binaryDIr": "/opt/build/kokkos-resilience",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "/opt/view"
+      }
     }
   ]
 }
