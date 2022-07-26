@@ -1,6 +1,7 @@
 spack:
   specs:
-    - kokkos@develop
+    - kokkos@3.6.00
+    - veloc@1.5
   concretizer:
     unify: true
   config:
