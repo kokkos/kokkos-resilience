@@ -171,7 +171,7 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
-      KokkosResilience::print_duplicates_map();
+      //KokkosResilience::print_duplicates_map();
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 
@@ -196,7 +196,7 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views, majority vote not triggered due to CMAKE macro
       success = KokkosResilience::combine_resilient_duplicates();
-      KokkosResilience::print_duplicates_map();
+      //KokkosResilience::print_duplicates_map();
 
       if (!success)
       {
@@ -207,7 +207,7 @@ class ParallelFor< FunctorType
 
         Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
         success = KokkosResilience::combine_resilient_duplicates();
-        KokkosResilience::print_duplicates_map();
+        //KokkosResilience::print_duplicates_map();
         KokkosResilience::clear_duplicates_map();
         KokkosResilience::ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
       }
@@ -226,7 +226,7 @@ class ParallelFor< FunctorType
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
 
-      KokkosResilience::print_duplicates_map();
+      //KokkosResilience::print_duplicates_map();
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 #endif
@@ -424,7 +424,7 @@ class ParallelReduce< FunctorType
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
       m_combiner->execute_resilient_reduction(m_functor, m_functor_0, m_functor_1, pass_policy);
-      m_combiner->print();
+      //m_combiner->print();
 
       //KokkosResilience::print_duplicates_map();
       // Combine the duplicate views and majority vote on correctness
