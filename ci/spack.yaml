@@ -5,6 +5,7 @@ spack:
     - packages:
       - kokkos@3.6.00
       - veloc@1.5
+      - boost@1.79.0
   specs:
     - matrix:
       - [$packages]

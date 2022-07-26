@@ -10,6 +10,7 @@ RUN apt-get update \
       gpg \
       wget \
       gpgconf \
+      libssl-dev \
       software-properties-common \
   && rm -rf /var/lib/apt/lists/*
 
