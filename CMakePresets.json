@@ -54,11 +54,30 @@
       }
     },
     {
-      "name": "ci_build",
-      "inherits": ["kr_auto_checkpoint_veloc", "kdr_release"],
-      "binaryDIr": "/opt/build/kokkos-resilience",
+      "name": "ci",
+      "inherits": ["kr_auto_checkpoint_veloc", "kr_release"],
+      "binaryDir": "/opt/build/kokkos-resilience",
       "cacheVariables": {
         "CMAKE_PREFIX_PATH": "/opt/view"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci",
+      "configurePreset": "ci",
+      "jobs": 4
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci",
+      "configurePreset": "ci",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
       }
     }
   ]
