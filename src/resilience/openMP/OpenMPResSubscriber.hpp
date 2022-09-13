@@ -45,13 +45,9 @@
 #include <Kokkos_Macros.hpp>
 #if defined(KOKKOS_ENABLE_OPENMP)
 
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_CopyViews.hpp>
+#include <Kokkos_Core.hpp>
 #include <omp.h>
 #include <iostream>
-#include <Kokkos_OpenMP.hpp>
-#include <KokkosExp_MDRangePolicy.hpp>
-#include <Kokkos_Parallel.hpp>
 #include <cmath>
 #include <map>
 #include <typeinfo>

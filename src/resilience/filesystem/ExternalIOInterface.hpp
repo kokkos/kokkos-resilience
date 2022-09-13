@@ -48,10 +48,7 @@
 #include <iosfwd>
 #include <typeinfo>
 
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_Concepts.hpp>
-#include <Kokkos_MemoryTraits.hpp>
-#include <impl/Kokkos_SharedAlloc.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -86,7 +83,7 @@ public:
    size_t ReadFile(void * dest, const size_t dest_size) {
       return ReadFile_impl( dest, dest_size );
    }
-   
+
    size_t WriteFile(const void * src, const size_t src_size) {
       return WriteFile_impl( src, src_size );
    }
@@ -96,11 +93,11 @@ public:
    }
 
    virtual size_t ReadFile_impl(void * dest, const size_t dest_size) = 0;
-   
+
    virtual size_t WriteFile_impl(const void * src, const size_t src_size) = 0;
 
    virtual size_t OpenFile_impl() = 0;
-   
+
    virtual ~KokkosIOAccessor() {
    }
 

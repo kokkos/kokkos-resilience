@@ -43,26 +43,18 @@
 #define INC_RESILIENCE_OPENMP_RESOPENMP_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined( KOKKOS_ENABLE_OPENMP ) 
-
-#include <Kokkos_Core_fwd.hpp>
+#if defined( KOKKOS_ENABLE_OPENMP )
 
 #include <cstddef>
 #include <iosfwd>
 
 #include <vector>
 
-#include <Kokkos_ScratchSpace.hpp>
-#include <Kokkos_Parallel.hpp>
-#include <Kokkos_TaskScheduler.hpp>
-#include <Kokkos_Layout.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <impl/Kokkos_InitializationSettings.hpp>
 
 //This space specific
-#include <Kokkos_Serial.hpp>
-#include <Kokkos_OpenMP.hpp> //Kokkos-fork 
-#include <Kokkos_HostSpace.hpp> //Kokkos-fork 
 #include "ResHostSpace.hpp" //Resilient
 
 /*------------------------------------------------------------------------*/
@@ -137,8 +129,8 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
   static constexpr DeviceType id = DeviceType::OpenMP;
   static int device_id(const OpenMP&) {return 0;}
 };
-}  // namespace Experimental 
-}  // namespace Tools 
+}  // namespace Experimental
+}  // namespace Tools
 }  // namespace Kokkos
 
 /*------------------------------------------------------------------------*/
