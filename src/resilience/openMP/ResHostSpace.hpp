@@ -48,15 +48,8 @@
 #include <iosfwd>
 #include <typeinfo>
 
-#include <Kokkos_Core_fwd.hpp>
-
-// Resilience 
-#include <Kokkos_Macros.hpp>
-// Not including KOKKOS_ENABLE_OPENMP because it's host space, may
-// desire it to work with other spaces later.
-
-#include <Kokkos_HostSpace.hpp>
-#include <Kokkos_CudaSpace.hpp>
+// Resilience
+#include <Kokkos_Core.hpp>
 #include <typeinfo>
 #include <map>
 
@@ -67,7 +60,7 @@ namespace KokkosResilience {
 // Resilient HostSpace
 
 // It should function the same as regular host space, except only for
-// OpenMP at the moment. This can be added to at a later time. Inherits 
+// OpenMP at the moment. This can be added to at a later time. Inherits
 // from HostSpace.
 class ResHostSpace : public Kokkos::HostSpace {
   public:
@@ -107,7 +100,7 @@ static_assert(Kokkos::Impl::MemorySpaceAccess<KokkosResilience::ResHostSpace,
 
 /*--------------------------------------*/
 
-// Memory Space Access specializations, from view accessiblity matrix 
+// Memory Space Access specializations, from view accessiblity matrix
 
 template <>
 struct MemorySpaceAccess< KokkosResilience::ResHostSpace, Kokkos::HostSpace > {
@@ -135,7 +128,7 @@ namespace Kokkos {
 
 namespace Impl {
 
-// Template deep copy: ResHost -> ResHost 
+// Template deep copy: ResHost -> ResHost
 template <class ExecutionSpace>
 struct DeepCopy< KokkosResilience::ResHostSpace, KokkosResilience::ResHostSpace, ExecutionSpace>
      : DeepCopy< Kokkos::HostSpace, Kokkos::HostSpace, ExecutionSpace>

@@ -51,15 +51,6 @@
 
 #include <Kokkos_Core.hpp>
 
-#include <impl/Kokkos_Error.hpp>
-#include <impl/Kokkos_CPUDiscovery.hpp>
-#include <impl/Kokkos_Profiling_Interface.hpp>
-
-#include <impl/Kokkos_Traits.hpp>
-#include <Kokkos_UniqueToken.hpp>
-#include <impl/Kokkos_ConcurrentBitset.hpp>
-
-#include <Kokkos_OpenMP.hpp>
 #include "ResOpenMP.hpp"
 
 /*------------------------------------------------------------------------*/
@@ -77,7 +68,7 @@ void ResOpenMP::print_configuration( std::ostream & s , bool ) const
   const bool is_initialized = Kokkos::Impl::t_openmp_instance != nullptr;
 
   if (is_initialized) {
-    
+
     const int numa_count      = 1;
     const int core_per_numa   = Kokkos::Impl::g_openmp_hardware_max_threads;
     const int thread_per_core = 1;
