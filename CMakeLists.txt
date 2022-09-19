@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 project(kokkos-resilience VERSION 0.1.0)
+
+INCLUDE(GNUInstallDirs)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
@@ -9,6 +11,10 @@ add_library(Kokkos::resilience ALIAS resilience)
 # Require C++14
 if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
   target_compile_features(resilience PUBLIC cxx_std_14)
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(resilience PRIVATE "-Werror" "-Wall")
 endif()
 
 target_include_directories(resilience PUBLIC
@@ -22,7 +28,11 @@ find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
+option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
 
+include(CMakeDependentOption)
+
+cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF "KR_ENABLE_VELOC" OFF)
 
 # VeloC backend
 if (KR_ENABLE_VELOC)
@@ -31,9 +41,14 @@ if (KR_ENABLE_VELOC)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
   set(KR_ENABLE_MPI_BACKENDS ON)
 
-  if (VELOC_BAREBONE)
+  if (KR_VELOC_BAREBONE)
     target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
   endif()
+endif()
+
+# StdFile backend
+if (KR_ENABLE_STDFILE)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_STDFILE)
 endif()
 
 if (KR_ENABLE_MPI_BACKENDS)
@@ -50,15 +65,25 @@ option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )
 option( KR_ENABLE_HDF5 "add HDF5 support" OFF )
 option( KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
 
+if (KR_ENABLE_STDIO)
+  set(KR_ENABLE_MANUAL_CHECKPOINT ON)
+endif()
+
 if (KR_ENABLE_HDF5_PARALLEL)
   set(KR_ENABLE_HDF5 ON)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5_PARALLEL)
+  set(KR_ENABLE_MANUAL_CHECKPOINT ON)
 endif()
 
 if (KR_ENABLE_HDF5)
    find_package(HDF5 REQUIRED)
    target_link_libraries(resilience PUBLIC HDF5::HDF5)
    target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5)
+   set(KR_ENABLE_MANUAL_CHECKPOINT ON)
+endif()
+
+if (KR_ENABLE_MANUAL_CHECKPOINT)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_MANUAL_CHECKPOINT)
 endif()
 
 # MPI requirement
@@ -90,37 +115,38 @@ endif()
 include(CMakePackageConfigHelpers)
 configure_package_config_file(cmake/resilienceConfig.cmake.in
                               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
-                              INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake)
+                              INSTALL_DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
                                  COMPATIBILITY SameMajorVersion
                                  )
 
 # Set install rules
 install(TARGETS resilience EXPORT resilienceTargets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         )
 
 install(EXPORT resilienceTargets
         FILE resilienceTargets.cmake
         NAMESPACE Kokkos::
-        DESTINATION share/resilience/cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience
         )
 
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/resilience/cmake )
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience
+        )
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
 
 if (KR_ENABLE_VELOC)
    install(FILES
-        ${CMAKE_MODULE_PATH}/FindVeloC.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
 
    # Need to install/export VeloC find module for downstream dependencies
    configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
@@ -130,7 +156,7 @@ endif()
 if (KR_ENABLE_HDF5)
   install(FILES
           ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/Modules )
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
 
   # Need to install/export HDF5 find module for downstream dependencies
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)

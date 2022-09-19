@@ -6,11 +6,11 @@ find_path(_veloc_root
           )
 
 find_library(_veloc_client_lib
-             NAMES libveloc.a veloc libveloc-client.so
+             NAMES libveloc.a veloc libveloc-client.so libveloc-client.dylib
              HINTS ${_veloc_root}/lib ${_veloc_root}/lib64)
 
 find_library(_veloc_module_lib
-             NAMES libveloc.a veloc libveloc-modules.so
+             NAMES libveloc.a veloc libveloc-modules.so libveloc-modules.dylib
              HINTS ${_veloc_root}/lib ${_veloc_root}/lib64)
 
 find_library(_veloc_axl
@@ -84,7 +84,7 @@ set_target_properties(veloc::veloc PROPERTIES
                       INTERFACE_LINK_LIBRARIES "veloc::veloc_modules;MPI::MPI_CXX"
                       )
 
-if (NOT VELOC_BAREBONE)
+if (NOT KR_VELOC_BAREBONE)
   set_target_properties(veloc::veloc PROPERTIES
                         INTERFACE_LINK_LIBRARIES "veloc::axl;veloc::er;veloc::rankstr"
                         )
