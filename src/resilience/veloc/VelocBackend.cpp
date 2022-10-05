@@ -85,7 +85,7 @@ namespace KokkosResilience
     std::string mode;
     try{
         mode = m_context->config()["backends"]["veloc"]["mode"].as< std::string >();
-    } catch (KokkosResilience::ConfigValueError e){
+    } catch ( ... ){
         //Default value if not specified.
         mode = "global";
     }

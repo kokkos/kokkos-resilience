@@ -114,6 +114,12 @@ class StdFileContext : public ContextBase {
     m_backend.reset();
   }
 
+#ifdef KR_ENABLE_MPI_BACKENDS
+  void reset(MPI_Comm comm) override {
+    m_backend.reset();
+  }
+#endif
+
   void register_alias( const std::string &original, const std::string &alias ) override {
 
   }
