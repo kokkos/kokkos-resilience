@@ -75,7 +75,6 @@ StdFileBackend::~StdFileBackend() = default;
 void StdFileBackend::checkpoint(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ofstream file(filename, std::ios::binary);
@@ -94,7 +93,7 @@ void StdFileBackend::checkpoint(
     write_trace.end();
 #endif
   } catch (...) {
-    status = false;
+      //TODO: error handling
   }
 }
 
@@ -132,7 +131,6 @@ int StdFileBackend::latest_version(const std::string &label) const noexcept {
 void StdFileBackend::restart(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ifstream file(filename, std::ios::binary);
@@ -151,7 +149,7 @@ void StdFileBackend::restart(
     read_trace.end();
 #endif
   } catch (...) {
-    status = false;
+    //TODO: error handling
   }
 }
 }  // namespace KokkosResilience
