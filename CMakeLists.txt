@@ -146,7 +146,7 @@ install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.h
 if (KR_ENABLE_VELOC)
    install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience/Modules )
 
    # Need to install/export VeloC find module for downstream dependencies
    configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
@@ -156,7 +156,7 @@ endif()
 if (KR_ENABLE_HDF5)
   install(FILES
           ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Modules )
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience/Modules )
 
   # Need to install/export HDF5 find module for downstream dependencies
   configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
