@@ -43,24 +43,18 @@
 #define INC_RESILIENCE_OPENMP_RESOPENMP_HPP
 
 #include <Kokkos_Macros.hpp>
-#if defined( KOKKOS_ENABLE_OPENMP ) 
-
-#include <Kokkos_Core_fwd.hpp>
+#if defined( KOKKOS_ENABLE_OPENMP )
 
 #include <cstddef>
 #include <iosfwd>
 
 #include <vector>
 
-#include <Kokkos_ScratchSpace.hpp>
-#include <Kokkos_Parallel.hpp>
-#include <Kokkos_TaskScheduler.hpp>
-#include <Kokkos_Layout.hpp>
+#include <Kokkos_Core.hpp>
+
+#include <impl/Kokkos_InitializationSettings.hpp>
 
 //This space specific
-#include <Kokkos_Serial.hpp>
-#include <Kokkos_OpenMP.hpp> //Kokkos-fork 
-#include <Kokkos_HostSpace.hpp> //Kokkos-fork 
 #include "ResHostSpace.hpp" //Resilient
 
 /*------------------------------------------------------------------------*/
@@ -95,7 +89,7 @@ class ResOpenMP : public Kokkos::OpenMP {
 /*------------------------------------*/
 
     // Print configuration information to the given output stream.
-    static void print_configuration(std::ostream&, const bool verbose = false);
+    void print_configuration(std::ostream& os, bool verbose = false) const;
 
     static const char* name();
 
@@ -125,9 +119,7 @@ struct MemorySpaceAccess
 
 /*------------------------------------------------------------------------*/
 
-// This is the specialization which corrects the profiling error
-// In the future, it should be corrected by a new implementation in main Kokkos
-// which is more general. For now this will suffice.
+// This is the specialization which corrects the profiling error.
 
 namespace Kokkos {
 namespace Tools {
@@ -135,14 +127,15 @@ namespace Experimental {
 template <>
 struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
   static constexpr DeviceType id = DeviceType::OpenMP;
+  static int device_id(const OpenMP&) {return 0;}
 };
-}  // namespace Experimental 
-}  // namespace Tools 
+}  // namespace Experimental
+}  // namespace Tools
 }  // namespace Kokkos
 
 /*------------------------------------------------------------------------*/
 
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
+#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include <OpenMP/Kokkos_OpenMP_Team.hpp>
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
 #include <OpenMP/Kokkos_OpenMP_Task.hpp>
