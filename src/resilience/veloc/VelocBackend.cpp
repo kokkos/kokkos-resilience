@@ -159,7 +159,7 @@ namespace KokkosResilience
       auto test = VELOC_Restart_test(lab.c_str(), 0);
       if(single_mode){
         //In single mode VELOC can't check for global consensus on latest version 
-        MPI_Allreduce(MPI_IN_PLACE, &m_latest_version, 1, MPI_INT, MPI_MIN, m_mpi_comm);
+        MPI_Allreduce(MPI_IN_PLACE, &test, 1, MPI_INT, MPI_MIN, m_mpi_comm);
       }
       m_latest_version[lab] = test;
       return test;
