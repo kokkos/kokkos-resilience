@@ -42,42 +42,33 @@
 #define INC_RESILIENCE_CREF_HPP
 
 #include <vector>
+#include "Registration.hpp"
+#include "AutomaticCheckpoint.hpp"
 
 namespace KokkosResilience
 {
   namespace Detail
   {
-    struct CrefImpl
+    template <typename MemberType>
+    struct Cref
     {
-      CrefImpl( void *p, std::size_t s, std::size_t n, const char *_name )
-          : ptr( p ), sz( s ), num( n ), name( _name )
-      {}
+      Cref(const std::string& name, MemberType& member) : m_name(name), m_member(member) {};
 
-      void *ptr;
-      std::size_t sz;
-      std::size_t num;
-      const char *name;
-    };
-
-    struct Cref : public CrefImpl
-    {
-      using CrefImpl::CrefImpl;
-
-      Cref( const Cref &_other )
-          : CrefImpl( _other.ptr, _other.sz, _other.num, _other.name )
+      Cref( const Cref& _other )
+          : Cref( _other.m_name, _other.m_member)
       {
-        if ( check_ref_list )
-          check_ref_list->emplace_back( ptr, sz, num, name );
+        KokkosResilience::register_member(m_name, m_member);
       }
 
-      static std::vector< CrefImpl > *check_ref_list;
+      const std::string& m_name;
+      MemberType& m_member;
     };
   }
 
-  template< typename T >
-  auto check_ref( T &_t, const char *_str )
+  template< typename MemberType >
+  auto check_ref(std::string name, MemberType& member )
   {
-    return Detail::Cref{ reinterpret_cast< void * >( &_t ), sizeof( T ), 1, _str };
+    return Detail::Cref( name, member);
   }
 }
 

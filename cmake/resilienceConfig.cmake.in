@@ -25,5 +25,10 @@ if (@KR_ENABLE_HDF5@)
    find_dependency(HDF5 REQUIRED)
 endif()
 
+if (@KR_ENABLE_MAGISTRATE@)
+  set(CHECKPOINT_DIR @CHECKPOINT_DIR@)
+   find_dependency(checkpoint REQUIRED)
+endif()
+
 set(Boost_DIR @Boost_DIR@)
 find_dependency(Boost REQUIRED)

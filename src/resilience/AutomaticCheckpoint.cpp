@@ -42,4 +42,13 @@
 
 namespace KokkosResilience
 {
+  namespace Detail
+  {
+    std::vector<KokkosResilience::Registration> members;
+  }
+  
+  void register_member(std::string& name, KokkosResilience::serializer_t& serializer, KokkosResilience::deserializer_t& deserializer)
+  {
+    Detail::members.emplace_back(KokkosResilience::get_registration(name, serializer, deserializer));
+  }
 }
