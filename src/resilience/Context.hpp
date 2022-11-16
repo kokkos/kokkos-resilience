@@ -53,6 +53,7 @@
 #include "Config.hpp"
 #include "Cref.hpp"
 #include "CheckpointFilter.hpp"
+#include "Registration.hpp"
 #include <Kokkos_Core.hpp>
 #include "view_hooks/ViewHolder.hpp"
 #ifdef KR_ENABLE_MPI_BACKENDS
@@ -66,9 +67,6 @@
 
 namespace KokkosResilience
 {
-  namespace detail
-  {
-  }
 
   class ContextBase
   {
@@ -76,18 +74,18 @@ namespace KokkosResilience
 
     explicit ContextBase( Config cfg );
 
-    virtual ~ContextBase() = default;
+    virtual ~ContextBase() {};
 
-    virtual void register_hashes(const std::vector< KokkosResilience::ViewHolder > &views,
-                                 const std::vector< Detail::CrefImpl > &crefs) = 0;
+
+    virtual void register_members(const std::vector< KokkosResilience::Registration > &members) = 0;
     virtual bool restart_available( const std::string &label, int version ) = 0;
     virtual void restart( const std::string &label, int version,
-                          const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
+                          const std::vector< KokkosResilience::Registration > &members ) = 0;
     virtual void checkpoint( const std::string &label, int version,
-                             const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
+                             const std::vector< KokkosResilience::Registration > &members ) = 0;
 
     virtual int latest_version( const std::string &label ) const noexcept = 0;
-    virtual void register_alias( const std::string &original, const std::string &alias ) = 0;
+    virtual void register_alias( const std::string &original, const std::string &alias ) = 0; //TODO: Likely broken with magistrate support changes, double check.
 
     virtual void reset() = 0;
 
@@ -100,7 +98,11 @@ namespace KokkosResilience
     Util::detail::TraceStack  &trace() { return m_trace; };
 #endif
 
+    //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
+    std::vector<char> get_buf(size_t minimum_size);
+
   private:
+    std::vector<char> m_buf = std::vector<char>();
 
     Config m_config;
 

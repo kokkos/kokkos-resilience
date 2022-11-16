@@ -73,4 +73,11 @@ namespace KokkosResilience
     auto cfg = Config{ config };
     return std::unique_ptr< ContextBase >{};
   }
+
+  std::vector<char> ContextBase::get_buf(size_t minimum_size){
+    if(m_buf.size() < minimum_size){
+      m_buf.resize(minimum_size);
+    }
+    return m_buf;
+  }
 }

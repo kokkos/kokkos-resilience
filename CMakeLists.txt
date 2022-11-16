@@ -30,6 +30,8 @@ target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
 
+option(KR_ENABLE_MAGISTRATE "use Magistrate for serializing and deserializing" OFF)
+
 include(CMakeDependentOption)
 
 cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF "KR_ENABLE_VELOC" OFF)
@@ -59,6 +61,12 @@ endif()
 option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
 if (KR_ENABLE_TRACING)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
+endif()
+
+if (KR_ENABLE_MAGISTRATE)
+    find_package(checkpoint REQUIRED)
+    target_link_libraries(resilience PUBLIC vt::lib::checkpoint)
+    target_compile_definitions(resilience PUBLIC KR_ENABLE_MAGISTRATE)
 endif()
 
 option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )

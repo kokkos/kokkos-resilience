@@ -50,8 +50,8 @@
 #include <Kokkos_Core.hpp>
 #include "view_hooks/ViewHolder.hpp"
 #include "view_hooks/DynamicViewHooks.hpp"
+#include "Registration.hpp"
 
-#include "Cref.hpp"
 #include "CheckpointFilter.hpp"
 
 // Tracing support
@@ -60,9 +60,9 @@
 #include <sstream>
 #endif
 
-// Workaround for C++ < 17
+// Workaround for C++ < 17 TODO: broken by magistrate support changes, probably. What does this do?
 #define KR_CHECKPOINT_THIS _kr_self = *this
-#define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref< int >( x, #x )
+#define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref( #x, x )
 
 namespace KokkosResilience
 {
@@ -70,12 +70,13 @@ namespace KokkosResilience
   template< typename Context >
   int latest_version( Context &ctx, const std::string &label )
   {
-
     return ctx.latest_version( label );
   }
 
   namespace Detail
   {
+    extern std::vector<KokkosResilience::Registration> members;
+
     template< typename Context, typename F, typename FilterFunc >
     void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
     {
@@ -95,27 +96,22 @@ namespace KokkosResilience
       if ( filter( iteration ) )
       {
         // Copy the functor, since if it has any views we can turn on view tracking
-        std::vector< KokkosResilience::ViewHolder > views;
+        members.clear();
 
         // Don't do anything with const views since they can never be checkpointed in this context
-        KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const KokkosResilience::ViewHolder &view ) {
-          views.emplace_back( view );
+        KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&ctx]( const KokkosResilience::ViewHolder &view ) {
+                KokkosResilience::Detail::members.emplace_back(KokkosResilience::get_registration(view, ctx));
         } );
 
-        std::vector< Detail::CrefImpl > crefs;
-        Detail::Cref::check_ref_list = &crefs;
-
         fun_type f = fun;
-
-        Detail::Cref::check_ref_list = nullptr;
 
         KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
 
   #ifdef KR_ENABLE_TRACING
         auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
   #endif
-        // Register any views that haven't already been registered
-        ctx.register_hashes( views, crefs );
+        // Register any members that haven't already been registered
+        ctx.register_members( members );
 
   #ifdef KR_ENABLE_TRACING
         reg_hashes.end();
@@ -134,7 +130,7 @@ namespace KokkosResilience
   #ifdef KR_ENABLE_TRACING
           auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
   #endif
-          ctx.restart( label, iteration, views );
+          ctx.restart( label, iteration, members );
         } else
         {
           // Execute functor and checkpoint
@@ -153,9 +149,11 @@ namespace KokkosResilience
   #endif
             auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
             std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
-            ctx.checkpoint( label, iteration, views );
+            ctx.checkpoint( label, iteration, members );
           }
         }
+
+        members.clear();
       } else
       {  // Iteration is filtered, just execute
   #ifdef KR_ENABLE_TRACING
@@ -179,6 +177,13 @@ namespace KokkosResilience
   #endif
     }
   }
+
+  template< typename MemberType >
+  void register_member(const std::string& name, MemberType& member){
+    Detail::members.emplace_back(KokkosResilience::get_registration(name, member));
+  }
+
+  void register_member(std::string& name, KokkosResilience::serializer_t& serializer, KokkosResilience::deserializer_t& deserializer);
 
   template< typename Context, typename F, typename FilterFunc >
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )

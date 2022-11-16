@@ -39,11 +39,8 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 #include "Cref.hpp"
+#include "Registration.hpp"
 
 namespace KokkosResilience
 {
-  namespace Detail
-  {
-    std::vector< CrefImpl > *Cref::check_ref_list = nullptr;
-  }
 }
