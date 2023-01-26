@@ -53,22 +53,22 @@ template< typename ExecSpace >
 class TestVelocMemoryBackend : public ::testing::Test
 {
 public:
-  
+
   using exec_space = ExecSpace;
-  
+
   template< typename Layout, typename Context >
   static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy )
   {
     ctx.backend().reset();
     using memory_space = typename exec_space::memory_space;
     using view_type = KokkosResilience::View< double **, Layout, memory_space >;
-    
+
     auto e = std::default_random_engine( 0 );
     auto ud = std::uniform_real_distribution< double >( -10.0, 10.0 );
-    
+
     view_type main_view( "main_view", dimx, dimy );
     auto host_mirror = Kokkos::create_mirror_view( main_view );
-    
+
     for ( std::size_t x = 0; x < dimx; ++x )
     {
       for ( std::size_t y = 0; y < dimy; ++y )
@@ -76,26 +76,26 @@ public:
         host_mirror( x, y ) = ud( e );
       }
     }
-    
+
     Kokkos::deep_copy( main_view, host_mirror );
-    
+
     Kokkos::fence();
-    
+
     KokkosResilience::remove_all( "data/scratch" );
     KokkosResilience::remove_all( "data/persistent" );
     KokkosResilience::create_directory( "data/scratch" );
     KokkosResilience::create_directory( "data/persistent" );
-    
+
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
-        for ( int j = 0; j < dimy; ++j )
+        for ( std::size_t j = 0; j < dimy; ++j )
           main_view( i, j ) -= 1.0;
       } );
     } );
 
     // Clobber main_view, should be reloaded at checkpoint
     Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
-      for ( int j = 0; j < dimy; ++j )
+      for ( std::size_t j = 0; j < dimy; ++j )
         main_view( i, j ) = 0.0;
     } );
 
@@ -108,18 +108,18 @@ public:
         host_mirror( x, y ) = 0.0;
       }
     }
-    
+
     // The lambda shouldn't be executed, instead recovery should start
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [main_view]() {
       ASSERT_TRUE( false );
     } );
-    
+
     Kokkos::fence();
-    
+
     Kokkos::deep_copy( host_mirror, main_view );
-    
+
     e.seed( 0 );
-    
+
     for ( std::size_t x = 0; x < dimx; ++x )
     {
       for ( std::size_t y = 0; y < dimy; ++y )
@@ -140,7 +140,7 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   cfg["backend"].set( "veloc"s );
   cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
   KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend > ctx( MPI_COMM_WORLD, cfg );
-  
+
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
   {
     for ( std::size_t dimy = 1; dimy < 5; ++dimy )
@@ -149,5 +149,5 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
       TestFixture::template test_layout< Kokkos::LayoutLeft >( ctx, dimx, dimy );
     }
   }
-  
+
 }

@@ -40,6 +40,7 @@
  */
 #include "Config.hpp"
 #include <pico/picojson.h>
+#include <fstream>
 
 namespace KokkosResilience
 {

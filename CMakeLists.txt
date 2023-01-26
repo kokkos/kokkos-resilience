@@ -8,13 +8,20 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
 
-# Require C++14
-if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
-  target_compile_features(resilience PUBLIC cxx_std_14)
+
+option(KR_ALL_WARNINGS "Enable all warnings" ON)
+option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
+
+if (KR_WARNINGS_AS_ERRORS)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(resilience PRIVATE "-Wall")
+  endif()
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(resilience PRIVATE "-Werror" "-Wall")
+if (KR_WARNINGS_AS_ERRORS)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(resilience PRIVATE "-Werror")
+  endif()
 endif()
 
 target_include_directories(resilience PUBLIC
@@ -23,7 +30,12 @@ target_include_directories(resilience PUBLIC
                            $<INSTALL_INTERFACE:include>
                            )
 
-find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
+find_package(Kokkos 4.0 REQUIRED)
+if (Kokkos_CXX_STANDARD LESS 17)
+  message(FATAL_ERROR "Kokkos Resilience requires Kokkos built with C++17 or later")
+endif()
+
+set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
@@ -36,8 +48,8 @@ cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF 
 
 # VeloC backend
 if (KR_ENABLE_VELOC)
-  find_package(VeloC REQUIRED)
-  target_link_libraries(resilience PUBLIC veloc::veloc)
+  find_package(veloc REQUIRED)
+  target_link_libraries(resilience PUBLIC veloc::client)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
   set(KR_ENABLE_MPI_BACKENDS ON)
 
@@ -92,10 +104,9 @@ if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(Boost REQUIRED)
 
 target_link_libraries(resilience PUBLIC Boost::boost)
-target_link_libraries(resilience PRIVATE Boost::filesystem)
 
 add_subdirectory(src)
 
@@ -141,17 +152,6 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
         )
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
-
-
-if (KR_ENABLE_VELOC)
-   install(FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindVeloC.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience/Modules )
-
-   # Need to install/export VeloC find module for downstream dependencies
-   configure_file(cmake/Modules/FindVeloC.cmake Modules/FindVeloC.cmake COPYONLY)
-
-endif()
 
 if (KR_ENABLE_HDF5)
   install(FILES

@@ -38,7 +38,7 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Kokkos_Core.hpp"
+#include <Kokkos_Core.hpp>
 #include "StdFileSpace.hpp"
 #include "sys/stat.h"
 
@@ -60,7 +60,7 @@ namespace KokkosResilience {
 
 
    bool KokkosStdFileAccessor::open_file( int read_write ) {
-      
+
       // printf("open_file: %s, %d\n", file_path.c_str(), read_write );
       if (file_strm.is_open()) {
          printf("file was left open...closing\n");
@@ -110,7 +110,7 @@ namespace KokkosResilience {
       return dataRead;
 
    }
-   
+
    size_t KokkosStdFileAccessor::WriteFile_impl(const void * src, const size_t src_size) {
       size_t m_written = 0;
       char* ptr = (char*)src;
@@ -169,7 +169,7 @@ namespace KokkosResilience {
        }
 
    }
-  
+
    void StdFileSpace::restore_all_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
       Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
@@ -189,7 +189,7 @@ namespace KokkosResilience {
          }
       }
    }
-   
+
    void StdFileSpace::restore_view(const std::string lbl) {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
       Kokkos::Impl::MirrorTracker * pRes = base_record::get_filtered_mirror_entry( (std::string)name(), lbl );
@@ -199,7 +199,7 @@ namespace KokkosResilience {
          delete pRes;
       }
    }
-  
+
    void StdFileSpace::checkpoint_create_view_targets() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
       Kokkos::Impl::MirrorTracker * pList = base_record::get_filtered_mirror_list( (std::string)name() );
@@ -217,7 +217,7 @@ namespace KokkosResilience {
             delete pList->pPrev;
          }
       }
-      
+
    }
    void StdFileSpace::checkpoint_views() {
       typedef Kokkos::Impl::SharedAllocationRecord<void,void> base_record;
@@ -238,14 +238,14 @@ namespace KokkosResilience {
             delete pList->pPrev;
          }
       }
-      
+
    }
    void StdFileSpace::set_default_path( const std::string path ) {
 
       StdFileSpace::s_default_path = path;
 
    }
-  
+
 } // namespace KokkosResilience
 
 

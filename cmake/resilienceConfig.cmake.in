@@ -26,4 +26,4 @@ if (@KR_ENABLE_HDF5@)
 endif()
 
 set(Boost_DIR @Boost_DIR@)
-find_dependency(Boost REQUIRED COMPONENTS filesystem)
+find_dependency(Boost REQUIRED)
