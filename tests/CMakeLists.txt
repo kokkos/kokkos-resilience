@@ -12,7 +12,7 @@ add_executable(resilience_tests
                TestResilience.cpp
                TestLambdaCapture.cpp
                TestHooks.cpp
-		       TestOpenMPResilientExecution.cpp
+           TestOpenMPResilientExecution.cpp
                TestDynamicViewHooks.cpp
                )
 
@@ -39,8 +39,16 @@ if (KR_ENABLE_HDF5)
                  )
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(resilience_tests PRIVATE "-Werror" "-Wall")
+if (KR_WARNINGS_AS_ERRORS)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(resilience_tests PRIVATE "-Wall")
+  endif()
+endif()
+
+if (KR_WARNINGS_AS_ERRORS)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(resilience_tests PRIVATE "-Werror")
+  endif()
 endif()
 
 target_link_libraries(resilience_tests PRIVATE gtest)
