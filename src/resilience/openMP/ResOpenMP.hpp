@@ -81,10 +81,10 @@ class ResOpenMP : public Kokkos::OpenMP {
     ~ResOpenMP() {}
     ResOpenMP();
 
-    ResOpenMP( ResOpenMP && ) = default ;
-    ResOpenMP( const ResOpenMP & ) = default ;
-    ResOpenMP & operator = ( ResOpenMP && ) = default ;
-    ResOpenMP & operator = ( const ResOpenMP & ) = default ;
+    ResOpenMP( ResOpenMP && ) = default;
+    ResOpenMP( const ResOpenMP & ) = default;
+    ResOpenMP & operator = ( ResOpenMP && ) = default;
+    ResOpenMP & operator = ( const ResOpenMP & ) = default;
 
 /*------------------------------------*/
 
