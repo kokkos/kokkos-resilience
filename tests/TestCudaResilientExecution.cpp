@@ -44,8 +44,8 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Core_fwd.hpp>
 #include "resilience/Resilience.hpp"
-#include "resilience/Cuda/ResCudaSpace.hpp"
-#include "resilience/Cuda/ResCuda.hpp"
+#include "resilience/cuda/ResCudaSpace.hpp"
+#include "resilience/cuda/ResCuda.hpp"
 
 #include <thread>
 #include <vector>

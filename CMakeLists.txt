@@ -14,7 +14,7 @@ if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(resilience PRIVATE "-Werror" "-Wall")
+  target_compile_options(resilience PRIVATE "-Wall")
 endif()
 
 target_include_directories(resilience PUBLIC

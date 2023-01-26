@@ -48,7 +48,7 @@ namespace KokkosResilience {
 
       std::string sFullPath = default_;
       size_t pos = path.find("/");
-      if ( pos >= 0 && pos < path.length() ) {    // only use the default if there is no path info in the path...
+      if ( pos < path.length() ) {    // only use the default if there is no path info in the path...
          sFullPath = path;
       } else {
          size_t posII = sFullPath.rfind("/");

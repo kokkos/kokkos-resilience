@@ -59,7 +59,7 @@
 #ifdef KR_ENABLE_CUDA
    #include "cuda/ResCuda.hpp"
    #include "cuda/ResCudaSpace.hpp"
-   #include "cuda/CudaResParallel.hpp"
+//   #include "cuda/CudaResParallel.hpp"
 #endif
 
 

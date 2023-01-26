@@ -49,8 +49,7 @@
 #include <typeinfo>
 
 #include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_Concepts.hpp>
-#include <Kokkos_MemoryTraits.hpp>
+#include <Kokkos_Core.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
 
 #include <boost/property_tree/ptree.hpp>
