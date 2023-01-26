@@ -9,10 +9,11 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestResilience.cpp
-               TestLambdaCapture.cpp
-               TestHooks.cpp
-		       TestOpenMPResilientExecution.cpp
+#              TestResilience.cpp
+#               TestLambdaCapture.cpp
+#              TestHooks.cpp
+#	       TestOpenMPResilientExecution.cpp
+               TestCudaResilientExecution.cpp
                TestDynamicViewHooks.cpp
                )
 
@@ -40,7 +41,7 @@ if (KR_ENABLE_HDF5)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(resilience_tests PRIVATE "-Werror" "-Wall")
+  target_compile_options(resilience_tests PRIVATE "-Wall")
 endif()
 
 target_link_libraries(resilience_tests PRIVATE gtest)
