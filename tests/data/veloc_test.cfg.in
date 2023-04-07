@@ -1,0 +1,3 @@
+scratch = @KR_TEST_DATADIR@/scratch
+persistent = @KR_TEST_DATADIR@/persistent
+mode = sync

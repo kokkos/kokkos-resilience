@@ -81,10 +81,10 @@ public:
 
     Kokkos::fence();
 
-    KokkosResilience::remove_all( "data/scratch" );
-    KokkosResilience::remove_all( "data/persistent" );
-    KokkosResilience::create_directory( "data/scratch" );
-    KokkosResilience::create_directory( "data/persistent" );
+    KokkosResilience::remove_all( KR_TEST_DATADIR "/scratch" );
+    KokkosResilience::remove_all( KR_TEST_DATADIR "/persistent" );
+    KokkosResilience::create_directory( KR_TEST_DATADIR "/scratch" );
+    KokkosResilience::create_directory( KR_TEST_DATADIR "/persistent" );
 
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
@@ -138,7 +138,7 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   using namespace std::string_literals;
   KokkosResilience::Config cfg;
   cfg["backend"].set( "veloc"s );
-  cfg["backends"]["veloc"]["config"].set( "data/veloc_test.cfg"s );
+  cfg["backends"]["veloc"]["config"].set( KR_TEST_DATADIR "/veloc_test.cfg" );
   KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend > ctx( MPI_COMM_WORLD, cfg );
 
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
