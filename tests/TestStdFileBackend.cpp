@@ -65,7 +65,7 @@ public:
     auto e = std::default_random_engine( 0 );
     auto ud = std::uniform_real_distribution< double >( -10.0, 10.0 );
 
-    using view_type = KokkosResilience::View< double **, Layout, memory_space, Kokkos::Experimental::SubscribableViewHooks< KokkosResilience::DynamicViewHooksSubscriber > >;
+    using view_type = KokkosResilience::View< double **, Layout, memory_space >;
 
     view_type main_view( "main_view", dimx, dimy );
     auto host_mirror = Kokkos::create_mirror_view( main_view );
@@ -138,7 +138,7 @@ TYPED_TEST( TestStdFileBackend, veloc_mem )
   KokkosResilience::Config cfg;
   cfg["backend"].set( "stdfile"s );
   //cfg["backends"]["stdfile"]["config"].set( KR_TEST_DATADIR "/stdfile_test.cfg"s );
-  KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend > ctx( KR_TEST_DATADIR "stdfile/stdfile_test"s, cfg );
+  KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend > ctx( KR_TEST_DATADIR "/stdfile/stdfile_test"s, cfg );
 
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
   {
