@@ -53,7 +53,7 @@ namespace KokkosResilience
 
     if ( filter_opt )
     {
-      auto &filter = filter_opt.get();
+      auto &filter = *filter_opt;
       if ( filter["type"].as< std::string >() == "time" )
       {
         m_default_filter = Filter::TimeFilter( std::chrono::seconds{ static_cast< long >( filter["interval"].as< double >() ) } );
