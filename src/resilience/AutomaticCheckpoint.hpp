@@ -79,8 +79,6 @@ namespace KokkosResilience
     template< typename Context, typename F, typename FilterFunc >
     void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
     {
-  #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
-
       // Trace if enabled
   #ifdef KR_ENABLE_TRACING
       std::ostringstream oss;
@@ -156,8 +154,7 @@ namespace KokkosResilience
             ctx.checkpoint( label, iteration, views );
           }
         }
-      } else
-      {  // Iteration is filtered, just execute
+      } else {  // Iteration is filtered, just execute
   #ifdef KR_ENABLE_TRACING
         overhead_trace.end();
         auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
@@ -168,15 +165,6 @@ namespace KokkosResilience
         function_trace.end();
   #endif
       }
-  #else
-  #ifdef KR_ENABLE_TRACING
-      auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( "function" );
-  #endif
-    fun();
-  #ifdef KR_ENABLE_TRACING
-      function_trace.end();
-  #endif
-  #endif
     }
   }
 
