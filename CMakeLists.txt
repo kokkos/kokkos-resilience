@@ -12,7 +12,7 @@ add_library(Kokkos::resilience ALIAS resilience)
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
 option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
 
-if (KR_WARNINGS_AS_ERRORS)
+if (KR_ALL_WARNINGS)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(resilience PRIVATE "-Wall")
   endif()
@@ -31,9 +31,6 @@ target_include_directories(resilience PUBLIC
                            )
 
 find_package(Kokkos 4.0 REQUIRED)
-if (Kokkos_CXX_STANDARD LESS 17)
-  message(FATAL_ERROR "Kokkos Resilience requires Kokkos built with C++17 or later")
-endif()
 
 set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 
