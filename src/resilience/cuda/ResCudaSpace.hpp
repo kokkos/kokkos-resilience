@@ -47,6 +47,8 @@
 
 #include <Kokkos_Core.hpp> //to fix header inclusion errors later
 
+//#include "ResCuda.hpp"
+
 #include <iosfwd>
 #include <typeinfo>
 #include <string>
@@ -64,6 +66,16 @@ extern "C" void kokkos_impl_cuda_set_pin_uvm_to_host(bool);
 #endif
 
 /*--------------------------------------------------------------------------*/
+/*
+namespace Kokkos {
+namespace Impl {
+
+//TODO::Need this for deepcopy memspace now?
+template <>
+struct is_cuda_type_space<KokkosResilience::ResCudaSpace> : public std::false_type {};
+
+}
+}*/
 
 namespace KokkosResilience {
 
@@ -77,9 +89,8 @@ class ResCudaSpace : public Kokkos::CudaSpace {
   using base_space      = Kokkos::CudaSpace;    // Parent space derived from
   using memory_space    = ResCudaSpace; // Tag class as Kokkos memory space
   using size_type       = unsigned int; // Preferred size (note: not size_t)
-  using execution_space = KokkosResilience::ResCuda; // Preferred execution space
+  using execution_space = ResCuda; // Preferred execution space
   using resilient_space = ResCudaSpace; // resilient tag
-
   using device_type     = Kokkos::Device<execution_space, memory_space>;
 
   // Parent class constructors
@@ -113,15 +124,15 @@ struct MemorySpaceAccess< KokkosResilience::ResCudaSpace, KokkosResilience::ResC
 
 template <>
 struct MemorySpaceAccess< KokkosResilience::ResCudaSpace, Kokkos::HostSpace > {
-  enum { assignable = true };
-  enum { accessible = true };
+  enum { assignable = false };
+  enum { accessible = false };
   enum { deepcopy   = true };
 };
 
 template <>
 struct MemorySpaceAccess< Kokkos::HostSpace, KokkosResilience::ResCudaSpace > {
-  enum { assignable = true };
-  enum { accessible = true };
+  enum { assignable = false };
+  enum { accessible = false };
   enum { deepcopy   = true };
 };
 
@@ -169,10 +180,7 @@ static_assert(Kokkos::Impl::MemorySpaceAccess<KokkosResilience::ResCudaSpace,
 // TODO: Ask about templating in Kokkos cuda space, design of ResCudaSpace??
 // Implications for design of ResHostSpace?
 
-
-
 namespace Kokkos {
-
 namespace Impl {
 
 //! Specialize this trait to control the behavior of deep_copy in CudaSpace
@@ -192,6 +200,12 @@ struct is_res_cuda_type_space : std::false_type {};
 // specialization for ResCudaSpace
 template <>
 struct is_res_cuda_type_space<KokkosResilience::ResCudaSpace> : std::true_type {};
+
+
+//TODO::Need this for deepcopy memspace now?
+template <>
+struct is_cuda_type_space<KokkosResilience::ResCudaSpace> : public std::true_type {};
+
 
 // DeepCopy (dest, src)
 
@@ -238,16 +252,18 @@ class SharedAllocationRecord< KokkosResilience::ResCudaSpace , void >
 {
 private:
   friend class SharedAllocationRecord< Kokkos::CudaSpace , void >;
+  // Cuda specific
   friend class HostInaccessibleSharedAllocationRecordCommon<Kokkos::CudaSpace>;
 
   SharedAllocationRecord( const SharedAllocationRecord & ) = delete;
   SharedAllocationRecord & operator = ( const SharedAllocationRecord & ) = delete;
 
   using RecordBase = SharedAllocationRecord< void , void >;
+  // Cuda specific
   using base_t = HostInaccessibleSharedAllocationRecordCommon<Kokkos::CudaSpace>;
 
  protected:
-  ~SharedAllocationRecord(); // ... one more time about inheriting destructors fine point?
+//  ~SharedAllocationRecord(); // ... one more time about inheriting destructors fine point?
   SharedAllocationRecord() = default;
 
 // NOTE! This is based on Damien's fix in OMP, note in Cuda space the execution space differences

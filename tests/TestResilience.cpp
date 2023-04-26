@@ -45,7 +45,7 @@
 #include <resilience/cuda/ResCudaSpace.hpp>
 #include <resilience/cuda/ResCuda.hpp>
 
-#ifdef KOKKOS_ENABLE_CUDA
+#ifdef KR_ENABLE_CUDA
 
 template< typename ExecSpace >
 class TestResilience : public ::testing::Test

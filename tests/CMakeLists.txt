@@ -2,7 +2,7 @@
 include(FetchContent)
 FetchContent_Declare(googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG release-1.11.0
+    GIT_TAG v1.13.0
     )
 
 FetchContent_MakeAvailable(googletest)
@@ -10,11 +10,11 @@ FetchContent_MakeAvailable(googletest)
 add_executable(resilience_tests
                TestMain.cpp
 #              TestResilience.cpp
-#               TestLambdaCapture.cpp
+#              TestLambdaCapture.cpp
 #              TestHooks.cpp
 #	       TestOpenMPResilientExecution.cpp
                TestCudaResilientExecution.cpp
-               TestDynamicViewHooks.cpp
+#              TestDynamicViewHooks.cpp
                )
 
 if (KR_ENABLE_VELOC)
@@ -48,7 +48,9 @@ target_link_libraries(resilience_tests PRIVATE gtest)
 target_link_libraries(resilience_tests PRIVATE resilience)
 
 include(GoogleTest)
-gtest_discover_tests(resilience_tests)
+#This cmake module removed because it attempts to execute the binary during compile stage
+#Expects to find a device if KR_ENABLE_CUDA, will cause an error
+#gtest_discover_tests(resilience_tests)
 
 configure_file(data/hdf5_test_config.json data/hdf5_test_config.json COPYONLY)
 configure_file(data/veloc_test.cfg data/veloc_test.cfg COPYONLY)

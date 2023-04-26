@@ -105,7 +105,7 @@ export(TARGETS resilience
        FILE resilienceTargets.cmake
        )
 
-if (Kokkos_ENABLE_Cuda)
+if (KR_ENABLE_CUDA)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 

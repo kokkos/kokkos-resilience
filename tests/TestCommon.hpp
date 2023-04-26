@@ -62,7 +62,7 @@ namespace detail
 #ifdef KOKKOS_ENABLE_OPENMP
     , Kokkos::OpenMP
 #endif
-#ifdef KOKKOS_ENABLE_CUDA
+#ifdef KR_ENABLE_CUDA
     , Kokkos::Cuda
 #endif
 #ifdef KOKKOS_ENABLE_HPX

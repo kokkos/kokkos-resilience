@@ -42,6 +42,9 @@
 #include <gtest/gtest.h>
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
+#include <cstdio>
+#include <string>
+#include <cstdlib>
 
 int
 main( int argc, char **argv )
@@ -50,7 +53,7 @@ main( int argc, char **argv )
 #if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC)
   MPI_Init( &argc, &argv );
 #endif
-  
+
   Kokkos::initialize( argc, argv );
   
   auto ret = RUN_ALL_TESTS();

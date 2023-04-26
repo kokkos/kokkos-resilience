@@ -63,7 +63,7 @@ class ResCuda : public Kokkos::Cuda {
   using execution_space      = ResCuda;          // Tag class as Kokkos execution space
 
 #if defined(KOKKOS_ENABLE_CUDA_UVM)
-  using memory_space         = CudaUVMSpace;  // Preferred memory space UVM if enabled
+  using memory_space         = Kokkos::CudaUVMSpace;  // Preferred memory space UVM if enabled
 #else
   using memory_space         = ResCudaSpace;     // Preferred memory space
 #endif
@@ -90,10 +90,10 @@ class ResCuda : public Kokkos::Cuda {
 
   ResCuda(cudaStream_t stream, bool manage_stream = false);
 
-  ResCuda( ResCuda && ) = default ;
-  ResCuda( const ResCuda & ) = default ;
-  ResCuda & operator = ( ResCuda && ) = default ;
-  ResCuda & operator = ( const ResCuda & ) = default ;
+  ResCuda( ResCuda && ) = default;
+  ResCuda( const ResCuda & ) = default;
+  ResCuda & operator = ( ResCuda && ) = default;
+  ResCuda & operator = ( const ResCuda & ) = default;
 
 /*------------------------------------------------------------------------*/
   static const char* name();
