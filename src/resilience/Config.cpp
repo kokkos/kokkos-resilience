@@ -70,6 +70,10 @@ namespace KokkosResilience
   {
     std::ifstream instrm{ p.string() };
 
+    if(!instrm.is_open() || !instrm.good()){
+      throw ConfigFileError(p.string());
+    }
+
     using iter_type = std::istream_iterator< char >;
 
     iter_type input( instrm );

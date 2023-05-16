@@ -38,28 +38,34 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "StdFileContext.hpp"
-#include "stdfile/StdFileBackend.hpp"
 
-#include <functional>
-#include <memory>
-#include <string>
+#include "MPIContext.hpp"
+
+#ifdef KR_ENABLE_VELOC
+#include "resilience/veloc/VelocBackend.hpp"
+#endif
+
 #include <unordered_map>
+#include <functional>
 
 namespace KokkosResilience {
-std::unique_ptr<ContextBase> make_context(const std::string& filename,
-                                          const std::string& config) {
-  auto cfg = Config{config};
+std::unique_ptr< ContextBase >
+make_context( MPI_Comm comm, const std::string &config )
+{
+  auto cfg = Config{ config };
 
-  using fun_type = std::function<std::unique_ptr<ContextBase>()>;
-  static std::unordered_map<std::string, fun_type> backends = {
-      {"stdfile", [&]() {
-         return std::make_unique<StdFileContext<StdFileBackend> >(filename, cfg);
-       }}};
+  using fun_type = std::function< std::unique_ptr< ContextBase >() >;
+  static std::unordered_map< std::string, fun_type > backends = {
+#ifdef KR_ENABLE_VELOC
+      { "veloc", [&](){ return std::make_unique< MPIContext< VeloCMemoryBackend > >( comm, cfg ); } },
+      { "veloc-noop", [&](){ return std::make_unique< MPIContext< VeloCRegisterOnlyBackend > >( comm, cfg ); } }
+#endif
+  };
 
-  auto pos = backends.find(cfg["backend"].as<std::string>());
-  if (pos == backends.end()) return std::unique_ptr<ContextBase>{};
+  auto pos = backends.find( cfg["backend"].as< std::string >() );
+  if ( pos == backends.end() )
+    return std::unique_ptr< ContextBase >{};
 
   return pos->second();
 }
-}  // namespace KokkosResilience
+}

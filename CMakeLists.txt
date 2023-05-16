@@ -37,7 +37,7 @@ set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
-option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
+option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" OFF)
 
 option(KR_ENABLE_MAGISTRATE "use Magistrate for serializing and deserializing" OFF)
 

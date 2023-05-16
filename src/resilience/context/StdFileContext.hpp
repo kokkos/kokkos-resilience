@@ -38,35 +38,31 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_KOKKOS_RESILIENCE_MPICONTEXT_HPP
-#define INC_KOKKOS_RESILIENCE_MPICONTEXT_HPP
+#ifndef INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#define INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
 
-#include <mpi.h>
-#include "Context.hpp"
+#include "ContextBase.hpp"
+
+#include <string>
 
 namespace KokkosResilience {
 
 template <typename Backend>
-class MPIContext : public ContextBase {
-public:
- explicit MPIContext(MPI_Comm comm, Config &cfg)
-     : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
+class StdFileContext : public ContextBase {
+ public:
+  explicit StdFileContext(std::string const &filename, Config &cfg)
+      : ContextBase(cfg), m_filename(filename), m_backend(*this, filename) {}
 
- MPIContext(const MPIContext &)     = delete;
- MPIContext(MPIContext &&) noexcept = default;
+  StdFileContext(const StdFileContext &) = delete;
+  StdFileContext(StdFileContext &&)      = default;
 
- MPIContext &operator=(const MPIContext &) = delete;
- MPIContext &operator=(MPIContext &&) noexcept = default;
+  StdFileContext &operator=(const StdFileContext &) = delete;
+  StdFileContext &operator=(StdFileContext &&) = default;
 
- virtual ~MPIContext() {
+  virtual ~StdFileContext() {
 #ifdef KR_ENABLE_TRACING
-    int rank = -1;
-    MPI_Comm_rank(m_comm, &rank);
-    int size = -1;
-    MPI_Comm_size(m_comm, &size);
-
     std::ostringstream fname;
-    fname << "trace" << rank << ".json";
+    fname << "trace.json";
 
     std::ofstream out(fname.str());
 
@@ -76,21 +72,22 @@ public:
 
     // Metafile
     picojson::object root;
-    root["num_ranks"] = picojson::value(static_cast<double>(size));
+    root["num_ranks"] = picojson::value( 1.0 );
 
     std::ofstream meta_out("meta.json");
     picojson::value(root).serialize(std::ostream_iterator<char>(meta_out),
                                     true);
 #endif
- }
+  }
 
-  MPI_Comm comm() const noexcept { return m_comm; }
+  std::string const &filename() const noexcept { return m_filename; }
 
   Backend &backend() { return m_backend; }
 
-  void register_members(
-      const std::vector<KokkosResilience::Registration> &members) override {
-    m_backend.register_members(members);
+  void register_hashes(
+      const std::vector< KokkosResilience::ViewHolder > &views,
+      const std::vector<Detail::CrefImpl> &crefs) override {
+    m_backend.register_hashes(views, crefs);
   }
 
   bool restart_available(const std::string &label, int version) override {
@@ -98,32 +95,34 @@ public:
   }
 
   void restart(const std::string &label, int version,
-               const std::vector<KokkosResilience::Registration>
-                   &members) override {
-    m_backend.restart(label, version, members);
+               const std::vector< KokkosResilience::ViewHolder >
+                   &views) override {
+    m_backend.restart(label, version, views);
   }
 
   void checkpoint(const std::string &label, int version,
-                  const std::vector<KokkosResilience::Registration>
-                      &members) override {
-    m_backend.checkpoint(label, version, members);
+                  const std::vector< KokkosResilience::ViewHolder >
+                      &views) override {
+    m_backend.checkpoint(label, version, views);
   }
 
   int latest_version(const std::string &label) const noexcept override {
     return m_backend.latest_version(label);
   }
 
-  void register_alias( const std::string &original, const std::string &alias ) override {
-    return m_backend.register_alias( original, alias );
+  void reset() override {
+    m_backend.reset();
   }
 
-  void reset() override { m_backend.reset(); }
+  void register_alias( const std::string &original, const std::string &alias ) override {
 
-private:
-  MPI_Comm m_comm;
+  }
+
+ private:
+  std::string m_filename;
   Backend m_backend;
 };
 
-} // namespace KokkosResilience
+}  // namespace KokkosResilience
 
-#endif // INC_KOKKOS_RESILIENCE_MPICONTEXT_HPP
+#endif  // INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP

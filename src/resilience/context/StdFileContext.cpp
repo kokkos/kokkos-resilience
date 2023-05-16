@@ -38,46 +38,28 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Context.hpp"
-#include <fstream>
-#include <chrono>
-#include <stdexcept>
+#include "StdFileContext.hpp"
+#include "resilience/stdfile/StdFileBackend.hpp"
 
-namespace KokkosResilience
-{
-  ContextBase::ContextBase( Config cfg )
-      : m_config( std::move( cfg ) ),
-        m_default_filter{ Filter::DefaultFilter{} }
-  {
-    auto filter_opt = m_config.get( "filter" );
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
-    if ( filter_opt )
-    {
-      auto &filter = *filter_opt;
-      if ( filter["type"].as< std::string >() == "time" )
-      {
-        m_default_filter = Filter::TimeFilter( std::chrono::seconds{ static_cast< long >( filter["interval"].as< double >() ) } );
-      } else if ( filter["type"].as< std::string >() == "iteration" ) {
-        m_default_filter = Filter::NthIterationFilter( static_cast< int >( filter["interval"].as< double >() ) );
-      } else if ( filter["type"].as< std::string >() == "default") {
-        m_default_filter = Filter::DefaultFilter{};
-      } else {
-        throw std::runtime_error( "invalid filter specified" );
-      }
-    }
-  }
+namespace KokkosResilience {
+std::unique_ptr<ContextBase> make_context(const std::string& filename,
+                                          const std::string& config) {
+  auto cfg = Config{config};
 
-  std::unique_ptr< ContextBase >
-  make_context( const std::string &config )
-  {
-    auto cfg = Config{ config };
-    return std::unique_ptr< ContextBase >{};
-  }
+  using fun_type = std::function<std::unique_ptr<ContextBase>()>;
+  static std::unordered_map<std::string, fun_type> backends = {
+      {"stdfile", [&]() {
+         return std::make_unique<StdFileContext<StdFileBackend> >(filename, cfg);
+       }}};
 
-  std::vector<char> ContextBase::get_buf(size_t minimum_size){
-    if(m_buf.size() < minimum_size){
-      m_buf.resize(minimum_size);
-    }
-    return m_buf;
-  }
+  auto pos = backends.find(cfg["backend"].as<std::string>());
+  if (pos == backends.end()) return std::unique_ptr<ContextBase>{};
+
+  return pos->second();
 }
+}  // namespace KokkosResilience
