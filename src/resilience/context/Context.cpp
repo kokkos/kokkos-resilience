@@ -38,31 +38,48 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "MPIContext.hpp"
-#ifdef KR_ENABLE_VELOC
-#include "veloc/VelocBackend.hpp"
-#endif
-#include <unordered_map>
-#include <functional>
+#include "Context.hpp"
+#include <fstream>
+#include <chrono>
+#include <stdexcept>
 
-namespace KokkosResilience {
-std::unique_ptr< ContextBase >
-make_context( MPI_Comm comm, const std::string &config )
+namespace KokkosResilience
 {
-  auto cfg = Config{ config };
+  ContextBase::ContextBase( Config cfg )
+      : m_config( std::move( cfg ) ),
+        m_default_filter{ Filter::DefaultFilter{} }
+  {
+    auto filter_opt = m_config.get( "filter" );
 
-  using fun_type = std::function< std::unique_ptr< ContextBase >() >;
-  static std::unordered_map< std::string, fun_type > backends = {
-#ifdef KR_ENABLE_VELOC
-      { "veloc", [&](){ return std::make_unique< MPIContext< VeloCMemoryBackend > >( comm, cfg ); } },
-      { "veloc-noop", [&](){ return std::make_unique< MPIContext< VeloCRegisterOnlyBackend > >( comm, cfg ); } }
-#endif
-  };
+    if ( filter_opt )
+    {
+      auto &filter = filter_opt.get();
+      if ( filter["type"].as< std::string >() == "time" )
+      {
+        m_default_filter = Filter::TimeFilter( std::chrono::seconds{ static_cast< long >( filter["interval"].as< double >() ) } );
+      } else if ( filter["type"].as< std::string >() == "iteration" ) {
+        m_default_filter = Filter::NthIterationFilter( static_cast< int >( filter["interval"].as< double >() ) );
+      } else if ( filter["type"].as< std::string >() == "default") {
+        m_default_filter = Filter::DefaultFilter{};
+      } else {
+        throw std::runtime_error( "invalid filter specified" );
+      }
+    }
+  }
 
-  auto pos = backends.find( cfg["backend"].as< std::string >() );
-  if ( pos == backends.end() )
+  ContextBase* ContextBase::active_context = nullptr;
+
+  std::unique_ptr< ContextBase >
+  make_context( const std::string &config )
+  {
+    auto cfg = Config{ config };
     return std::unique_ptr< ContextBase >{};
+  }
 
-  return pos->second();
-}
+  char* ContextBase::get_buffer(size_t minimum_size){
+    if(buffer.size() < minimum_size){
+      buffer.resize(minimum_size);
+    }
+    return buffer.data();
+  }
 }

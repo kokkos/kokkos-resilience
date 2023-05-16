@@ -38,38 +38,34 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_CREF_HPP
-#define INC_RESILIENCE_CREF_HPP
 
-#include <vector>
-#include "Registration.hpp"
-#include "AutomaticCheckpoint.hpp"
+#ifndef INC_RESILIENCE_CONTEXT_HPP
+#define INC_RESILIENCE_CONTEXT_HPP
 
-namespace KokkosResilience
-{
-  namespace Detail
-  {
-    template <typename MemberType>
-    struct Cref
-    {
-      Cref(const std::string& name, MemberType& member) : m_name(name), m_member(member) {};
+#include "resilience/registration/Registration.hpp"
 
-      Cref( const Cref& _other )
-          : Cref( _other.m_name, _other.m_member)
-      {
-        KokkosResilience::register_member(m_name, m_member);
-      }
+#include "ContextBase.hpp"
 
-      const std::string& m_name;
-      MemberType& m_member;
-    };
-  }
+#ifdef KR_ENABLE_STDFILE
+  #include "StdFileContext.hpp"
+#endif
 
-  template< typename MemberType >
-  auto check_ref(std::string name, MemberType& member )
-  {
-    return Detail::Cref( name, member);
-  }
+#ifdef KR_ENABLE_MPI_BACKENDS
+  #include <mpi.h>
+  #include "MPIContext.hpp"
+#endif
+
+namespace KokkosResilience {  
+  std::unique_ptr< ContextBase > make_context( const std::string &config );
+#ifdef KR_ENABLE_MPI_BACKENDS
+  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
+#endif
+#ifdef KR_ENABLE_STDFILE
+  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
+#endif
 }
 
-#endif  // INC_RESILIENCE_CREF_HPP
+
+#include "resilience/registration/Registration.impl.hpp"
+
+#endif  // INC_RESILIENCE_CONTEXT_HPP

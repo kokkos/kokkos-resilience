@@ -67,6 +67,13 @@ namespace KokkosResilience
     {}
   };
 
+  struct ConfigFileError : std::runtime_error
+  {
+    ConfigFileError(const std::string& filename)
+        : std::runtime_error( "error opening file: " + filename )
+    {}
+  };
+
   class Config
   {
   public:

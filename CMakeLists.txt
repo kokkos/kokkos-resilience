@@ -8,9 +8,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
 
-# Require C++14
+# Require C++17
 if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
-  target_compile_features(resilience PUBLIC cxx_std_14)
+  target_compile_features(resilience PUBLIC cxx_std_17)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -28,7 +28,7 @@ find_package(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
-option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
+option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" OFF)
 
 option(KR_ENABLE_MAGISTRATE "use Magistrate for serializing and deserializing" OFF)
 

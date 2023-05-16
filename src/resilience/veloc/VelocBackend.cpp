@@ -38,6 +38,7 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+
 #include "VelocBackend.hpp"
 
 #include <sstream>
@@ -45,7 +46,6 @@
 #include <veloc.h>
 #include <cassert>
 
-#include "../MPIContext.hpp"
 #include "../AutomaticCheckpoint.hpp"
 
 #ifdef KR_ENABLE_TRACING
@@ -90,7 +90,7 @@ namespace KokkosResilience
   }
   
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       std::vector< KokkosResilience::Registration > const &_members )
+                                       std::set< KokkosResilience::Registration > const &_members )
   {
     bool status = true;
     
@@ -106,7 +106,7 @@ namespace KokkosResilience
         fprintf(stderr, "KokkosResilience WARNING: Skipping attempt to checkpoint an unregistered member: \"%s\"\n", member->name.c_str());
         continue;
       }
-      ids.insert(static_cast<int>(std::hash<KokkosResilience::Registration>()(member)));
+      ids.insert(static_cast<int>(member.hash()));
     }
 
     VELOC_SAFE_CALL( veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids) );
@@ -139,7 +139,7 @@ namespace KokkosResilience
   
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< KokkosResilience::Registration > &_members )
+    const std::set< KokkosResilience::Registration > &_members )
   {
     VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
     
@@ -148,13 +148,8 @@ namespace KokkosResilience
     //checkpoint only unique IDs already registered.
     std::set<int> ids;
     for ( auto member : _members ){
-      if(m_registry.find(member) == m_registry.end()){
-        //Throw error?
-        fprintf(stderr, "KokkosResilience WARNING: Skipping attempt to checkpoint an unregistered member: \"%s\"\n", member->name.c_str());
-        continue;
-      }
-      ids.insert(static_cast<int>(std::hash<KokkosResilience::Registration>()(member)));
-fprintf(stderr, "Attempting to recover member %s with id %d\n", member->name.c_str(), static_cast<int>(std::hash<KokkosResilience::Registration>()(member)));
+      ids.insert(static_cast<int>(member.hash()));
+fprintf(stderr, "Attempting to recover member %s with id %d\n", member->name.c_str(), static_cast<int>(member.hash()));
     }
 
     VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
@@ -167,7 +162,7 @@ fprintf(stderr, "Attempting to recover member %s with id %d\n", member->name.c_s
   {
     for ( auto &&member : m_registry )
     {
-      veloc_client->mem_unprotect( static_cast<int>(std::hash<KokkosResilience::Registration>()(member)) );
+      veloc_client->mem_unprotect( static_cast<int>(member.hash()) );
     }
 
     m_registry.clear();
@@ -177,25 +172,22 @@ fprintf(stderr, "Attempting to recover member %s with id %d\n", member->name.c_s
   }
   
   void
-  VeloCMemoryBackend::register_members( const std::vector< KokkosResilience::Registration > &members)
+  VeloCMemoryBackend::register_member(KokkosResilience::Registration &member)
   {
-    for (auto &&member : members)
-    {
-      auto entry = m_registry.insert(member);
-      
-      if(!entry.second){
-        //Did not insert, already in the set. So don't double mem_protect unless var location has changed
-        if((*entry.first)->is_same_reference(member)){
-            continue;
-        }
-        
-        //Replace in set.
-        m_registry.erase(entry.first);
-        m_registry.insert(member);
+    auto entry = m_registry.insert(member);
+    
+    if(!entry.second){
+      //Did not insert, already in the set. So don't double mem_protect unless var location has changed
+      if((*entry.first)->is_same_reference(member)){
+          return;
       }
-fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.second ? "Register" : "Re-register", member->name.c_str(), static_cast<int>(std::hash<KokkosResilience::Registration>()(member)), m_registry.size());
-      VELOC_SAFE_CALL( veloc_client->mem_protect( static_cast<int>(std::hash<KokkosResilience::Registration>()(member)), member->serializer(), member->deserializer() ) );
+      
+      //Replace in set.
+      m_registry.erase(entry.first);
+      m_registry.insert(member);
     }
+fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.second ? "Register" : "Re-register", member->name.c_str(), static_cast<int>(member.hash()), m_registry.size());
+    VELOC_SAFE_CALL( veloc_client->mem_protect( static_cast<int>(member.hash()), member->serializer(), member->deserializer() ) );
   }
 
   void
@@ -218,13 +210,13 @@ fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.secon
   }
 
   void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<KokkosResilience::Registration> &members )
+  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::set<KokkosResilience::Registration> &members )
   {
     // No-op, don't do anything
   }
 
   void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<KokkosResilience::Registration> &members)
+  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::set<KokkosResilience::Registration> &members)
   {
     // No-op, don't do anything
   }
@@ -243,7 +235,7 @@ fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.secon
   
   void
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::vector< KokkosResilience::Registration > &members )
+                                const std::set< KokkosResilience::Registration > &members )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( veloc_client->checkpoint_wait());
@@ -292,7 +284,7 @@ fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.secon
   }
   
   void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::vector< KokkosResilience::Registration > &members )
+                                  const std::set< KokkosResilience::Registration > &members )
   {
     VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
     

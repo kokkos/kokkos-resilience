@@ -38,31 +38,35 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
-#define INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#ifndef INC_KOKKOS_RESILIENCE_MPICONTEXT_HPP
+#define INC_KOKKOS_RESILIENCE_MPICONTEXT_HPP
 
-#include "Context.hpp"
-
-#include <string>
+#include <mpi.h>
+#include "ContextBase.hpp"
 
 namespace KokkosResilience {
 
 template <typename Backend>
-class StdFileContext : public ContextBase {
- public:
-  explicit StdFileContext(std::string const &filename, Config &cfg)
-      : ContextBase(cfg), m_filename(filename), m_backend(*this, filename) {}
+class MPIContext : public ContextBase {
+public:
+ explicit MPIContext(MPI_Comm comm, Config &cfg)
+     : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
 
-  StdFileContext(const StdFileContext &) = delete;
-  StdFileContext(StdFileContext &&)      = default;
+ MPIContext(const MPIContext &)     = delete;
+ MPIContext(MPIContext &&) noexcept = default;
 
-  StdFileContext &operator=(const StdFileContext &) = delete;
-  StdFileContext &operator=(StdFileContext &&) = default;
+ MPIContext &operator=(const MPIContext &) = delete;
+ MPIContext &operator=(MPIContext &&) noexcept = default;
 
-  virtual ~StdFileContext() {
+ virtual ~MPIContext() {
 #ifdef KR_ENABLE_TRACING
+    int rank = -1;
+    MPI_Comm_rank(m_comm, &rank);
+    int size = -1;
+    MPI_Comm_size(m_comm, &size);
+
     std::ostringstream fname;
-    fname << "trace.json";
+    fname << "trace" << rank << ".json";
 
     std::ofstream out(fname.str());
 
@@ -72,22 +76,20 @@ class StdFileContext : public ContextBase {
 
     // Metafile
     picojson::object root;
-    root["num_ranks"] = picojson::value( 1.0 );
+    root["num_ranks"] = picojson::value(static_cast<double>(size));
 
     std::ofstream meta_out("meta.json");
     picojson::value(root).serialize(std::ostream_iterator<char>(meta_out),
                                     true);
 #endif
-  }
+ }
 
-  std::string const &filename() const noexcept { return m_filename; }
+  MPI_Comm comm() const noexcept { return m_comm; }
 
   Backend &backend() { return m_backend; }
 
-  void register_hashes(
-      const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector<Detail::CrefImpl> &crefs) override {
-    m_backend.register_hashes(views, crefs);
+  void register_member(KokkosResilience::Registration member) override {
+    m_backend.register_member(member);
   }
 
   bool restart_available(const std::string &label, int version) override {
@@ -95,34 +97,32 @@ class StdFileContext : public ContextBase {
   }
 
   void restart(const std::string &label, int version,
-               const std::vector< KokkosResilience::ViewHolder >
-                   &views) override {
-    m_backend.restart(label, version, views);
+               const std::set<KokkosResilience::Registration>
+                   &members) override {
+    m_backend.restart(label, version, members);
   }
 
   void checkpoint(const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder >
-                      &views) override {
-    m_backend.checkpoint(label, version, views);
+                  const std::set<KokkosResilience::Registration>
+                      &members) override {
+    m_backend.checkpoint(label, version, members);
   }
 
   int latest_version(const std::string &label) const noexcept override {
     return m_backend.latest_version(label);
   }
 
-  void reset() override {
-    m_backend.reset();
-  }
-
   void register_alias( const std::string &original, const std::string &alias ) override {
-
+    return m_backend.register_alias( original, alias );
   }
 
- private:
-  std::string m_filename;
+  void reset() override { m_backend.reset(); }
+
+private:
+  MPI_Comm m_comm;
   Backend m_backend;
 };
 
-}  // namespace KokkosResilience
+} // namespace KokkosResilience
 
-#endif  // INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#endif // INC_KOKKOS_RESILIENCE_MPICONTEXT_HPP

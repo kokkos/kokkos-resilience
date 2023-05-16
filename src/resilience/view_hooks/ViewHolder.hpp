@@ -47,7 +47,9 @@
 #include <type_traits>
 #include <string>
 
+#ifdef KR_ENABLE_MAGISTRATE
 #include "checkpoint/checkpoint.h"
+#endif
 
 namespace KokkosResilience {
 namespace Impl {
@@ -225,39 +227,35 @@ class ViewHolderImpl : public ViewHolderImplBase {
                                                                     buff);
   }
 
-  void serialize(std::ostream& stream, char *buf = nullptr) override{
 #ifdef KR_ENABLE_MAGISTRATE
-    checkpoint::serializeToStream(m_view, stream);
+  template<typename SerT, std::enable_if_t<std::is_base_of_v<checkpoint::Serializer, SerT>>* = nullptr>
+  void serialize(SerT& s){
+    checkpoint::serializeContentsOnly(s, m_view);
+  }
+  void serialize(std::ostream& stream, char *buf = nullptr) override {
+    checkpoint::serializeToStream(*this, stream);
+  }
+  void deserialize(std::istream& stream, char *buf = nullptr) override {
+    checkpoint::deserializeInPlaceFromStream(stream, this);
+  }
 #else
+  void serialize(std::ostream& stream, char *buf) override {
     if(!span_is_contiguous() || !is_host_space()){
       deep_copy_to_buffer((unsigned char*)buf);
       stream.write((const char*)buf, data_type_size() * span());
     } else {
       stream.write((const char*)data(), data_type_size() * span());
     }
-#endif
-    return;
   }
-
-  void deserialize(std::istream& stream, char *buf = nullptr) override{
-#ifdef KR_ENABLE_MAGISTRATE
-    checkpoint::deserializeInPlaceFromStream(stream, &m_view);
-    
-    //The other members are based on compile-time view properties,
-    //they don't need to be refreshed.
-    m_span = m_view.span();
-    m_span_is_contiguous = m_view.span_is_contiguous();
-    m_data = m_view.data();
-#else
+  void deserialize(std::istream& stream, char *buf) override{
     if(!span_is_contiguous() || !is_host_space()){
-      stream.read((char*)buf, data_type_size() * span());
+      stream.read(buf, data_type_size() * span());
       deep_copy_from_buffer((const unsigned char*)buf);
     } else {
-      stream.read((char*)data(), data_type_size() * span());
+      stream.read(data(), data_type_size() * span());
     }
-#endif
-    return;
   }
+#endif
 
   ViewHolderImpl *clone() const override { return new ViewHolderImpl(m_view); }
 
@@ -288,14 +286,13 @@ class ViewHolderImpl<View, typename std::enable_if<std::is_const<
     ViewHolderImplDeepCopyImpl<View, dst_type>::copy_to_unmanaged(m_view, buff);
   }
 
-  void serialize(std::ostream& stream, char *buf = nullptr) override{
+  void serialize(std::ostream& stream, char *buf = nullptr) override {
     if(!span_is_contiguous() || !is_host_space()){
       deep_copy_to_buffer((unsigned char *)buf);
       stream.write((const char*)buf, data_type_size() * span());
     } else {
       stream.write((const char*)data(), data_type_size() * span());
     }
-    return;
   }
 
   ViewHolderImpl *clone() const override { return new ViewHolderImpl(m_view); }
