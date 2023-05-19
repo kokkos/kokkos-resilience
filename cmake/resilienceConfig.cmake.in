@@ -10,12 +10,14 @@ SET(KR_ENABLE_VELOC @KR_ENABLE_VELOC@)
 
 # VeloC needs to add a cmake config...
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/../Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/../cmake/Modules/")
 message(STATUS "Module path: ${CMAKE_MODULE_PATH}")
 
 find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
 
 if (@KR_ENABLE_VELOC@)
    set(VeloC_DIR @VeloC_DIR@)
+   set(VeloC_ROOT @VeloC_ROOT@)
    set(KR_VELOC_BAREBONE @KR_VELOC_BAREBONE@)
    find_dependency(VeloC REQUIRED)
 endif()
@@ -28,6 +30,7 @@ endif()
 if (@KR_ENABLE_MAGISTRATE@)
   set(CHECKPOINT_DIR @CHECKPOINT_DIR@)
    find_dependency(checkpoint REQUIRED)
+   set(KR_ENABLE_MAGISTRATE @KR_ENABLE_MAGISTRATE@)
 endif()
 
 set(Boost_DIR @Boost_DIR@)
