@@ -43,8 +43,12 @@ TEST(CudaTestRig, TestCudaDeepCopy)
   
   range_policy test;
   
-  ResVectorDoubleType x( "x", N );
-  ResVectorDoubleType y( "y", N );
+  using namespace std::string_literals;
+
+  
+  ResVectorDoubleType x (Kokkos::view_alloc ( "x"s, Kokkos::WithoutInitializing), N );
+  ResVectorDoubleType y (Kokkos::view_alloc ( "y"s, Kokkos::WithoutInitializing), N );
+  // ResVectorDoubleType y( "y", N );
 
   std::cout << "Created device views" << std::endl;
 
@@ -82,7 +86,7 @@ TEST(CudaTestRig, TestCudaDeepCopy)
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(h_y(i), i);
   }
- 
+
 }
 
 /*********************************
@@ -91,11 +95,11 @@ TEST(CudaTestRig, TestCudaDeepCopy)
 
 void test_kokkos_for(){
 
- // Kokkos::initialize();
+  using namespace std::string_literals;
 
   // Create device views
-  ResVectorDoubleType y( "y", N );
-  ResVectorDoubleType x( "x", N );
+  ResVectorDoubleType x (Kokkos::view_alloc ( "x"s, Kokkos::WithoutInitializing), N );
+  ResVectorDoubleType y (Kokkos::view_alloc ( "y"s, Kokkos::WithoutInitializing), N );
 
   // Create host mirrors of device views.
   auto h_y = Kokkos::create_mirror_view( y );
@@ -111,6 +115,8 @@ void test_kokkos_for(){
   // Deep copy host to device (dest, src)
   Kokkos::deep_copy( y, h_y );
 
+  std::cout<< "This print is from right before the parallel_for, where we think everything is erroring. " << std::endl;
+
   // Copy y to x on device using parallel for
   Kokkos::parallel_for( range_policy(0, N), KOKKOS_LAMBDA(int i) { 
     x (i) = y (i) * y (i); 
@@ -125,7 +131,8 @@ void test_kokkos_for(){
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(h_x(i), i*i);
   }
- // Kokkos::finalize();
+  
+  KokkosResilience::clear_duplicates_cache();
 }
 
 // gTest runs CUDA parallel_for with non-resilient Kokkos. Should never fail.
