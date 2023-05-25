@@ -38,43 +38,60 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-
-#ifndef INC_RESILIENCE_CONTEXT_HPP
-#define INC_RESILIENCE_CONTEXT_HPP
+#ifndef INC_RESILIENCE_BACKEND_AUTOMATICBASE_HPP
+#define INC_RESILIENCE_BACKEND_AUTOMATICBASE_HPP
 
 #include "resilience/registration/Registration.hpp"
+#include <unordered_set>
+#include <memory>
 
-#include "ContextBase.hpp"
+namespace KokkosResilience{
 
-#ifdef KR_ENABLE_STDFILE
-  #include "StdFileContext.hpp"
-#endif
+//Avoiding cyclic dependency.
+class ContextBase;
 
-#ifdef KR_ENABLE_MPI_BACKENDS
-  #include <mpi.h>
-  #include "MPIContext.hpp"
-#endif
+class AutomaticBackendBase {
+public:
+  explicit AutomaticBackendBase(ContextBase* ctx) : m_context(ctx) {};
 
-#ifdef KR_ENABLE_VT
-  #include "vt/vt.h"
-  #include "VTContext.hpp"
-#endif
+  virtual ~AutomaticBackendBase() = default;
+  
+  virtual void register_member(Registration& member) = 0;
 
-namespace KokkosResilience {  
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
-#ifdef KR_ENABLE_MPI_BACKENDS
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
-#endif
-#ifdef KR_ENABLE_VT
-  //theContext just for identifying this context type.
-  std::unique_ptr< ContextBase > make_context(vt::ctx::Context* theContext, const std::string &config );
-#endif
-#ifdef KR_ENABLE_STDFILE
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
-#endif
+  virtual void register_members(std::unordered_set<Registration>& members){
+    for(auto member : members) register_member(member);
+  }
+
+  virtual bool checkpoint(const std::string& label, int version, 
+                          const std::unordered_set<Registration> &members) = 0;
+  
+ 
+
+  virtual int latest_version(const std::string& label) const noexcept = 0;
+
+  virtual bool restart_available(const std::string& label, int version){
+    return latest_version(label) == version; 
+  };
+
+  virtual bool restart(const std::string& label, int verison, 
+                       const std::unordered_set<Registration> &members) = 0;
+  
+  
+  virtual void reset() = 0;
+
+
+  ContextBase* const m_context;
+  
+  
+  //Delete potentially problematic functions for maintaining consistent state
+  AutomaticBackendBase(const AutomaticBackendBase&) = delete;
+  AutomaticBackendBase(AutomaticBackendBase&&) noexcept = delete;
+  AutomaticBackendBase &operator=( const AutomaticBackendBase & ) = delete;
+  AutomaticBackendBase &operator=( AutomaticBackendBase && ) = default;
+};
+  
+using AutomaticBackend = std::shared_ptr<AutomaticBackendBase>;
 }
 
 
-#include "resilience/registration/Registration.impl.hpp"
-
-#endif  // INC_RESILIENCE_CONTEXT_HPP
+#endif

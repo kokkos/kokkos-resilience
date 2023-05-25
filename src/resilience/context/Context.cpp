@@ -39,15 +39,17 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 #include "Context.hpp"
+#include "resilience/backend/Automatic.hpp"
 #include <fstream>
 #include <chrono>
 #include <stdexcept>
 
 namespace KokkosResilience
 {
-  ContextBase::ContextBase( Config cfg )
+  ContextBase::ContextBase( Config cfg, int proc_id)
       : m_config( std::move( cfg ) ),
-        m_default_filter{ Filter::DefaultFilter{} }
+        m_default_filter{ Filter::DefaultFilter{} },
+        m_pid(proc_id)
   {
     auto filter_opt = m_config.get( "filter" );
 
@@ -65,6 +67,8 @@ namespace KokkosResilience
         throw std::runtime_error( "invalid filter specified" );
       }
     }
+
+    m_backend = Detail::make_backend(this);
   }
 
   ContextBase* ContextBase::active_context = nullptr;

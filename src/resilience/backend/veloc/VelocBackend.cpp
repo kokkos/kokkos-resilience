@@ -46,11 +46,9 @@
 #include <veloc.h>
 #include <cassert>
 
-#include "../AutomaticCheckpoint.hpp"
+#include "resilience/AutomaticCheckpoint.hpp"
 
-#ifdef KR_ENABLE_TRACING
-   #include "../util/Trace.hpp"
-#endif
+#include "resilience/util/Trace.hpp"
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
 
@@ -71,17 +69,18 @@ namespace KokkosResilience
       //Kokkos::Impl::throw_runtime_exception( out.str() );
     }
 
-    inline void veloc_internal_safe_call( bool success, const char *name, const char *file, int line = 0 )
+    inline bool veloc_internal_safe_call( bool success, const char *name, const char *file, int line = 0 )
     {
       if ( !success )
         veloc_internal_error_throw( success, name, file, line );
+      return success;
     }
   }
 
-  VeloCMemoryBackend::VeloCMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
-      : m_context(&ctx), m_last_id(0) {
+  VeloCMemoryBackend::VeloCMemoryBackend(ContextBase* ctx)
+      : AutomaticBackendBase(ctx) {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(mpi_comm, vconf);
+    veloc_client = veloc::get_client(ctx->m_pid, vconf);
   }
 
   VeloCMemoryBackend::~VeloCMemoryBackend()
@@ -89,31 +88,27 @@ namespace KokkosResilience
     veloc_client->checkpoint_wait();
   }
 
-  void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       std::set< KokkosResilience::Registration > const &_members )
+  bool VeloCMemoryBackend::checkpoint( const std::string &label, int version,
+                                       std::unordered_set< KokkosResilience::Registration > const &_members )
   {
-    bool status = true;
+    bool success;
 
+    //Don't handle failure here, might be worth trying to continue
     VELOC_SAFE_CALL( veloc_client->checkpoint_wait() );
 
-    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
 
-    //checkpoint only unique IDs already registered.
-    std::set<int> ids;
-    for ( auto member : _members ){
-      if(m_registry.find(member) == m_registry.end()){
-        //Throw error?
-        fprintf(stderr, "KokkosResilience WARNING: Skipping attempt to checkpoint an unregistered member: \"%s\"\n", member->name.c_str());
-        continue;
-      }
-      ids.insert(static_cast<int>(member.hash()));
+    if(success) {
+      std::set<int> ids;
+      for(auto member : _members) ids.insert(static_cast<int>(member.hash()));
+
+      success = VELOC_SAFE_CALL( veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids) );
     }
 
-    VELOC_SAFE_CALL( veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids) );
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_end( success ));
 
-    VELOC_SAFE_CALL( veloc_client->checkpoint_end( status ));
-
-    m_latest_version[label] = version;
+    if(success) m_latest_version[label] = version;
+    return success;
   }
 
   bool
@@ -137,95 +132,48 @@ namespace KokkosResilience
     }
   }
 
-  void
+  bool
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::set< KokkosResilience::Registration > &_members )
+    const std::unordered_set< KokkosResilience::Registration > &_members )
   {
-    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
+    bool success;
+    success = VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
 
-    bool status = true;
+    if(success){
+      std::set<int> ids;
+      for(auto member : _members) ids.insert(static_cast<int>(member.hash()));
 
-    //checkpoint only unique IDs already registered.
-    std::set<int> ids;
-    for ( auto member : _members ){
-      ids.insert(static_cast<int>(member.hash()));
-fprintf(stderr, "Attempting to recover member %s with id %d\n", member->name.c_str(), static_cast<int>(member.hash()));
+      success = VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
     }
 
-    VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
+    success = VELOC_SAFE_CALL( veloc_client->restart_end( success ) );
 
-    VELOC_SAFE_CALL( veloc_client->restart_end( status ) );
+    return success;
   }
 
   void
   VeloCMemoryBackend::reset()
   {
-    for ( auto &&member : m_registry )
-    {
-      veloc_client->mem_unprotect( static_cast<int>(member.hash()) );
-    }
-
-    m_registry.clear();
+    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(m_context->m_pid, vconf);
 
     m_latest_version.clear();
-    m_alias_map.clear();
   }
 
   void
   VeloCMemoryBackend::register_member(KokkosResilience::Registration &member)
   {
-    auto entry = m_registry.insert(member);
-
-    if(!entry.second){
-      //Did not insert, already in the set. So don't double mem_protect unless var location has changed
-      if((*entry.first)->is_same_reference(member)){
-          return;
-      }
-
-      //Replace in set.
-      m_registry.erase(entry.first);
-      m_registry.insert(member);
-    }
-fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.second ? "Register" : "Re-register", member->name.c_str(), static_cast<int>(member.hash()), m_registry.size());
-    VELOC_SAFE_CALL( veloc_client->mem_protect( static_cast<int>(member.hash()), member->serializer(), member->deserializer() ) );
+    veloc_client->mem_protect(
+        static_cast<int>(member.hash()),
+        member->serializer(),
+        member->deserializer()
+    );
   }
 
-  void
-  VeloCMemoryBackend::register_alias( const std::string &original, const std::string &alias )
-  {
-    m_alias_map[alias] = original;
-  }
-
-  std::string
-  VeloCMemoryBackend::get_canonical_label( const std::string &_label ) const noexcept
-  {
-    // Possible the view has an alias. If so, make sure that is registered instead
-    auto pos = m_alias_map.find( _label );
-    if ( m_alias_map.end() != pos )
-    {
-      return pos->second;
-    } else {
-      return _label;
-    }
-  }
-
-  void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::set<KokkosResilience::Registration> &members )
-  {
-    // No-op, don't do anything
-  }
-
-  void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::set<KokkosResilience::Registration> &members)
-  {
-    // No-op, don't do anything
-  }
-
-  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &ctx,
-                                     MPI_Comm mpi_comm,
-                                     const std::string &veloc_config)
-      : m_context(&ctx) {
-    veloc_client = veloc::get_client( mpi_comm, veloc_config);
+  VeloCFileBackend::VeloCFileBackend(ContextBase* ctx)
+      : AutomaticBackendBase(ctx) {
+    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client( m_context->m_pid, vconf);
   }
 
   VeloCFileBackend::~VeloCFileBackend()
@@ -233,49 +181,47 @@ fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.secon
     veloc_client->checkpoint_wait();
   }
 
-  void
+  bool
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::set< KokkosResilience::Registration > &members )
+                                const std::unordered_set< KokkosResilience::Registration > &members )
   {
+    bool success;
+
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( veloc_client->checkpoint_wait());
 
     // Start new checkpoint
-    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ));
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ));
 
-    bool status = true;
     try
     {
       std::string fname = veloc_client->route_file("");
 
       std::ofstream vfile( fname, std::ios::binary );
 
-#ifdef KR_ENABLE_TRACING
-      auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "write" );
-#endif
-      for ( auto &&member : members )
-      {
-          member->serializer()(vfile);
+      auto write_trace = Util::begin_trace<Util::TimingTrace>( *m_context, "write" );
+      for ( auto &&member : members ) {
+        success &= member->serializer()(vfile);
+        if(!success) break;
       }
-#ifdef KR_ENABLE_TRACING
       write_trace.end();
-#endif
     }
     catch ( ... )
     {
-      status = false;
+      success = false;
     }
 
-    VELOC_SAFE_CALL( veloc_client->checkpoint_end( status ));
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_end( success ));
+    return success;
   }
 
   bool
   VeloCFileBackend::restart_available( const std::string &label, int version )
   {
-    int latest = veloc_client->restart_test( label, 0 );
+    int latest = veloc_client->restart_test( label, version+1 );
 
     // res is < 0 if no versions available, else it is the latest version
-    return version <= latest;
+    return version == latest;
   }
 
   int VeloCFileBackend::latest_version( const std::string &label ) const noexcept
@@ -283,35 +229,30 @@ fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.secon
     return veloc_client->restart_test( label, 0 );
   }
 
-  void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::set< KokkosResilience::Registration > &members )
+  bool VeloCFileBackend::restart( const std::string &label, int version,
+                                  const std::unordered_set< KokkosResilience::Registration > &members )
   {
-    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
+    bool success;
+    success = VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
 
-    bool status = true;
-    try
-    {
-      std::string fname = veloc_client->route_file("");
-      printf( "restore file name: %s\n", fname.c_str() );
+    if(success) {
+      try {
+        std::string fname = veloc_client->route_file("");
 
-      std::ifstream vfile( fname, std::ios::binary );
+        std::ifstream vfile( fname, std::ios::binary );
 
-#ifdef KR_ENABLE_TRACING
-      auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "read" );
-#endif
-      for ( auto &&member : members )
-      {
-          member->deserializer()(vfile);
+        auto read_trace = Util::begin_trace<Util::TimingTrace>( *m_context, "read" );
+        for ( auto &&member : members ){
+          success = member->deserializer()(vfile);
+          if(!success) break;
+        }
+        read_trace.end();
+      } catch ( ... ) {
+        success = false;
       }
-#ifdef KR_ENABLE_TRACING
-      read_trace.end();
-#endif
-    }
-    catch ( ... )
-    {
-      status = false;
     }
 
-    VELOC_SAFE_CALL( veloc_client->restart_end( status ));
+    success = VELOC_SAFE_CALL( veloc_client->restart_end( success ));
+    return success;
   }
 }

@@ -14,4 +14,8 @@
 #include "./Simple.hpp"
 #endif
 
+#ifdef KR_ENABLE_VT
+#include "./VTProxy.hpp"
+#endif
+
 #endif

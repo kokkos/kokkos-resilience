@@ -39,91 +39,78 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_MAGISTRATE_HPP
-#define INC_KOKKOS_RESILIENCE_REGISTRATION_MAGISTRATE_HPP
+#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
 
+#include <memory>
+#include <tuple>
 #include "resilience/registration/Registration.hpp"
+#include "resilience/context/VTContext.hpp"
+#include <vt/vt.h>
 #include <checkpoint/checkpoint.h>
-#include <checkpoint/serializers/stream_serializer.h>
 
 namespace KokkosResilience {
-  class ContextBase;
-}
+namespace Detail {
+  template<typename T, typename... Traits>
+  struct VTRegistration : public RegistrationBase {
+    using VTProxyStatus = VTTemplates::VTProxyStatus;
 
-namespace KokkosResilience::Detail {
-  //Registration for some type which Magistrate knows how to checkpoint.
-  template
-  <
-    typename MemberType,
-    typename... Traits
-  >
-  struct MagistrateRegistration : public RegistrationBase {
-    MagistrateRegistration() = delete;
+    VTRegistration(VTContext* ctx, T proxy, const std::string& label) : 
+        RegistrationBase(label),
+        m_proxy(VTTemplates::get_proxy(proxy)),
+        status( ctx->proxy_status(proxy) ) { };
 
-    MagistrateRegistration(MemberType& member, std::string name)
-      : RegistrationBase(name), m_member(member) {}
-
-    const serializer_t serializer() const override{
-      return [&, this](std::ostream& stream){
-        checkpoint::serializeToStream<
-          Traits...
-        >(m_member, stream);
+    //We just serialize the version + dependency info of this proxy,
+    const serializer_t serializer() const override {
+      return [&](std::ostream& stream){
+        checkpoint::serializeToStream<Traits...>(status, stream);
         return stream.good();
       };
     }
 
-    const deserializer_t deserializer() const override{
-      return [&, this](std::istream& stream){
-        checkpoint::deserializeInPlaceFromStream<
-          Traits...
-        >(stream, &m_member);
+    const deserializer_t deserializer() const override {
+      return [&](std::istream& stream){
+        checkpoint::deserializeInPlaceFromStream<Traits...>(stream, &status);
         return stream.good();
       };
     }
 
-    const bool is_same_reference(const Registration& other_reg) const override{
-      auto other = dynamic_cast<MagistrateRegistration<MemberType, Traits...>*>(other_reg.get());
-
+    const bool is_same_reference(const Registration& other_reg) const override {
+      auto other = dynamic_cast<VTRegistration<T, Traits...>*>(other_reg.get());
+      
       if(!other){
-        //We wouldn't expect this to happen, and it may indicate a hash collision
         fprintf(stderr, "KokkosResilience: Warning, member name %s is shared by more than 1 registration type\n", name.c_str());
         return false;
       }
-
-      return &m_member == &other->m_member;
+      
+      return m_proxy == other->m_proxy;
     }
 
   private:
-    MemberType& m_member;
+    const VTProxyType m_proxy;
+    VTProxyStatus& status;
   };
 }
+}
 
-/*
 namespace KokkosResilience {
-  template<
-    typename T,
-    typename... Traits
-  >
-  struct create_registration<
-    T,
-    std::tuple<Traits...>,
-    std::enable_if_t<
-      checkpoint::SerializableTraits<T, checkpoint::StreamPacker<>>::is_traversable
-    >*
-  > {
-    using BaseT = Detail::MagistrateRegistration<T, Traits...>;
-    std::shared_ptr<BaseT> reg;
+  template<typename T, typename... Traits>
+  struct create_registration<T, std::tuple<Traits...>, typename Detail::VTTemplates::is_proxy<T, void*>::type>{
+    std::shared_ptr<Detail::RegistrationBase> reg;
 
-    create_registration(ContextBase& ctx, T& member, std::string label)
-        : reg(std::make_shared<BaseT>(member, label)) {};
+    create_registration(ContextBase& context, T proxy, std::string label = ""){
+      label = Detail::VTTemplates::get_label(proxy);
 
-    auto get() && {
-      return std::move(reg);
+      auto vtCtx = dynamic_cast<VTContext*>(&context);
+      if(vtCtx){
+        reg = std::make_shared<Detail::VTRegistration<T, Traits...>>(vtCtx, proxy, label);
+      } else {
+        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
+      }
     }
+
+    auto get(){return reg;}
   };
 }
-*/
 
 #endif
-
-#endif  // INC_RESILIENCE_MAGISTRATE_HPP

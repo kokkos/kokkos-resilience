@@ -38,43 +38,24 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_BACKEND_AUTOMATIC_HPP
+#define INC_RESILIENCE_BACKEND_AUTOMATIC_HPP
 
-#ifndef INC_RESILIENCE_CONTEXT_HPP
-#define INC_RESILIENCE_CONTEXT_HPP
 
-#include "resilience/registration/Registration.hpp"
+#include "AutomaticBase.hpp"
 
-#include "ContextBase.hpp"
+#ifdef KR_ENABLE_VELOC
+#include "veloc/VelocBackend.hpp"
+#endif
 
 #ifdef KR_ENABLE_STDFILE
-  #include "StdFileContext.hpp"
+#include "stdfile/StdFileBackend.hpp"
 #endif
 
-#ifdef KR_ENABLE_MPI_BACKENDS
-  #include <mpi.h>
-  #include "MPIContext.hpp"
-#endif
+#include "resilience/Config.hpp"
 
-#ifdef KR_ENABLE_VT
-  #include "vt/vt.h"
-  #include "VTContext.hpp"
-#endif
-
-namespace KokkosResilience {  
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
-#ifdef KR_ENABLE_MPI_BACKENDS
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
-#endif
-#ifdef KR_ENABLE_VT
-  //theContext just for identifying this context type.
-  std::unique_ptr< ContextBase > make_context(vt::ctx::Context* theContext, const std::string &config );
-#endif
-#ifdef KR_ENABLE_STDFILE
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
-#endif
+namespace KokkosResilience::Detail {
+  AutomaticBackend make_backend(ContextBase* ctx);
 }
 
-
-#include "resilience/registration/Registration.impl.hpp"
-
-#endif  // INC_RESILIENCE_CONTEXT_HPP
+#endif

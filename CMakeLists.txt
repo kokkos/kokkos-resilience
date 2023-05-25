@@ -42,6 +42,8 @@ option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" OFF)
 option(KR_ENABLE_MAGISTRATE "use Magistrate for serializing and deserializing" OFF)
 option(KR_ENABLE_RESILIENT_EXEC "enable resilient execution spaces" OFF)
 
+option(KR_ENABLE_VT "use VT for backend coordination" OFF)
+
 include(CMakeDependentOption)
 
 cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF "KR_ENABLE_VELOC" OFF)
@@ -56,6 +58,14 @@ if (KR_ENABLE_VELOC)
   if (KR_VELOC_BAREBONE)
     target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
   endif()
+endif()
+
+if (KR_ENABLE_VT)
+  find_package(vt REQUIRED)
+  target_link_libraries(resilience PUBLIC vt::runtime::vt)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_VT)
+  
+  set(KR_ENABLE_MAGISTRATE ON)
 endif()
 
 # StdFile backend

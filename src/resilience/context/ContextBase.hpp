@@ -60,17 +60,16 @@
 #include "resilience/registration/Registration.hpp"
 #include "resilience/view_hooks/ViewHolder.hpp"
 #include "resilience/util/Trace.hpp"
-
-#ifdef KR_ENABLE_MAGISTRATE
-#include "../registration/Magistrate.hpp"
-#endif
+#include "resilience/backend/AutomaticBase.hpp"
 
 namespace KokkosResilience
 {
   class ContextBase
   {
   public:
-    explicit ContextBase( Config cfg );
+    explicit ContextBase( Config cfg , int proc_id = 0);
+    explicit ContextBase( const std::string& cfg_filename , int proc_id = 0)
+          : ContextBase(Config{cfg_filename}, proc_id) {};
 
     virtual ~ContextBase() {};
 
@@ -84,19 +83,25 @@ namespace KokkosResilience
       run<Traits...>(label, iteration, std::forward<RegionFunc>(fun), default_filter(), explicit_members...);
     }
 
-    virtual void register_member(KokkosResilience::Registration member) = 0;
     virtual bool restart_available( const std::string &label, int version ) = 0;
     virtual void restart( const std::string &label, int version,
-                          const std::set< KokkosResilience::Registration > &members ) = 0;
+                          const std::unordered_set< Registration > &members ) = 0;
     virtual void checkpoint( const std::string &label, int version,
-                             const std::set< KokkosResilience::Registration > &members ) = 0;
+                             const std::unordered_set< Registration > &members ) = 0;
 
     virtual int latest_version( const std::string &label ) const noexcept = 0;
-    virtual void register_alias( const std::string &original, const std::string &alias ) = 0; //TODO: Likely broken with magistrate support changes, double check.
+
+    virtual void register_alias( const std::string &original, const std::string &alias ){
+      //TODO
+    };
 
     virtual void reset() = 0;
 
-    virtual void register_members(const std::set< KokkosResilience::Registration > &members) {
+    virtual void register_member(KokkosResilience::Registration member){
+      m_backend->register_member(member);
+    };
+
+    virtual void register_members(const std::unordered_set< KokkosResilience::Registration > &members) {
       for(auto& member : members) register_member(member);
     };
 
@@ -109,7 +114,7 @@ namespace KokkosResilience
     //Registers only if in an active region.
     template<typename... Traits, typename T>
     bool register_if_active(T& member, const std::string& label){
-      if(active_region.iter() == regions.end()) return false;
+      if(!active_region) return false;
       register_to_active<Traits...>(member, label);
       return true;
     }
@@ -142,25 +147,27 @@ namespace KokkosResilience
     }
 
   protected:
-    using RegionsMap = std::unordered_map<std::string, std::set<Registration>>;
-    class Region
-    {
+    using RegionsMap = std::unordered_map<std::string, std::unordered_set<Registration>>;
+    struct Region {
+    private:
+      std::string m_label = "";
+      std::unordered_set<Registration>* m_members = nullptr;
     public:
+      Region(RegionsMap::iterator iter) : m_label(iter->first), m_members(&(iter->second)) {};
+      Region() {};
 
-      using map_iterator = RegionsMap::iterator;
-
-      Region(map_iterator iter) : m_map_iterator(iter) {};
       const std::string& label() const {
-        return m_map_iterator->first;
+        return m_label;
       }
-      const std::set<Registration> &members() const {
-        return m_map_iterator->second;
+      std::unordered_set<Registration>& members(){
+        return *m_members;
       }
-      std::set<Registration>& members(){
-        return m_map_iterator->second;
+      void insert(Registration& member){
+        m_members->insert(member);
       }
-      void insert(const Registration& member){
-        members().insert(member);
+
+      operator bool() const {
+        return m_members != nullptr;
       }
 
       auto iter() { return m_map_iterator; }
@@ -184,6 +191,7 @@ namespace KokkosResilience
       register_to_active<Traits...>(info.member, info.label);
     }
 
+
   private:
     //Detect views being copied in, register them and any explicitly-listed members.
     template<typename... Traits, typename RegionFunc, typename... T>
@@ -198,16 +206,23 @@ namespace KokkosResilience
 
     Util::detail::TraceStack m_trace;
 
+  protected:
     RegionsMap regions;
-    Region active_region = regions.end();
+    Region active_region;
 
     //Performance helper
     Region last_region = regions.end();
 
     std::set<Registration> global_members;
+    Region last_region;
+
+    std::unordered_set<Registration> global_members;
 
   public:
     static ContextBase* active_context;
+
+    int m_pid;
+    AutomaticBackend m_backend;
   };
 }
 

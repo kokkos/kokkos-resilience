@@ -46,11 +46,19 @@
 
 namespace KokkosResilience {
 
-template <typename Backend>
+//Helper for initialization list
+namespace {
+static int comm_rank(MPI_Comm &comm){
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+  return rank;
+}
+}
+
 class MPIContext : public ContextBase {
 public:
- explicit MPIContext(MPI_Comm comm, Config &cfg)
-     : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
+ explicit MPIContext(MPI_Comm comm, const std::string& cfg)
+     : ContextBase(cfg, comm_rank(comm)), m_comm(comm) {}
 
  MPIContext(const MPIContext &)     = delete;
  MPIContext(MPIContext &&) noexcept = default;
@@ -86,41 +94,44 @@ public:
 
   MPI_Comm comm() const noexcept { return m_comm; }
 
-  Backend &backend() { return m_backend; }
-
-  void register_member(KokkosResilience::Registration member) override {
-    m_backend.register_member(member);
-  }
+  //TODO: Allow configuring global vs local consistency requirements
 
   bool restart_available(const std::string &label, int version) override {
-    return m_backend.restart_available(label, version);
+    int avail, locally_avail = m_backend->restart_available(label, version);
+    MPI_Allreduce(&locally_avail, &avail, 1, MPI_INT, MPI_LAND, m_comm);
+
+    return avail;
   }
 
   void restart(const std::string &label, int version,
-               const std::set<KokkosResilience::Registration>
-                   &members) override {
-    m_backend.restart(label, version, members);
+               const std::unordered_set<Registration> &members) override {
+    int success = m_backend->restart(label, version, members);
+    MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_LAND, m_comm);
+
+    //TODO: configurability on this?
+    //  Throwing and using an exception handler seems like it'd
+    //  make for awkwardly-wrapped user code
+    if(!success) MPI_Abort(m_comm, 1);
   }
 
   void checkpoint(const std::string &label, int version,
-                  const std::set<KokkosResilience::Registration>
+                  const std::unordered_set<KokkosResilience::Registration>
                       &members) override {
-    m_backend.checkpoint(label, version, members);
+    //Ignore success status, if we failed we just hope to run long enough to
+    //succeed next time.
+    m_backend->checkpoint(label, version, members);
   }
 
   int latest_version(const std::string &label) const noexcept override {
-    return m_backend.latest_version(label);
+    int latest = m_backend->latest_version(label);
+    MPI_Allreduce(MPI_IN_PLACE, &latest, 1, MPI_INT, MPI_MIN, m_comm);
+    return latest;
   }
 
-  void register_alias( const std::string &original, const std::string &alias ) override {
-    return m_backend.register_alias( original, alias );
-  }
-
-  void reset() override { m_backend.reset(); }
+  void reset() override { m_backend->reset(); }
 
 private:
   MPI_Comm m_comm;
-  Backend m_backend;
 };
 
 } // namespace KokkosResilience

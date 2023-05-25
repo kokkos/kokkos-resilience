@@ -46,10 +46,10 @@
 
 #include <filesystem>
 
-#include "../AutomaticCheckpoint.hpp"
+#include "resilience/AutomaticCheckpoint.hpp"
 
 #ifdef KR_ENABLE_TRACING
-#include "../util/Trace.hpp"
+#include "resilience/util/Trace.hpp"
 #endif
 
 namespace KokkosResilience {

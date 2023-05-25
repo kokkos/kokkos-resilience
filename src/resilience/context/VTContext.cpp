@@ -39,42 +39,62 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_RESILIENCE_CONTEXT_HPP
-#define INC_RESILIENCE_CONTEXT_HPP
+#include "VTContext.hpp"
 
-#include "resilience/registration/Registration.hpp"
-
-#include "ContextBase.hpp"
-
-#ifdef KR_ENABLE_STDFILE
-  #include "StdFileContext.hpp"
-#endif
-
-#ifdef KR_ENABLE_MPI_BACKENDS
-  #include <mpi.h>
-  #include "MPIContext.hpp"
-#endif
-
-#ifdef KR_ENABLE_VT
-  #include "vt/vt.h"
-  #include "VTContext.hpp"
-#endif
-
-namespace KokkosResilience {  
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
-#ifdef KR_ENABLE_MPI_BACKENDS
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
-#endif
-#ifdef KR_ENABLE_VT
-  //theContext just for identifying this context type.
-  std::unique_ptr< ContextBase > make_context(vt::ctx::Context* theContext, const std::string &config );
-#endif
-#ifdef KR_ENABLE_STDFILE
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
-#endif
+namespace KokkosResilience {
+std::unique_ptr< ContextBase >
+make_context( vt::ctx::Context* vtTheCtx, const std::string &config )
+{
+  return std::make_unique<VTContext>(config);
 }
 
 
-#include "resilience/registration/Registration.impl.hpp"
+void VTContext::checkpoint_proxies(){
+  using namespace Detail::VTTemplates;
 
-#endif  // INC_RESILIENCE_CONTEXT_HPP
+  //Update checkpointed version beforehand, so dependencies
+  //also checkpointing now see this version as the required.
+  for(auto modified_proxy : modified_proxies){
+    auto& status = proxy_registry[modified_proxy];
+    status.checkpointed_version++;
+  }
+
+  
+  //For any remote dependencies we find, query their version
+  static int query_version = 0;
+  query_version++;
+
+  vt::runInEpochCollective([&]{
+    for(auto modified_proxy : modified_proxies){
+      auto& status = proxy_registry[modified_proxy];
+
+      for(auto dependency : status.dependencies){
+        auto& dep_status = proxy_registry[dependency.first];
+        if(!dep_status.is_local() && dep_status.queried_version != query_version) {
+          dep_status(m_proxy, REPORT_VERSION);
+          dep_status.queried_version = query_version;
+        }
+      }
+    }
+  });
+
+  
+  //Now actually do the checkpoints to disk.
+  for(auto modified_proxy : modified_proxies){
+    auto& status = proxy_registry[modified_proxy];
+
+    for(auto dependency : status.dependencies) 
+      dependency.second = proxy_registry[dependency.first].checkpointed_version;
+
+    //Non-elements just have their status written
+    //in the regular checkpoint steps.
+    if(!status.is_element) continue;
+
+    checkpoint_elm(modified_proxy, status.checkpointed_version);
+  }
+
+  modified_proxies.clear();
+}
+
+
+}

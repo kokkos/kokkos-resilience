@@ -42,14 +42,14 @@
 #define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
 #include <Kokkos_Core.hpp>
-#include "../view_hooks/ViewHolder.hpp"
+#include "resilience/view_hooks/ViewHolder.hpp"
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "../Cref.hpp"
-#include "../context/StdFileContext.hpp"
+#include "resilience/Cref.hpp"
+#include "resilience/context/StdFileContext.hpp"
 
 namespace KokkosResilience {
 
