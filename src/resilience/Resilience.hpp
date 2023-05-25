@@ -42,8 +42,11 @@
 #define INC_RESILIENCE_RESILIENCE_HPP
 
 #include "Config.hpp"
+
 #include "context/Context.hpp"
 #include "AutomaticCheckpoint.hpp"
+
+#include "backend/Automatic.hpp"
 
 #ifdef KR_ENABLE_MANUAL_CHECKPOINT
 #include "ManualCheckpoint.hpp"

@@ -4,24 +4,13 @@ target_sources(resilience PRIVATE
                ${CMAKE_CURRENT_LIST_DIR}/ResilientRef.cpp
                )
 
-add_subdirectory(context)
 add_subdirectory(registration)
-add_subdirectory(filesystem)
-add_subdirectory(stdio)
-
-if (KR_ENABLE_VELOC)
-  add_subdirectory(veloc)
-endif()
-
-if (KR_ENABLE_STDFILE)
-  add_subdirectory(stdfile)
-endif()
-
-if (KR_ENABLE_HDF5)
-  add_subdirectory(hdf5)
-endif()
+add_subdirectory(context)
+add_subdirectory(backend)
 
 add_subdirectory(view_hooks)
+
+add_subdirectory(stdio)
 
 list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
 

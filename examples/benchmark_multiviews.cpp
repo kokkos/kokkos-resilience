@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
       }
 
       std::vector<Kokkos::View<double*>> MyViews(num_views);
-      for( int i = 0 ; i < num_views; ++i )
+      for( size_t i = 0 ; i < num_views; ++i )
       {
          Kokkos::resize( MyViews[i], M*nbLines);
          Kokkos::deep_copy(MyViews[i],1.0);
@@ -135,13 +135,13 @@ int main(int argc, char *argv[]) {
       }
 
       wtime = MPI_Wtime();
-      int i = 1 + KokkosResilience::latest_version(*ctx, "test_kokkos");
+      size_t i = 1 + KokkosResilience::latest_version(*ctx, "test_kokkos");
 
       while(i < nsteps) {
 
          KokkosResilience::checkpoint(*ctx, "test_kokkos", i, [=]() {   // Nic, tell me what should I put for []/
 
-         for( int j = 0; j < num_views; ++j )
+         for( size_t j = 0; j < num_views; ++j )
          {
 
             Kokkos::parallel_for( M*nbLines, KOKKOS_LAMBDA (const int& k )

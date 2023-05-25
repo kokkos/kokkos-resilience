@@ -3,7 +3,7 @@
 namespace KokkosResilience::Detail {
   struct CustomRegistration : public RegistrationBase {
     CustomRegistration() = delete;
-    CustomRegistration(const serializer_t&& serializer, const deserializer_t&& deserializer, const std::string name) : 
+    CustomRegistration(serializer_t&& serializer, deserializer_t&& deserializer, const std::string name) : 
         RegistrationBase(name),
         m_serializer(serializer),
         m_deserializer(deserializer) {};

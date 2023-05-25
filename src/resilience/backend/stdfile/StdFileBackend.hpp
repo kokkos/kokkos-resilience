@@ -38,43 +38,49 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#ifndef INC_RESILIENCE_CONTEXT_HPP
-#define INC_RESILIENCE_CONTEXT_HPP
+#include <Kokkos_Core.hpp>
+#include "resilience/view_hooks/ViewHolder.hpp"
 
-#include "resilience/registration/Registration.hpp"
+#include <memory>
+#include <string>
+#include <vector>
 
-#include "ContextBase.hpp"
+#include "resilience/Cref.hpp"
+#include "resilience/context/StdFileContext.hpp"
 
-#ifdef KR_ENABLE_STDFILE
-  #include "StdFileContext.hpp"
-#endif
+namespace KokkosResilience {
 
-#ifdef KR_ENABLE_MPI_BACKENDS
-  #include <mpi.h>
-  #include "MPIContext.hpp"
-#endif
+class StdFileBackend {
+ public:
+  StdFileBackend(StdFileContext<StdFileBackend> &ctx,
+                 std::string const &filename);
+  ~StdFileBackend();
 
-#ifdef KR_ENABLE_VT
-  #include "vt/vt.h"
-  #include "VTContext.hpp"
-#endif
+  void checkpoint(
+      const std::string &label, int version,
+      const std::vector< KokkosResilience::ViewHolder > &views);
 
-namespace KokkosResilience {  
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
-#ifdef KR_ENABLE_MPI_BACKENDS
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
-#endif
-#ifdef KR_ENABLE_VT
-  //theContext just for identifying this context type.
-  std::unique_ptr< ContextBase > make_context(vt::ctx::Context* theContext, const std::string &config );
-#endif
-#ifdef KR_ENABLE_STDFILE
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
-#endif
-}
+  bool restart_available(const std::string &label, int version);
+  int latest_version(const std::string &label) const noexcept;
 
+  void restart(
+      const std::string &label, int version,
+      const std::vector< KokkosResilience::ViewHolder > &views);
 
-#include "resilience/registration/Registration.impl.hpp"
+  void reset() {}
 
-#endif  // INC_RESILIENCE_CONTEXT_HPP
+  void register_hashes(
+      const std::vector< KokkosResilience::ViewHolder > &views,
+      const std::vector<Detail::CrefImpl> &crefs) {}
+
+ private:
+  std::string m_filename;
+  StdFileContext<StdFileBackend> &m_context;
+};
+
+}  // namespace KokkosResilience
+
+#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP

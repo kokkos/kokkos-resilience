@@ -9,13 +9,16 @@
 
 namespace KokkosResilience
 { 
-  struct Registration;
-  
-  namespace Detail {
-    struct RegistrationBase {
-      typedef std::function<bool (std::ostream &)> serializer_t;
-      typedef std::function<bool (std::istream &)> deserializer_t;
+  //Takes a stream as input, returns success flag
+  using   serializer_t = std::function<bool (std::ostream &)>;
+  using deserializer_t = std::function<bool (std::istream &)>;
 
+  struct Registration;
+
+  namespace Detail {
+    std::string sanitized_label(std::string label);
+
+    struct RegistrationBase {
       const std::string name;
 
       RegistrationBase() = delete;
@@ -42,7 +45,7 @@ namespace KokkosResilience
       
     protected:
       RegistrationBase(const std::string member_name) : 
-          name(member_name) { }
+          name(sanitized_label(member_name)) { }
     };
     
     
@@ -57,13 +60,16 @@ namespace KokkosResilience
   }
 
   
+  //A struct convertible to Registration, use as if function returning Registration.
+  //Generally, register as: create_registration(ContextBase* ctx, T& member, const std::string& label);
+  //But see various registration headers for any specializations based on member type
   template<typename T, typename Traits = std::tuple<>, typename enable = void*>
   struct create_registration;
 
+  //Make registration using custom (de)serialize functions
+  Registration custom_registration(serializer_t&& s_fun, deserializer_t&& d_fun, const std::string label);
+
   struct Registration : public std::shared_ptr<Detail::RegistrationBase> {
-    using serializer_t = typename Detail::RegistrationBase::serializer_t;
-    using deserializer_t = typename Detail::RegistrationBase::deserializer_t;
-  
     template<typename RegType>
     Registration(std::shared_ptr<RegType> base) 
       : std::shared_ptr<Detail::RegistrationBase>(std::move(base)) {}

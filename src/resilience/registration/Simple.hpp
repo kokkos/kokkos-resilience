@@ -40,7 +40,7 @@ namespace KokkosResilience::Detail {
 }
 
 namespace KokkosResilience {
-  template<typename T, typename Unused>
+  template<typename Unused, typename T>
   struct create_registration<T, Unused> {
     std::shared_ptr<Detail::SimpleRegistration<T>> reg;
 

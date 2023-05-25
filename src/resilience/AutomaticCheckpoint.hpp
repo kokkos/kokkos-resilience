@@ -113,10 +113,11 @@ namespace KokkosResilience
     //Figure out how we should be handling this
     bool recover_region = false, checkpoint_region = false;
     
-    if(last_region != regions.end() && last_region.label() == label) {
+    if(last_region && last_region.label() == label) {
       active_region = last_region;
     } else {
-      active_region = regions.insert({label, {}}).first;
+      auto info = regions.insert({std::string(label), std::unordered_set<Registration>()});
+      active_region = info.first;
     }
 
     if(filter(iteration)){
@@ -124,17 +125,16 @@ namespace KokkosResilience
       detect_and_register<Traits...>(std::forward<RegionFunc>(fun), explicit_members...);
 
       auto check_restart = begin_trace<TimingTrace>( *this, "check" );
-      recover_region = restart_available(label, iteration);
+      recover_region = this->restart_available(label, iteration);
       check_restart.end();
-      
+   
       checkpoint_region = !recover_region;
     }
     overhead_trace.end();
     
-    
     if(recover_region){
       auto restart_trace = begin_trace<TimingTrace>( *this, "restart" );
-      restart(active_region.label(), iteration, active_region.members());
+      this->restart(active_region.label(), iteration, active_region.members());
     } else {
       auto function_trace = begin_trace<TimingTrace>( *this, "function" );
       fun();
@@ -144,14 +144,14 @@ namespace KokkosResilience
           auto write_trace = begin_trace<TimingTrace>( *this, "checkpoint" );
           auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
           std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
-          checkpoint(active_region.label(), iteration, active_region.members());
+          this->checkpoint(active_region.label(), iteration, active_region.members());
           write_trace.end();
       }
     }
 
     //Region no longer active
     last_region = active_region;
-    active_region = regions.end();
+    active_region = Region();
     active_context = nullptr;
   }
 
