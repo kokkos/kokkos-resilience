@@ -5,3 +5,4 @@ build/
 build-*/
 
 CMakeUserPresets.json
+*.user

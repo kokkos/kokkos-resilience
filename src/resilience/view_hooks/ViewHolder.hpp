@@ -41,22 +41,11 @@
 #ifndef INC_RESILIENCE_VIEWHOLDER_HPP
 #define INC_RESILIENCE_VIEWHOLDER_HPP
 
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_HostSpace.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <memory>
 #include <type_traits>
 #include <string>
-
-namespace Kokkos {
-// Forward declaration from View
-// This needs to be here to avoid a circular dependency; it's
-// necessary to see if the view holder can be assignable to a CPU buffer
-// for the purposes of type erasure
-template <class T1, class T2>
-struct is_always_assignable_impl;
-
-}
 
 namespace KokkosResilience {
 namespace Impl {

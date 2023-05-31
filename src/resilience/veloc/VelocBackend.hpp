@@ -145,6 +145,8 @@ namespace KokkosResilience
       const std::vector< Detail::CrefImpl > &crefs );
 
     void reset();
+    void reset(MPI_Comm newcomm);
+    
     void register_alias( const std::string &original, const std::string &alias );
 
   private:
@@ -153,8 +155,11 @@ namespace KokkosResilience
     
     std::unordered_map< std::string, Detail::MemProtectBlock > m_registry;
     
-    MPI_Comm m_mpi_comm;
     ContextBase *m_context;
+    
+    MPI_Comm m_mpi_comm;
+    bool single_mode;
+    int mpi_rank;
     
     mutable std::unordered_map< std::string, int > m_latest_version;
     std::unordered_map< std::string, std::string > m_alias_map;
@@ -200,7 +205,10 @@ namespace KokkosResilience
     void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
 
   private:
-      MPIContext< VeloCFileBackend > *m_context;
+    MPI_Comm m_mpi_comm;
+    MPIContext< VeloCFileBackend > *m_context;
+    bool single_mode;
+    int mpi_rank;
   };
 }
 

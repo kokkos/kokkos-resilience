@@ -41,7 +41,6 @@
 #include <gtest/gtest.h>
 #include "TestCommon.hpp"
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Core_fwd.hpp>
 #include <resilience/Resilience.hpp>
 #include <resilience/openMP/ResHostSpace.hpp>
 #include <resilience/openMP/ResOpenMP.hpp>
