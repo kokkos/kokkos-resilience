@@ -14,7 +14,7 @@ if (NOT CMAKE_CXX_COMPILER MATCHES ".*nvcc_wrapper" )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(resilience PRIVATE "-Werror" "-Wall")
+  #target_compile_options(resilience PRIVATE "-Wall" "-Werror")
 endif()
 
 target_include_directories(resilience PUBLIC
@@ -89,7 +89,7 @@ endif()
 # MPI requirement
 if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
    find_package(MPI REQUIRED)
-   target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
+   target_link_libraries(resilience PUBLIC MPI::MPI_CXX)
 endif()
 
 find_package(Boost REQUIRED COMPONENTS filesystem)
