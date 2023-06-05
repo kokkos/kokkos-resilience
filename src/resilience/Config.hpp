@@ -41,7 +41,7 @@
 #ifndef INC_RESILIENCE_CONFIG_HPP
 #define INC_RESILIENCE_CONFIG_HPP
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <unordered_map>
 #include <vector>
 #include <stdexcept>
@@ -198,7 +198,7 @@ namespace KokkosResilience
     };
 
     Config() = default;
-    explicit Config( const boost::filesystem::path &p );
+    explicit Config( const std::filesystem::path &p );
 
     const Entry &operator[]( const std::string &key ) const
     {

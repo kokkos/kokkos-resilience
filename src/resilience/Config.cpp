@@ -66,7 +66,7 @@ namespace KokkosResilience
     }
   }
 
-  Config::Config( const boost::filesystem::path &p )
+  Config::Config( const std::filesystem::path &p )
   {
     std::ifstream instrm{ p.string() };
 
