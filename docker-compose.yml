@@ -8,4 +8,4 @@ services:
     volumes:
       - .:/opt/src/kokkos-resilience
     working_dir: /opt/src/kokkos-resilience
-    #command: /bin/bash "/opt/src/kokkos-resilience/ci/build-and-test.sh"
+    command: /bin/bash "/opt/src/kokkos-resilience/ci/build-and-test.sh"

@@ -13,13 +13,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Build dependencies
-        id: docker_build_deps
+        id: kokkos-resilience-deps
         uses: docker/build-push-action@v4
         with:
           push: false
-          tags: ${{ steps.vars.outputs.docker_tag }}
+          tags: kokkos-resilience-deps:${{ steps.vars.outputs.docker_tag }}
           context: .
           file: ./ci/ubuntu20.04-gcc11-x64.dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
+      - name: Build and Test
+        env:
+          DOCKER_IMAGE_TAG: ${{ steps.vars.outputs.docker_tag }}
+        run: docker-compose run build-deps-kr-ubuntu
