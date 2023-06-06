@@ -41,15 +41,15 @@
 #ifndef INC_RESILIENCE_CONFIG_HPP
 #define INC_RESILIENCE_CONFIG_HPP
 
-#include <boost/variant.hpp>
-#include <boost/optional.hpp>
-#include <boost/filesystem.hpp>
-#include <unordered_map>
+#include <filesystem>
+#include <map>
 #include <vector>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
 #include <type_traits>
+#include <variant>
+#include <optional>
 
 namespace KokkosResilience
 {
@@ -75,7 +75,7 @@ namespace KokkosResilience
     {
     public:
 
-      using variant_type = boost::variant< double, std::string, bool >;
+      using variant_type = std::variant< double, std::string, bool >;
 
       Value() = default;
 
@@ -88,7 +88,7 @@ namespace KokkosResilience
       template< typename T >
       const T &as() const
       {
-        auto *val = boost::get< T >( &m_variant );
+        auto *val = std::get_if< T >( &m_variant );
         if ( !val )
           throw ConfigValueError();
 
@@ -118,24 +118,23 @@ namespace KokkosResilience
       template< typename... Args >
       void emplace( const std::string &key, Args &&... args )
       {
-        if ( m_variant.which() != 0 )
+        auto *map = std::get_if< map_type >( &m_variant );
+        if ( !map )
           throw ConfigKeyError( key );
 
-        auto &map = boost::get< map_type >( m_variant );
-        map.emplace( std::piecewise_construct,
+        map->emplace( std::piecewise_construct,
             std::forward_as_tuple( key ),
             std::forward_as_tuple( std::forward< Args >( args )... ) );
       }
 
       const Entry &operator[]( const std::string &key ) const
       {
-        if ( m_variant.which() != 0 )
+        auto *map = std::get_if< map_type >( &m_variant );
+        if ( !map )
           throw ConfigKeyError( key );
 
-        const auto &map = boost::get< map_type >( m_variant );
-
-        auto pos = map.find( key );
-        if ( pos == map.end() )
+        auto pos = map->find( key );
+        if ( pos == map->end() )
           throw ConfigKeyError( key );
 
         return pos->second;
@@ -143,24 +142,23 @@ namespace KokkosResilience
 
       Entry &operator[]( const std::string &key )
       {
-        if ( m_variant.which() != 0 )
+        if ( !std::holds_alternative< map_type >( m_variant ) )
           m_variant = map_type{};
 
-        auto &map = boost::get< map_type >( m_variant );
+        auto &map = std::get< map_type >( m_variant );
 
         return map[key];
       }
 
-      boost::optional< Entry > get( const std::string &key ) const
+      std::optional< Entry > get( const std::string &key ) const
       {
-        if ( m_variant.which() != 0 )
+        auto *map = std::get_if< map_type >( &m_variant );
+        if ( !map )
           throw ConfigKeyError( key );
 
-        const auto &map = boost::get< map_type >( m_variant );
-
-        auto pos = map.find( key );
-        if ( pos == map.end() )
-          return boost::none;
+        auto pos = map->find( key );
+        if ( pos == map->end() )
+          return std::nullopt;
 
         return pos->second;
       }
@@ -174,34 +172,33 @@ namespace KokkosResilience
       template< typename T >
       const T &as() const
       {
-        if ( m_variant.which() != 2 )
+        auto *val = std::get_if< Value >( &m_variant );
+        if ( !val )
           throw ConfigValueError();
 
-        const auto &val = boost::get< Value >( m_variant );
-        return val.as< T >();
+        return val->as< T >();
       }
 
       bool is_value() const noexcept
       {
-        return m_variant.which() == 2;
+        return std::holds_alternative< Value >( m_variant );
       }
 
       bool is_object() const noexcept
       {
-        return m_variant.which() == 0;
+        return std::holds_alternative< map_type >( m_variant );
       }
 
     private:
 
-      using map_type = std::unordered_map< std::string, Entry >;
+      using map_type = std::map< std::string, Entry >;
       using array_type = std::vector< Entry >;
 
-      boost::variant< boost::recursive_wrapper< map_type >,
-                      boost::recursive_wrapper< array_type >, Value > m_variant;
+      std::variant< map_type, array_type, Value > m_variant;
     };
 
     Config() = default;
-    explicit Config( const boost::filesystem::path &p );
+    explicit Config( const std::filesystem::path &p );
 
     const Entry &operator[]( const std::string &key ) const
     {

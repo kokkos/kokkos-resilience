@@ -15,9 +15,9 @@ message(STATUS "Module path: ${CMAKE_MODULE_PATH}")
 find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
 
 if (@KR_ENABLE_VELOC@)
-   set(VeloC_DIR @VeloC_DIR@)
+   set(veloc_DIR @veloc_DIR@)
    set(KR_VELOC_BAREBONE @KR_VELOC_BAREBONE@)
-   find_dependency(VeloC REQUIRED)
+   find_dependency(veloc REQUIRED)
 endif()
 
 if (@KR_ENABLE_HDF5@)
@@ -26,4 +26,4 @@ if (@KR_ENABLE_HDF5@)
 endif()
 
 set(Boost_DIR @Boost_DIR@)
-find_dependency(Boost REQUIRED COMPONENTS filesystem)
+find_dependency(Boost REQUIRED)

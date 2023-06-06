@@ -51,16 +51,6 @@
 
 #include <Kokkos_Core.hpp>
 
-#include <impl/Kokkos_Error.hpp>
-#include <impl/Kokkos_CPUDiscovery.hpp>
-#include <impl/Kokkos_Profiling_Interface.hpp>
-
-#include <impl/Kokkos_Traits.hpp>
-#include <Kokkos_UniqueToken.hpp>
-#include <impl/Kokkos_ConcurrentBitset.hpp>
-
-#include <Kokkos_OpenMP.hpp>
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
 #include "ResOpenMP.hpp"
 
 /*------------------------------------------------------------------------*/
@@ -71,24 +61,12 @@ ResOpenMP::ResOpenMP()
   : OpenMP() {
 }
 
-void ResOpenMP::print_configuration( std::ostream & s , const bool )
+void
+ResOpenMP::print_configuration(std::ostream& os, bool verbose) const
 {
-  s << "KokkosResilience::ResOpenMP";
+  os << "KokkosResilience::ResOpenMP:\n";
 
-  const bool is_initialized = Kokkos::Impl::t_openmp_instance != nullptr;
-
-  if (is_initialized) {
-    Kokkos::Impl::OpenMPExec::verify_is_master("ResOpenMP::print_configuration");
-
-    const int numa_count      = 1;
-    const int core_per_numa   = Kokkos::Impl::g_openmp_hardware_max_threads;
-    const int thread_per_core = 1;
-
-    s << " thread_pool_topology[ " << numa_count << " x " << core_per_numa
-      << " x " << thread_per_core << " ]" << std::endl;
-  } else {
-    s << " not initialized" << std::endl;
-  }
+  Kokkos::OpenMP::print_configuration( os, verbose );
 }
 
 const char* ResOpenMP::name() { return "ResOpenMP"; }

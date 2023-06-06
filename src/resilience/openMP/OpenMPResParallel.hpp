@@ -48,12 +48,7 @@
 #include <omp.h>
 #include <iostream>
 
-#include <OpenMP/Kokkos_OpenMP_Exec.hpp>
-
-#include <KokkosExp_MDRangePolicy.hpp>
-
-#include <Kokkos_Parallel.hpp>
-#include <OpenMP/Kokkos_OpenMP_Parallel.hpp>
+#include <Kokkos_Core.hpp>
 
 #include "OpenMPResSubscriber.hpp"
 

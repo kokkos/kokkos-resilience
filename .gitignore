@@ -5,3 +5,5 @@ build/
 build-*/
 
 CMakeUserPresets.json
+*.user
+.vscode/

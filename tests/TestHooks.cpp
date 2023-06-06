@@ -41,7 +41,7 @@
 #include "TestCommon.hpp"
 #include <algorithm>
 #include <unordered_map>
-#include <Kokkos_View.hpp>
+#include <Kokkos_Core.hpp>
 
 struct TestSubscriber;
 

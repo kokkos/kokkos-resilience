@@ -46,9 +46,7 @@
 #include <iosfwd>
 #include <typeinfo>
 
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_Concepts.hpp>
-#include <Kokkos_MemoryTraits.hpp>
+#include <Kokkos_Core.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
 #include "resilience/filesystem/ExternalIOInterface.hpp"
 #include <fstream>
@@ -100,13 +98,13 @@ public:
    void close_file();
 
    virtual size_t ReadFile_impl(void * dest, const size_t dest_size);
-   
+
    virtual size_t WriteFile_impl(const void * src, const size_t src_size);
-   
+
    virtual size_t OpenFile_impl();
 
    void finalize();
-   
+
    virtual ~KokkosStdFileAccessor() {
    }
 };

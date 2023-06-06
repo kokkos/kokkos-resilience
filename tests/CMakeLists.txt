@@ -12,7 +12,7 @@ add_executable(resilience_tests
                TestResilience.cpp
                TestLambdaCapture.cpp
                TestHooks.cpp
-		       TestOpenMPResilientExecution.cpp
+           TestOpenMPResilientExecution.cpp
                TestDynamicViewHooks.cpp
                )
 
@@ -39,8 +39,16 @@ if (KR_ENABLE_HDF5)
                  )
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(resilience_tests PRIVATE "-Werror" "-Wall")
+if (KR_WARNINGS_AS_ERRORS)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(resilience_tests PRIVATE "-Wall")
+  endif()
+endif()
+
+if (KR_WARNINGS_AS_ERRORS)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(resilience_tests PRIVATE "-Werror")
+  endif()
 endif()
 
 target_link_libraries(resilience_tests PRIVATE gtest)
@@ -49,5 +57,9 @@ target_link_libraries(resilience_tests PRIVATE resilience)
 include(GoogleTest)
 gtest_discover_tests(resilience_tests)
 
+set(KR_TEST_DATADIR "${CMAKE_CURRENT_BINARY_DIR}/data")
+
 configure_file(data/hdf5_test_config.json data/hdf5_test_config.json COPYONLY)
-configure_file(data/veloc_test.cfg data/veloc_test.cfg COPYONLY)
+configure_file(data/veloc_test.cfg.in data/veloc_test.cfg @ONLY)
+
+target_compile_definitions(resilience_tests PRIVATE KR_TEST_DATADIR="${KR_TEST_DATADIR}")

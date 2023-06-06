@@ -12,7 +12,7 @@
       "cacheVariables": {
         "KR_VELOC_BAREBONE": {
           "type": "BOOL",
-          "value": "ON"
+          "value": "OFF"
         },
         "KR_ENABLE_VELOC": {
           "type": "BOOL",
@@ -31,7 +31,7 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "KR_ENABLE_TRACING": {
           "type": "BOOL",
-          "value": "ON"
+          "value": "OFF"
         }
       }
     },

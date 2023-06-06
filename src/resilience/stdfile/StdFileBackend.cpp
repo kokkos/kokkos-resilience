@@ -44,7 +44,7 @@
 #include <fstream>
 #include <string>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "../AutomaticCheckpoint.hpp"
 
@@ -75,7 +75,6 @@ StdFileBackend::~StdFileBackend() = default;
 void StdFileBackend::checkpoint(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ofstream file(filename, std::ios::binary);
@@ -94,26 +93,25 @@ void StdFileBackend::checkpoint(
     write_trace.end();
 #endif
   } catch (...) {
-    status = false;
   }
 }
 
 bool StdFileBackend::restart_available(const std::string &label, int version) {
   std::string filename = detail::full_filename(m_filename, label, version);
-  return boost::filesystem::exists(filename);
+  return std::filesystem::exists(filename);
 }
 
 int StdFileBackend::latest_version(const std::string &label) const noexcept {
   int result = -1;
   std::string filename = detail::versionless_filename(m_filename, label);
-  boost::filesystem::path dir(filename);
+  std::filesystem::path dir(filename);
 
   filename = dir.filename().string();
 
-  dir = boost::filesystem::absolute(dir).parent_path();
+  dir = std::filesystem::absolute(dir).parent_path();
 
-  for(auto &entry : boost::filesystem::directory_iterator(dir)){
-    if (!boost::filesystem::is_regular_file(entry)) {
+  for(auto &entry : std::filesystem::directory_iterator(dir)){
+    if (!std::filesystem::is_regular_file(entry)) {
       continue;
     }
     if(filename == entry.path().filename().stem().string()){
@@ -132,7 +130,6 @@ int StdFileBackend::latest_version(const std::string &label) const noexcept {
 void StdFileBackend::restart(
     const std::string &label, int version,
     const std::vector< KokkosResilience::ViewHolder > &views) {
-  bool status = true;
   try {
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ifstream file(filename, std::ios::binary);
@@ -151,7 +148,6 @@ void StdFileBackend::restart(
     read_trace.end();
 #endif
   } catch (...) {
-    status = false;
   }
 }
 }  // namespace KokkosResilience

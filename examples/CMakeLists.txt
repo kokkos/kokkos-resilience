@@ -17,8 +17,16 @@ function(add_example _target)
      target_link_libraries(${_target} PRIVATE MPI::MPI_CXX)
   endif()
 
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(${_target} PRIVATE "-Werror" "-Wall")
+  if (KR_WARNINGS_AS_ERRORS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      target_compile_options(${_target} PRIVATE "-Wall")
+    endif()
+  endif()
+
+  if (KR_WARNINGS_AS_ERRORS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      target_compile_options(${_target} PRIVATE "-Werror")
+    endif()
   endif()
 endfunction()
 
