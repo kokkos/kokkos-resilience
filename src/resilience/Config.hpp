@@ -42,7 +42,7 @@
 #define INC_RESILIENCE_CONFIG_HPP
 
 #include <filesystem>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <stdexcept>
 #include <tuple>
@@ -191,7 +191,7 @@ namespace KokkosResilience
 
     private:
 
-      using map_type = std::unordered_map< std::string, Entry >;
+      using map_type = std::map< std::string, Entry >;
       using array_type = std::vector< Entry >;
 
       std::variant< map_type, array_type, Value > m_variant;

@@ -129,18 +129,18 @@ namespace KokkosResilience
 
     VeloCMemoryBackend &operator=( const VeloCMemoryBackend & ) = delete;
     VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
-  
+
     void checkpoint( const std::string &label, int version,
                      const std::vector< KokkosResilience::ViewHolder > &views );
-  
+
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
-  
+
     void restart( const std::string &label, int version,
                   const std::vector< KokkosResilience::ViewHolder > &views );
 
     void clear_checkpoints();
-  
+
     void register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
       const std::vector< Detail::CrefImpl > &crefs );
 
@@ -150,12 +150,12 @@ namespace KokkosResilience
   private:
 
     std::string get_canonical_label( const std::string &_label ) const noexcept;
-    
+
     std::unordered_map< std::string, Detail::MemProtectBlock > m_registry;
-    
+
     MPI_Comm m_mpi_comm;
     ContextBase *m_context;
-    
+
     mutable std::unordered_map< std::string, int > m_latest_version;
     std::unordered_map< std::string, std::string > m_alias_map;
     int m_last_id;
@@ -180,27 +180,24 @@ namespace KokkosResilience
     void restart( const std::string &label, int version,
                   const std::vector< KokkosResilience::ViewHolder > &views );
   };
-  
+
   class VeloCFileBackend
   {
   public:
-  
+
     VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
     ~VeloCFileBackend();
-  
+
     void checkpoint( const std::string &label, int version,
                      const std::vector< KokkosResilience::ViewHolder > &views );
 
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
-  
+
     void restart( const std::string &label, int version,
                   const std::vector< KokkosResilience::ViewHolder > &views );
-  
-    void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
 
-  private:
-      MPIContext< VeloCFileBackend > *m_context;
+    void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
   };
 }
 
