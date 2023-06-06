@@ -12,7 +12,6 @@ add_executable(resilience_tests
                TestResilience.cpp
                TestLambdaCapture.cpp
                TestHooks.cpp
-           TestOpenMPResilientExecution.cpp
                TestDynamicViewHooks.cpp
                )
 
@@ -36,6 +35,12 @@ endif()
 if (KR_ENABLE_HDF5)
   target_sources(resilience_tests PRIVATE
                  TestHDF5Configuration.cpp
+                 )
+endif()
+
+if (KR_OPENMP_EXEC_SPACE)
+  target_sources(resilience_tests PRIVATE
+                 TestOpenMPResilientExecution.cpp
                  )
 endif()
 
