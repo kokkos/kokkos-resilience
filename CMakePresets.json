@@ -58,7 +58,8 @@
       "inherits": ["kr_auto_checkpoint_veloc", "kr_release"],
       "binaryDir": "/opt/build/kokkos-resilience",
       "cacheVariables": {
-        "Kokkos_ROOT": "/opt/view/gcc-11.1.0/kokkos/4.0.01/"
+        "Kokkos_ROOT": "/opt/view/gcc-11.1.0/kokkos/4.0.01/",
+        "veloc_ROOT": "/opt/veloc/"
       }
     }
   ],
