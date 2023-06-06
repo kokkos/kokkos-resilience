@@ -3,7 +3,7 @@ spack:
     - compilers: [gcc@11.1.0]
     - mpis: [mpich@4.1.1]
     - packages:
-      - kokkos@4.0.01
+      - kokkos@4.0.01 ~hpx
       - boost@1.81.0
   specs:
     - matrix:
