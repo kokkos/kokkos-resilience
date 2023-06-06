@@ -54,3 +54,7 @@ RUN cd /opt/spack-environment \
   && spack install --fail-fast \
   && spack gc -y
 
+# We need to build a specific branch of VeloC until https://github.com/ECP-VeloC/VELOC/pull/43 is resolved
+RUN mkdir -p /opt/build/ && cd /opt/build/ && git clone --depth 1 --branch "add-cmake-config-support" https://github.com/nmm0/VELOC.git
+RUN cd /opt/build/ && python3 ./auto-install.py --without-boost /opt/veloc "-DBoost_ROOT=/opt/view/gcc-11.1.0/boost/1.81.0"
+RUN rm -rf /opt/build
