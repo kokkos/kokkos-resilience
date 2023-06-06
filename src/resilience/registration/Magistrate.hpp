@@ -44,11 +44,10 @@
 
 #include "resilience/registration/Registration.hpp"
 #include <checkpoint/checkpoint.h>
-#include <checkpoint/serializers/stream_serializer.h>
 
-namespace KokkosResilience {
-  class ContextBase;
-}
+#ifdef KR_ENABLE_VT
+#include "resilience/util/VTUtil.hpp"
+#endif
 
 namespace KokkosResilience::Detail {
   //Registration for some type which Magistrate knows how to checkpoint.
@@ -98,7 +97,7 @@ namespace KokkosResilience::Detail {
   };
 }
 
-/*
+
 namespace KokkosResilience {
   template<
     typename T,
@@ -108,7 +107,10 @@ namespace KokkosResilience {
     T,
     std::tuple<Traits...>,
     std::enable_if_t<
-      checkpoint::SerializableTraits<T, checkpoint::StreamPacker<>>::is_traversable
+      checkpoint::SerializableTraits<T>::is_traversable
+#ifdef KR_ENABLE_VT
+      and not Util::VT::is_proxy<T>::value
+#endif
     >*
   > {
     using BaseT = Detail::MagistrateRegistration<T, Traits...>;
@@ -122,7 +124,7 @@ namespace KokkosResilience {
     }
   };
 }
-*/
+
 
 #endif
 

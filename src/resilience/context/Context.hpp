@@ -46,9 +46,9 @@
 
 #include "ContextBase.hpp"
 
-#ifdef KR_ENABLE_STDFILE
-  #include "StdFileContext.hpp"
-#endif
+//#ifdef KR_ENABLE_STDFILE
+//  #include "StdFileContext.hpp"
+//#endif
 
 #ifdef KR_ENABLE_MPI_BACKENDS
   #include <mpi.h>
@@ -61,7 +61,6 @@
 #endif
 
 namespace KokkosResilience {  
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
 #ifdef KR_ENABLE_MPI_BACKENDS
   std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
 #endif
@@ -70,7 +69,7 @@ namespace KokkosResilience {
   std::unique_ptr< ContextBase > make_context(vt::ctx::Context* theContext, const std::string &config );
 #endif
 #ifdef KR_ENABLE_STDFILE
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
+  std::unique_ptr< ContextBase > make_context( const std::string &config );
 #endif
 }
 

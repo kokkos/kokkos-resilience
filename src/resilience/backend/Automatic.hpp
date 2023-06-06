@@ -43,19 +43,10 @@
 
 
 #include "AutomaticBase.hpp"
-
-#ifdef KR_ENABLE_VELOC
-#include "veloc/VelocBackend.hpp"
-#endif
-
-#ifdef KR_ENABLE_STDFILE
-#include "stdfile/StdFileBackend.hpp"
-#endif
-
 #include "resilience/Config.hpp"
 
 namespace KokkosResilience::Detail {
-  AutomaticBackend make_backend(ContextBase* ctx);
+  AutomaticBackend make_backend(ContextBase& ctx);
 }
 
 #endif

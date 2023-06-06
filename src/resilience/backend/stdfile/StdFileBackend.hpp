@@ -41,44 +41,42 @@
 #ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 #define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#include <Kokkos_Core.hpp>
-#include "resilience/view_hooks/ViewHolder.hpp"
+#include "resilience/backend/AutomaticBase.hpp"
 
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "resilience/Cref.hpp"
-#include "resilience/context/StdFileContext.hpp"
+#include <filesystem>
+#include <unordered_map>
 
 namespace KokkosResilience {
 
-class StdFileBackend {
+class StdFileBackend : public AutomaticBackendBase {
  public:
-  StdFileBackend(StdFileContext<StdFileBackend> &ctx,
-                 std::string const &filename);
-  ~StdFileBackend();
+  StdFileBackend(ContextBase& ctx);
+  ~StdFileBackend() = default;
 
-  void checkpoint(
-      const std::string &label, int version,
-      const std::vector< KokkosResilience::ViewHolder > &views);
+  //No state to manage
+  void register_member(Registration&) override {};
 
-  bool restart_available(const std::string &label, int version);
-  int latest_version(const std::string &label) const noexcept;
+  bool checkpoint(const std::string &label, int version,
+                  const std::unordered_set<Registration>& members, bool as_global) override;
 
-  void restart(
-      const std::string &label, int version,
-      const std::vector< KokkosResilience::ViewHolder > &views);
+  int latest_version(const std::string &label, int max, bool as_global) const noexcept override;
+  bool restart_available(const std::string& label, int version, bool as_global) override;
 
-  void reset() {}
+  bool restart(const std::string &label, int version,
+               const std::unordered_set<Registration>& members, bool as_global) override;
 
-  void register_hashes(
-      const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector<Detail::CrefImpl> &crefs) {}
+  //No state to reset
+  void reset() override {};
 
  private:
-  std::string m_filename;
-  StdFileContext<StdFileBackend> &m_context;
+  using path = std::filesystem::path;
+  path checkpoint_dir = "./";
+  std::string checkpoint_prefix = "kr_chkpt_";
+
+  mutable std::unordered_map<std::string, int> latest_versions;
+
+  //The file to checkpoint/recover with
+  path checkpoint_file(const std::string& label, int version, bool as_global) const;
 };
 
 }  // namespace KokkosResilience

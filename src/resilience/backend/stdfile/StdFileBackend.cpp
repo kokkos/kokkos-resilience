@@ -38,116 +38,231 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "StdFileBackend.hpp"
-
 #include <cassert>
 #include <fstream>
-#include <string>
+#include <exception>
 
-#include <filesystem>
-
-#include "resilience/AutomaticCheckpoint.hpp"
-
-#ifdef KR_ENABLE_TRACING
+#include "StdFileBackend.hpp"
+#include "resilience/context/ContextBase.hpp"
 #include "resilience/util/Trace.hpp"
-#endif
 
 namespace KokkosResilience {
 
-namespace detail {
+StdFileBackend::StdFileBackend(ContextBase& ctx)
+    : AutomaticBackendBase(ctx) {
 
-std::string versionless_filename(std::string const &filename, std::string const &label) {
-  return filename + "." + label;
+  auto config = m_context.config()["backends"]["stdfile"];
+  auto config_dir = config.get("directory");
+  auto config_prefix = config.get("filename_prefix");
+
+  if(config_dir) {
+    checkpoint_dir = config_dir->template as<std::string>();
+
+    using namespace std::filesystem;
+
+    std::error_code err;
+    create_directories(checkpoint_dir, err);
+    if(err) throw ConfigValueError("backends:stdfile:directory invalid " + err.message());
+
+    if(status(checkpoint_dir).type() != file_type::directory){
+      throw ConfigValueError("backends:stdfile:directory not actually a directory");
+    }
+  }
+
+  if(config_prefix) {
+    checkpoint_prefix = config_prefix->template as<std::string>();
+  }
 }
 
-std::string full_filename(std::string const &filename, std::string const &label,
-                          int version) {
-  return versionless_filename(filename, label) + "." + std::to_string(version);
-}
-}  // namespace detail
 
-StdFileBackend::StdFileBackend(StdFileContext<StdFileBackend> &ctx,
-                               std::string const &filename)
-    : m_filename(filename), m_context(ctx) {}
 
-StdFileBackend::~StdFileBackend() = default;
-
-void StdFileBackend::checkpoint(
+bool StdFileBackend::checkpoint(
     const std::string &label, int version,
-    const std::vector< KokkosResilience::ViewHolder > &views) {
+    const std::unordered_set<Registration>& members,
+    bool as_global) {
+
+  //Files have a header: <file size> <Member0 ID> <Member0 offset> ... <MemberN ID> <MemberN offset>
+  //Header lasts until Member0 offset
+  const size_t header_size = sizeof(size_t) + (sizeof(int)+sizeof(size_t))*members.size();
+
+  std::vector<int> member_hashes(members.size());
+  std::vector<size_t> member_offsets(members.size());
+
+  auto filename = checkpoint_file(label, version, as_global);
+
+  auto write_trace = Util::begin_trace<Util::TimingTrace>(m_context, "write");
+  bool success = true;
   try {
-    std::string filename = detail::full_filename(m_filename, label, version);
     std::ofstream file(filename, std::ios::binary);
+    file.seekp(header_size);
 
-#ifdef KR_ENABLE_TRACING
-    auto write_trace =
-        Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "write");
-#endif
-    for (auto &&v : views) {
-      char *bytes     = static_cast<char *>(v->data());
-      std::size_t len = v->span() * v->data_type_size();
+    size_t index = 0;
+    for (auto& member : members) {
+      member_hashes[index] = member.hash();
+      member_offsets[index] = file.tellp();
 
-      file.write(bytes, len);
+      if(!member->serializer()(file)){
+        fprintf(stderr, "Warning: In checkpoint of %s version %d, member %s serialization failed!\n", label.c_str(), version, member->name.c_str());
+      }
+      index++;
     }
-#ifdef KR_ENABLE_TRACING
-    write_trace.end();
-#endif
-  } catch (...) {
+
+    size_t full_size = file.tellp();
+
+    file.seekp(0);
+    file.write((char*) &full_size, sizeof(full_size));
+
+    for(index = 0; index < members.size(); index++){
+      file.write((char*) &member_hashes[index], sizeof(int));
+      file.write((char*) &member_offsets[index], sizeof(size_t));
+    }
+
+    latest_versions[label] = version;
+  } catch (std::exception& e) {
+    fprintf(stderr, "Error checkpointing region %s version %d to file %s: %s\n",
+            label.c_str(), version, std::string(filename).c_str(), e.what());
+    success = false;
   }
+  write_trace.end();
+  return success;
 }
 
-bool StdFileBackend::restart_available(const std::string &label, int version) {
-  std::string filename = detail::full_filename(m_filename, label, version);
-  return std::filesystem::exists(filename);
+
+std::filesystem::path StdFileBackend::checkpoint_file(
+    const std::string& label, int version, bool as_global) const {
+  return checkpoint_dir / (checkpoint_prefix + label +
+                            ( as_global ? "" : "." + std::to_string(m_context.m_pid) ) +
+                          "." + std::to_string(version));
 }
 
-int StdFileBackend::latest_version(const std::string &label) const noexcept {
+bool StdFileBackend::restart_available(const std::string &label, int version, bool as_global) {
+  return std::filesystem::exists(checkpoint_file(label, version, as_global));
+}
+
+int StdFileBackend::latest_version(const std::string &label, int max, bool as_global) const noexcept {
+
+  auto iter = latest_versions.find(label);
+  if(iter != latest_versions.end() && (max == 0 || iter->second < max)) return iter->second;
+
   int result = -1;
-  std::string filename = detail::versionless_filename(m_filename, label);
-  std::filesystem::path dir(filename);
+  bool successful = false;
+  try {
+    std::string basename = checkpoint_file(label, 0, as_global).filename().stem();
 
-  filename = dir.filename().string();
+    for(auto& dir_entry : std::filesystem::directory_iterator(checkpoint_dir)){
+      path filename = dir_entry.path().filename();
 
-  dir = std::filesystem::absolute(dir).parent_path();
+      if(filename.stem() != basename) continue;
 
-  for(auto &entry : std::filesystem::directory_iterator(dir)){
-    if (!std::filesystem::is_regular_file(entry)) {
-      continue;
+      std::string file_ext = filename.extension();
+      if(file_ext.size() < 2) continue;
+
+      //Remove the dot from, eg, ".100"
+      file_ext.erase(0,1);
+      try {
+        int version = stoi(file_ext);
+        if(max == 0 || version < max) {
+          result = result < version ? version : result;
+         }
+      } catch(...) {}
     }
-    if(filename == entry.path().filename().stem().string()){
-        //This is a checkpoint, probably.
-        try{
-            int vers = std::stoi(entry.path().filename().extension().string().substr(1));
-            result = std::max(result,vers);
-        } catch(...) {
-            //Just not the filename format we expected, could be unrelated.
-        }
-    }
-  }
+
+    successful = true;
+  } catch(...) {}
+
+  if(max == 0 && successful) latest_versions[label] = result;
+
   return result;
 }
 
-void StdFileBackend::restart(
-    const std::string &label, int version,
-    const std::vector< KokkosResilience::ViewHolder > &views) {
-  try {
-    std::string filename = detail::full_filename(m_filename, label, version);
-    std::ifstream file(filename, std::ios::binary);
 
-#ifdef KR_ENABLE_TRACING
-    auto read_trace =
-        Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "read");
-#endif
-    for (auto &&v : views) {
-      char *bytes     = static_cast<char *>(v->data());
-      std::size_t len = v->span() * v->data_type_size();
 
-      file.read(bytes, len);
+struct FileMember {
+  size_t start, stop;
+  const Registration* registration = nullptr;
+};
+
+//We want to read through the file in-order where possible,
+//so we build an ordered vector representing which registration to
+//restore to as we go.
+std::vector<FileMember>
+read_header(std::istream& file, const std::unordered_set<Registration>& registrations){
+  std::vector<FileMember> members;
+  std::unordered_map<int, int> hash_to_member;
+
+  size_t file_size;
+  file.read((char*) &file_size, sizeof(size_t));
+
+  size_t header_size = file_size; //temporary estimate
+  while(size_t(file.tellg()) < header_size){
+    members.push_back(FileMember());
+    int idx = members.size() - 1;
+
+    int hash; size_t start;
+    file.read((char*) &hash, sizeof(int));
+    file.read((char*) &start, sizeof(size_t));
+
+    members[idx].start = start;
+    if(idx > 0) members[idx-1].stop = start;
+
+    hash_to_member[hash] = idx;
+
+    //Fix estimate after we pull the first member info.
+    if(header_size == file_size){
+      header_size = start;
     }
-#ifdef KR_ENABLE_TRACING
-    read_trace.end();
-#endif
-  } catch (...) {
   }
+  members.back().stop = file_size;
+
+  for(auto& reg : registrations){
+    auto iter = hash_to_member.find(reg.hash());
+    if(iter == hash_to_member.end()){
+      fprintf(stderr, "Warning: Checkpoint is missing member %s!\n", reg->name.c_str());
+    }
+
+    int idx = iter->second;
+    members[idx].registration = &reg;
+  }
+
+  return members;
 }
+
+bool StdFileBackend::restart(
+    const std::string &label, int version,
+    const std::unordered_set<Registration>& registrations,
+    bool as_global) {
+  auto read_trace = Util::begin_trace<Util::TimingTrace>(m_context, "read");
+
+  try {
+    std::ifstream file(checkpoint_file(label, version, as_global), std::ios::binary);
+
+    auto file_members = read_header(file, registrations);
+
+    for(auto& member : file_members){
+      if(member.registration == nullptr) continue;
+
+      file.seekg(member.start);
+
+      const Registration& reg = *(member.registration);
+      if(!reg->deserializer()(file)){
+        fprintf(stderr, "Warning: In restart of %s version %d, member %s deserialization failed!\n", label.c_str(), version, reg->name.c_str());
+      }
+
+      size_t actual_stop = file.tellg();
+      if(actual_stop != member.stop){
+        bool more = actual_stop > member.stop;
+        size_t amt = more ? actual_stop-member.stop : member.stop-actual_stop;
+        fprintf(stderr, "Warning: In restart of %s version %d, member %s deserialized with %lu %s bytes than in the checkpoint!\n",
+            label.c_str(), version, reg->name.c_str(), amt, more ? "more" : "fewer");
+      }
+    }
+  } catch (...) {
+    read_trace.end();
+    return false;
+  }
+
+  read_trace.end();
+  return true;
+}
+
 }  // namespace KokkosResilience
