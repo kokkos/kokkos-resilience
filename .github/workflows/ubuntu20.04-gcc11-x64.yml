@@ -22,7 +22,10 @@ jobs:
           file: ./ci/ubuntu20.04-gcc11-x64.dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/kokkos-resilience-deps.tar
       - name: Build and Test
         env:
           DOCKER_IMAGE_TAG: ${{ steps.vars.outputs.docker_tag }}
-        run: docker-compose run build-deps-kr-ubuntu
+        run: |
+          docker load --input /tmp/kokkos-resilience-deps.tar
+          docker-compose run build-deps-kr-ubuntu
