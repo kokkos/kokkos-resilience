@@ -221,7 +221,7 @@ fprintf(stderr, "%sing member %s with id %d (%lu members in set)\n", entry.secon
     // No-op, don't do anything
   }
 
-  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &,
+  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &ctx,
                                      MPI_Comm mpi_comm,
                                      const std::string &veloc_config)
       : m_context(&ctx) {

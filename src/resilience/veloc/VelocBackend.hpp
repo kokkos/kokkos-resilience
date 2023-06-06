@@ -140,7 +140,7 @@ namespace KokkosResilience
     void register_member( KokkosResilience::Registration & ) {} // Do nothing
 
   private:
-      MPIContext< VeloCFileBackend > *m_context;
+      [[maybe_unused]] MPIContext< VeloCFileBackend > *m_context;
       veloc::client_t* veloc_client;
   };
 }

@@ -94,7 +94,9 @@ namespace KokkosResilience
     //Disable ViewHolder hook
     KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
 
+#ifdef KR_ENABLE_TRACING
     reg_hashes.end();
+#endif
   }
 
   template<typename... Traits, typename RegionFunc, typename FilterFunc, typename... T>
