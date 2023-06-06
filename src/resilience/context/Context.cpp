@@ -68,7 +68,7 @@ namespace KokkosResilience
       }
     }
 
-    m_backend = Detail::make_backend(this);
+    m_backend = Detail::make_backend(*this);
   }
 
   ContextBase* ContextBase::active_context = nullptr;

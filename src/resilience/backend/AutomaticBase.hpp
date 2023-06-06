@@ -45,42 +45,49 @@
 #include <unordered_set>
 #include <memory>
 
-namespace KokkosResilience{
+namespace KokkosResilience {
 
 //Avoiding cyclic dependency.
 class ContextBase;
 
 class AutomaticBackendBase {
 public:
-  explicit AutomaticBackendBase(ContextBase* ctx) : m_context(ctx) {};
+  explicit AutomaticBackendBase(ContextBase& ctx) : m_context(ctx) {};
 
   virtual ~AutomaticBackendBase() = default;
-  
+ 
+  //All members should be registered before being checkpointed or restarted
   virtual void register_member(Registration& member) = 0;
+
+  //as_global to checkpoint indepently of PID
+  virtual bool checkpoint(const std::string& label, int version,
+                          const std::unordered_set<Registration> &members,
+                          bool as_global = false) = 0;
+  
+  //Get the highest version available which is still less than max 
+  //  (or just the highest, if max=0)
+  virtual int latest_version(const std::string& label, int max = 0, bool as_global = false) const noexcept = 0;
+
+  //Returns failure flag for recovering the specified members.
+  //as_global to restart independently of PID
+  virtual bool restart(const std::string& label, int version,
+                       const std::unordered_set<Registration> &members, 
+                       bool as_global = false) = 0;
+
+  //Reset any state, useful for online-recovery.
+  virtual void reset() = 0;
+
+
 
   virtual void register_members(std::unordered_set<Registration>& members){
     for(auto member : members) register_member(member);
   }
 
-  virtual bool checkpoint(const std::string& label, int version, 
-                          const std::unordered_set<Registration> &members) = 0;
-  
- 
-
-  virtual int latest_version(const std::string& label) const noexcept = 0;
-
-  virtual bool restart_available(const std::string& label, int version){
-    return latest_version(label) == version; 
+  virtual bool restart_available(const std::string& label, int version, bool as_global = false){
+    return latest_version(label, version+1, as_global) == version;
   };
 
-  virtual bool restart(const std::string& label, int verison, 
-                       const std::unordered_set<Registration> &members) = 0;
-  
-  
-  virtual void reset() = 0;
-
-
-  ContextBase* const m_context;
+  ContextBase& m_context;
   
   
   //Delete potentially problematic functions for maintaining consistent state

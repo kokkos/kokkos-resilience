@@ -47,419 +47,213 @@
 #include <vt/vt.h>
 #include <checkpoint/checkpoint.h>
 #include "ContextBase.hpp"
+#include "resilience/util/VTUtil.hpp"
 
 namespace KokkosResilience {
   class VTContext;
+  using VTContextProxy = Util::VT::VTObj<VTContext>;
+  using VTContextElmProxy = Util::VT::VTObjElm<VTContext>;
+}
 
-namespace Detail {
-  using VTProxyType = std::tuple<uint64_t, uint64_t>;
-
-namespace VTTemplates {
-  using VTProxyType = Detail::VTProxyType;
-  
-  template<typename T>
-  using VTCol = vt::vrt::collection::CollectionProxy<T, typename T::IndexType>;
-  template<typename T>
-  using VTColElm = vt::vrt::collection::VrtElmProxy<T, typename T::IndexType>;
-  template<typename T>
-  using VTObj = vt::objgroup::proxy::Proxy<T>;
-  template<typename T>
-  using VTObjElm = vt::objgroup::proxy::ProxyElm<T>;
-
-  template<typename T, typename as = void>
-  struct is_col { static constexpr bool value = false; };
-  template<typename T, typename as = void>
-  struct is_col_elm { static constexpr bool value = false; };
-  template<typename T, typename as = void>
-  struct is_obj { static constexpr bool value = false; };
-  template<typename T, typename as = void>
-  struct is_obj_elm { static constexpr bool value = false; };
-
-  template<typename T, typename as = void, typename enable = void*>
-  struct is_proxy { static constexpr bool value = false; };
-
-  template<typename T, typename as = void, typename enable = void*>
-  struct is_elm { static constexpr bool value = false; };
-
-
-  template<typename T, typename as>
-  struct is_col<VTCol<T>, as> {
-    using type = as;
-    static constexpr bool value = true;
-  };
-  template<typename T, typename as>
-  struct is_col_elm<VTColElm<T>, as> {
-    using type = as;
-    static constexpr bool value = true;
-  };
-  template<typename T, typename as>
-  struct is_obj<VTObj<T>, as> {
-    using type = as;
-    static constexpr bool value = true;
-  };
-  template<typename T, typename as>
-  struct is_obj_elm<VTObjElm<T>, as> {
-    using type = as;
-    static constexpr bool value = true;
-  };
-
-  template<typename T, typename as>
-  struct is_elm<T, as, std::enable_if_t<is_col_elm<T>::value or is_obj_elm<T>::value>*> {
-    using type = as;
-    static constexpr bool value = true;
-  };
-
-  template<typename T, typename as>
-  struct is_proxy<T, as,
-    std::enable_if_t<is_col<T>::value or is_col_elm<T>::value 
-                  or is_obj<T>::value or is_obj_elm<T>::value>*
-  > {
-    using type = as;
-    static constexpr bool value = true;
-  };
-
-
-  template<typename T>
-  std::string get_label(VTCol<T> proxy){
-    return vt::theCollection()->getLabel(proxy.getProxy());
-  }
-  template<typename T>
-  std::string get_label(VTColElm<T> proxy){
-    return vt::theCollection()->getLabel(proxy.getCollectionProxy()) 
-           + proxy.getIndex().toString();
-  }
-  template<typename T>
-  std::string get_label(VTObj<T> proxy){
-    return vt::theObjGroup()->getLabel(proxy);
-  }
-  template<typename T>
-  std::string get_label(VTObjElm<T> proxy){
-    return vt::theObjGroup()->getLabel(vt::theObjGroup()->proxyGroup(proxy))
-           + std::to_string(proxy.getNode());
-  }
-  
-  template<typename T>
-  VTProxyType get_proxy(VTCol<T> proxy) { return {proxy.getProxy(), -1}; }
-  template<typename T>
-  VTProxyType get_proxy(VTColElm<T> proxy) { return {proxy.getCollectionProxy(), proxy.getElementProxy().getIndex().uniqueBits()}; }
-  template<typename T>
-  VTProxyType get_proxy(VTObj<T> proxy) { return {proxy.getProxy(), -1}; }
-  template<typename T>
-  VTProxyType get_proxy(VTObjElm<T> proxy) { return {proxy.getProxy(), proxy.getNode()}; }
-  
-  enum GenericAction {
-    CHECKPOINT,
-    RESTORE,
+namespace KokkosResilience::Detail {
+  enum VTAction {
     REPORT_VERSION,
     REGISTER_PARENT_DEPENDENCY,
-    MARK_MODIFIED
-  };
-  struct GenericActionMsg {
-    VTObjElm<VTContext> sender;
-    GenericAction action;
-    VTProxyType arg1;
-    int arg2;
+    MARK_MODIFIED,
+    RESTART
   };
 
-  template<typename T>
-  void ColActionHandler(T* obj, GenericActionMsg msg);
-  template<typename T>
-  void ObjActionHandler(T* obj, GenericActionMsg msg);
+  struct VTActionMsg {
+    VTActionMsg(VTContextElmProxy sender, VTAction action, int arg)
+      : sender(sender), action(action), arg(arg) {};
 
-  using GenericActionSender = std::function<void (GenericActionMsg)>;
+    VTContextElmProxy sender;
+    VTAction action;
+    int arg;
+  };
 
-  template<typename T>
-  GenericActionSender
-  make_sender(VTCol<T> proxy){
-    return [proxy](GenericActionMsg msg){
-      proxy.template broadcast<ColActionHandler<T>>(msg);
-    };
-  }
-  template<typename T>
-  GenericActionSender
-  make_sender(VTColElm<T> proxy){
-    return [proxy](GenericActionMsg msg){
-      proxy.template send<ColActionHandler<T>>(msg);
-    };
-  }
-  template<typename T>
-  GenericActionSender
-  make_sender(VTObj<T> proxy){
-    return [proxy](GenericActionMsg msg){
-      proxy.template broadcast<ObjActionHandler<T>>(msg);
-    };
-  }
-  template<typename T>
-  GenericActionSender
-  make_sender(VTObjElm<T> proxy){
-    return [proxy](GenericActionMsg msg){
-      proxy.template send<ObjActionHandler<T>>(msg);
-    };
-  }
+  struct VTProxyHolder : public KokkosResilience::Util::VT::ProxyID {
+    using ProxyID = KokkosResilience::Util::VT::ProxyID;
 
-    
-  struct VTProxyStatus {
+    VTProxyHolder() {
+      assert(false && "VTProxyHolder default constructor exists for Magistrate serialization, but should not be used!");
+    }
 
-    VTProxyStatus() {
-      //Magistrate needs a default constructor, but
-      //we only want to allow deserializeInPlace
-      assert(false && "Default constructor should not be used unless performing deserializeInPlace!");
-    };
+    template<typename ProxyT>
+    VTProxyHolder(ProxyT);
 
-    template<typename T>
-    VTProxyStatus(T proxy)
-      : is_element(is_elm<T>::value),
-        send(make_sender(proxy)),
-        label(get_label(proxy)) {
+    template<typename SerializerT>
+    void serialize(SerializerT& s);
+    //Trait for writing dependencies map when serializing
+    struct CheckpointDeps {};
 
-      is_local = [proxy]{
-        bool local;
-        if constexpr (not is_elm<T>::value){
-          local = false;
-        } else if constexpr (is_obj_elm<T>::value){
-          local = vt::theContext()->getNode() == proxy.getNode();
-        } else {
-          local = proxy.tryGetLocalPtr() != nullptr;
-        }
-        return local;
-      };
+    //Type-erasure functions lambdas
+    std::function<void(VTActionMsg)> send = nullptr;
+    std::function<bool()>            is_local = nullptr;
+    //Message another index of my group to restart them
+    std::function<void(VTContext*, uint64_t)> register_other;
 
-      if (!is_element) return;
+    //Who and at what required version.
+    std::unordered_map<ProxyID, int> dependencies;
 
-      registration = custom_registration(
-          [&, proxy](std::ostream& stream){
-            checkpoint::serializeToStream(*this, stream);
-            checkpoint::serializeToStream<vt::vrt::CheckpointTrait>(proxy, stream);
-            return bool(stream);
-          },
-          [&, proxy](std::istream& stream){
-            checkpoint::deserializeInPlaceFromStream(stream, this);
-            checkpoint::deserializeInPlaceFromStream<vt::vrt::CheckpointTrait>(stream, &proxy);
-            return bool(stream);
-          },
-          label + "_impl"
-      );
-    };
-    
-    //last checkpointed id (iteration, distributed timer, etc)
+    //Made unique per element w/ index info
+    std::string label;
+
     int checkpointed_version = -1;
-    //Last time we asked the owner of this object which version it has.
-    int queried_version = -1;
-  
-    //required versions of dependencies.
-    std::unordered_map<VTProxyType, size_t> dependencies;
+    int recovered_version = -1;
 
-    const bool is_element = false;
-    const GenericActionSender send = nullptr;
-    const std::string label = "";
+    //Useful for asynchronous checkpoint/recovery.
+    vt::EpochType epoch;
 
-    using LocalChecker = std::function<bool ()>;
-    LocalChecker is_local = []{return true;};
-
+    //Only elements get a registration
     std::optional<Registration> registration;
-
-    void operator()(VTObjElm<VTContext> sender, GenericAction action, VTProxyType arg = {0,0}){
-      GenericActionMsg msg;
-      msg.sender = sender;
-      msg.action = action;
-      msg.arg1 = arg;
-      send(msg);
-    }
-
-    void operator()(VTObjElm<VTContext> sender, GenericAction action, int arg){
-      GenericActionMsg msg;
-      msg.sender = sender;
-      msg.action = action;
-      msg.arg2 = arg;
-      send(msg);
-    }
-
-    template<typename SerT>
-    void serialize(SerT& s){
-      s | checkpointed_version;
-      s | dependencies;
-    }
   };
 }
-}
 
-class VTContext : public ContextBase {
-public:
-  explicit VTContext(const std::string& config_file)
-      : ContextBase(config_file, vt::theContext()->getNode()), 
-        context_proxy(vt::theObjGroup()->makeCollective(this, "kr::VTContext")) {}
- 
-  using VTProxyType      = Detail::VTProxyType;
-  using VTProxyStatus    = Detail::VTTemplates::VTProxyStatus;
-  using ContextGroupType = Detail::VTTemplates::VTObj<VTContext>;
-  using ContextElmType   = Detail::VTTemplates::VTObjElm<VTContext>;
- 
-  VTContext(const VTContext &)     = delete;
-  VTContext(VTContext &&) noexcept = default;
- 
-  VTContext &operator=(const VTContext &) = delete;
-  VTContext &operator=(VTContext &&) noexcept = default;
- 
-  virtual ~VTContext() {
-    vt::theObjGroup()->destroyCollective(context_proxy);
-  }
- 
-  bool restart_available(const std::string &label, int version) override {
-    return m_backend->restart_available(label, version);
-  }
- 
-  void restart(const std::string &label, int version,
-               const std::unordered_set<Registration> &members) override {
-    m_backend->restart(label, version, members);
-  }
- 
-  void checkpoint(const std::string &label, int version,
-                  const std::unordered_set<Registration> &members) override {
-    checkpoint_proxies();
- 
-    m_backend->checkpoint(label, version, members);
-  }
- 
-  int latest_version(const std::string &label) const noexcept override {
-    return m_backend->latest_version(label);
-  }
-  
-  void reset() override { m_backend->reset(); }
- 
-  void checkpoint_proxies();
- 
-  //Hold on to proxy dependencies, last checkpoint stats
-  using ProxyMap = std::unordered_map<VTProxyType, VTProxyStatus>;
-  ProxyMap proxy_registry;
- 
-  //Proxies known to have been changed since last checkpoint
-  std::unordered_set<VTProxyType> modified_proxies;
- 
-  //Get the proxy_status of a proxy, making it if need be.
-  template<typename T>
-  VTProxyStatus& proxy_status(T proxy, bool mark_modified = true){
-    using namespace Detail::VTTemplates;
-    static_assert(is_proxy<T>::value, "Attempting to register a non-proxy type as a VT proxy");
- 
-    VTProxyType proxy_bits = get_proxy(proxy);
- 
-    auto iter = proxy_registry.find(proxy_bits);
- 
-    if(iter == proxy_registry.end()){
-      iter = proxy_registry.emplace(proxy_bits, proxy).first;
-      auto& status = iter->second;
-
-      //Elements register to the backend for checkpointing,
-      //non-elements register all of their elements.
-      if(!status.is_element){
-        msg_before_checkpoint(iter->second, REGISTER_PARENT_DEPENDENCY);
-      } else {
-        m_backend->register_member(iter->second.registration.value());
-      }
+namespace KokkosResilience {
+  class VTContext : public ContextBase {
+  public:
+    explicit VTContext(const std::string& config_file)
+        : ContextBase(config_file, vt::theContext()->getNode()), 
+          contexts_proxy(vt::theObjGroup()->makeCollective(this, "kr::VTContext")) {
+      next_epoch = vt::theTerm()->makeEpochCollective("kr::VTContext initial checkpoint epoch");
     }
- 
-    auto& status = iter->second;
-    if(mark_modified){
-      //Local elements update locally, non-elements update
-      //locally and the other locations.
-      if(!status.is_element || status.is_local())
-        modified_proxies.insert(proxy_bits);
-      if(!status.is_element || !status.is_local())
-        msg_before_checkpoint(status, MARK_MODIFIED);
-    }
- 
-    return status;
-  }
-
-  template<typename... Args>
-  void msg_before_checkpoint(VTProxyStatus& status, Args... args){
-    if(active_region){
-      //If we've in an active region, we know
-      //messages here will finish before the
-      //checkpoint is called.
-      status(m_proxy, args...);
-    } else {
-      vt::runInEpochRooted([&]{
-        status(m_proxy, args...);
-      });
-    }
-  }
- 
-  void update_dependency(VTProxyType dep, int version){
-    proxy_registry[dep].checkpointed_version = version;
-  }
- 
-  void checkpoint_elm(VTProxyType proxy, int version){
-    auto& registration = proxy_registry[proxy].registration.value();
-    m_backend->checkpoint(registration->name, version, {registration});
-  }
- 
-  void restart_elm(VTProxyType proxy, int version){
-    //TODO: We may not have a registration yet on recovery, we
-    //can try to find the element by proxy+index, or failing that
-    //either delay recovery of this one, or fail?
-    auto& registration = proxy_registry[proxy].registration.value();
-    m_backend->checkpoint(registration->name, version, {registration});
-  }
- 
-private:
-  ContextGroupType context_proxy;
-  ContextElmType m_proxy = context_proxy[m_pid];
-};
-
-
-namespace Detail::VTTemplates {
-  template<typename Proxy, typename ParentProxy>
-  void handle_action(Proxy elm, ParentProxy parent, const GenericActionMsg& msg){
-    auto ctx_proxy = vt::theObjGroup()->proxyGroup(msg.sender);
-    VTContext* ctx = vt::theObjGroup()->get(ctx_proxy);
    
-    constexpr bool NO_MARK_MODIFIED = false;
-    VTProxyStatus& status = ctx->proxy_status(elm, NO_MARK_MODIFIED);
-    VTProxyStatus& parent_status = ctx->proxy_status(parent, NO_MARK_MODIFIED);
+    using ProxyID       = KokkosResilience::Util::VT::ProxyID;
+    using VTProxyHolder = Detail::VTProxyHolder;
+    using VTAction      = Detail::VTAction;
+    using VTActionMsg   = Detail::VTActionMsg;
+   
+    VTContext(const VTContext &)     = delete;
+    VTContext(VTContext &&) noexcept = default;
+   
+    VTContext &operator=(const VTContext &) = delete;
+    VTContext &operator=(VTContext &&) noexcept = default;
+   
+    virtual ~VTContext() {
+      //Wait for next_epoch to finish being created, then finish it.
+      vt::theSched()->runSchedulerWhile([&]{return next_epoch == vt::no_epoch;});
+      vt::theTerm()->finishedEpoch(next_epoch);
 
-    switch(msg.action){
-      case REGISTER_PARENT_DEPENDENCY:
-        parent_status.dependencies[get_proxy(elm)] = status.checkpointed_version;
-        ctx->modified_proxies.insert(get_proxy(elm));
-        ctx->modified_proxies.insert(get_proxy(parent));
-        break;
-      case REPORT_VERSION:
-        msg.sender.send<&VTContext::update_dependency>(get_proxy(elm), status.checkpointed_version);
-        break;
-      case CHECKPOINT:
-        ctx->checkpoint_elm(get_proxy(elm), msg.arg2);
-        break;
-      case MARK_MODIFIED:
-        ctx->modified_proxies.insert(get_proxy(elm));
-        break;
-      default:
-        fprintf(stderr, "Unexpected action type %d!\n", msg.action);
+      vt::theObjGroup()->destroyCollective(contexts_proxy);
     }
-  }
+   
+    bool restart_available(const std::string &label, int version) override {
+      return m_backend->restart_available(label, version);
+    }
+   
+    void restart(const std::string &label, int version,
+                 const std::unordered_set<Registration> &members) override {
+      begin_operation();
 
-  template<typename T>
-  void ColActionHandler(T* obj, GenericActionMsg msg){
-    auto col_proxy_bits = vt::theCollection()->template queryProxyContext<typename T::IndexType>();
-    auto col_proxy = VTCol<T>(col_proxy_bits);
+      m_backend->restart(label, version, members);
+      restart_proxies();
 
-    auto elm_index = vt::theCollection()->template queryIndexContext<typename T::IndexType>();
-    auto elm_proxy = col_proxy[*elm_index];
+      end_operation();
+    }
+   
+    void checkpoint(const std::string &label, int version,
+                    const std::unordered_set<Registration> &members) override {
+      begin_operation();
 
-    handle_action(elm_proxy, col_proxy, msg);
-  }
+      checkpoint_proxies();
+      m_backend->checkpoint(label, version, members);
 
-  template<typename T>
-  void ObjActionHandler(T* obj, GenericActionMsg msg){
-    auto obj_proxy = vt::theObjGroup()->getProxy(obj);
-    auto elm_proxy = obj_proxy[vt::theContext()->getNode()];
+      end_operation();
+    }
+   
+    int latest_version(const std::string &label) const noexcept override {
+      return m_backend->latest_version(label);
+    }
+    
+    void reset() override { m_backend->reset(); }
 
-    handle_action(elm_proxy, obj_proxy, msg);
-  }
+    //Handles initialization for new holders
+    template<typename T>
+    VTProxyHolder& get_holder(T proxy, bool mark_modified = true);
 
+  private:
+    //Start a new resilience operation
+    //  Manages the epochs, waiting for previous, beginning new, etc.
+    void begin_operation();
+    void end_operation();
 
+    //Checkpoint/recover actual data and dependencies of proxies
+    void checkpoint_proxies();
+
+    //Recursive restart which manages potentially non-registered proxies
+    //  assume_collective to assume non-local proxies are already known by their 
+    //  local context to need to recover
+    void restart_proxy(ProxyID proxy, int version, bool is_remote_request = false);
+    void restart_proxies();
+
+    //Handle marking element or group as modified and the possible
+    //remote operations required.
+    template<typename ProxyT>
+    void mark_modified(ProxyT& proxy, VTProxyHolder& holder, 
+        bool is_remote_request = false);
+
+    
+    //Send an action to be executed before the next checkpoint/recovery function
+    //can begin.
+    void msg_before_checkpoint(VTProxyHolder& holder, VTAction action, int arg = 0);
+    template<auto func, typename... Args>
+    void msg_before_checkpoint(VTContextElmProxy dest, Args... args);
+    template<auto func, typename... Args>
+    void msg_before_checkpoint(VTContextProxy dest, Args... args);
+   
+    template<typename ProxyT, typename GroupProxyT>
+    void action_handler(ProxyT elm, GroupProxyT group, const VTActionMsg& msg);
+
+  public:
+    //Manage globally tracking group proxies.
+    template<typename GroupProxyT>
+    void register_group(GroupProxyT group, bool should_mark_modified);
+    void restart_group(ProxyID group, int version);
+    
+    //For recovering unregistered entities, manually generate an element
+    //registration from a reference to the group (potentially gathered from
+    //some other registered element).
+    template<typename GroupProxyT>
+    void register_element(GroupProxyT group, uint64_t index_bits);
+    
+    //Remote context notifiying us
+    template<typename ProxyT>
+    void remotely_modified(ProxyT proxy);
+
+    //Remote context responding to query
+    template<typename ProxyT>
+    void set_checkpointed_version(ProxyT proxy, int version);
+
+    //Gathers proxies, then calls action_handler
+    template<typename ObjT>
+    static void col_action_handler(ObjT* obj, VTActionMsg msg);
+    template<typename ObjT>
+    static void obj_action_handler(ObjT* obj, VTActionMsg msg);
+
+  private:
+    using ProxyMap = std::unordered_map<ProxyID, VTProxyHolder>;
+    ProxyMap proxy_registry;
+
+    //Map from a collection/objgroup to some registered proxy within it,
+    //for reconstructing as needed.
+    std::unordered_map<ProxyID, ProxyID> groups;
+   
+    //Local proxies known to have been changed since last checkpoint
+    std::unordered_set<ProxyID> modified_proxies;
+
+    vt::EpochType cur_epoch = vt::no_epoch;
+    vt::EpochType next_epoch;
+
+    //Index of which resilience epoch we're ready to begin handling
+    //requests for (e.g. have we updated checkpointed_version for our
+    //locally modified proxies for a given checkpoint attempt).
+    int prepared_epoch = 0;
+
+    VTContextProxy contexts_proxy;
+    VTContextElmProxy m_proxy = contexts_proxy[m_pid];
+  };
 }
 
-} // namespace KokkosResilience
-
+#include "VTContext.impl.hpp"
 #endif // INC_KOKKOS_RESILIENCE_VTCONTEXT_HPP

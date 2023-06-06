@@ -63,7 +63,7 @@ namespace KokkosResilience
   {
   public:
 
-    VeloCMemoryBackend(ContextBase* ctx);
+    VeloCMemoryBackend(ContextBase& ctx);
     ~VeloCMemoryBackend();
 
     VeloCMemoryBackend( const VeloCMemoryBackend & ) = delete;
@@ -74,15 +74,16 @@ namespace KokkosResilience
   
     virtual
     bool checkpoint( const std::string &label, int version,
-                     const std::unordered_set< Registration > &members ) override;
+                     const std::unordered_set< Registration > &members,
+                     bool as_global) override;
   
     
-    bool restart_available( const std::string &label, int version ) override;
-    int latest_version (const std::string &label) const noexcept override;
+    int latest_version (const std::string &label, int max, bool as_global) const noexcept override;
  
     virtual
     bool restart( const std::string &label, int version,
-                  const std::unordered_set< KokkosResilience::Registration > &members ) override;
+                  const std::unordered_set< KokkosResilience::Registration > &members,
+                  bool as_global) override;
 
     void clear_checkpoints();
   
@@ -116,12 +117,12 @@ namespace KokkosResilience
     VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
 
     bool checkpoint( const std::string &label, int version,
-                     const std::unordered_set< KokkosResilience::Registration > &members ) override {
+                     const std::unordered_set< KokkosResilience::Registration > &members, bool as_global) override {
       return true;
     }
 
     bool restart( const std::string &label, int version,
-                  const std::unordered_set< KokkosResilience::Registration > &members ) override {
+                  const std::unordered_set< KokkosResilience::Registration > &members, bool as_global) override {
       return true;
     };
   };
@@ -129,17 +130,18 @@ namespace KokkosResilience
   class VeloCFileBackend : AutomaticBackendBase
   {
   public:
-    VeloCFileBackend( ContextBase* ctx);
+    VeloCFileBackend( ContextBase& ctx);
     ~VeloCFileBackend();
   
     bool checkpoint( const std::string &label, int version,
-                     const std::unordered_set< KokkosResilience::Registration > &views );
+                     const std::unordered_set< KokkosResilience::Registration > &views,
+                     bool as_global);
 
-    bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label) const noexcept;
+    int latest_version (const std::string &label, int max, bool as_global) const noexcept;
   
     bool restart( const std::string &label, int version,
-                  const std::unordered_set< KokkosResilience::Registration > &views );
+                  const std::unordered_set< KokkosResilience::Registration > &views,
+                  bool as_global);
   
     void register_member( KokkosResilience::Registration & ) {} // Do nothing
 

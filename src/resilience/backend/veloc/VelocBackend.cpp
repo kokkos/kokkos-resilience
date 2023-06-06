@@ -77,10 +77,10 @@ namespace KokkosResilience
     }
   }
 
-  VeloCMemoryBackend::VeloCMemoryBackend(ContextBase* ctx)
+  VeloCMemoryBackend::VeloCMemoryBackend(ContextBase& ctx)
       : AutomaticBackendBase(ctx) {
-    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(ctx->m_pid, vconf);
+    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(ctx.m_pid, vconf);
   }
 
   VeloCMemoryBackend::~VeloCMemoryBackend()
@@ -89,8 +89,10 @@ namespace KokkosResilience
   }
   
   bool VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       std::unordered_set< KokkosResilience::Registration > const &_members )
+                                       std::unordered_set< KokkosResilience::Registration > const &_members,
+                                       bool as_global)
   {
+    if(as_global) fprintf(stderr, "Warning, VeloC backend does not support checkpointing global objects\n");
     bool success;
     
     //Don't handle failure here, might be worth trying to continue
@@ -111,31 +113,31 @@ namespace KokkosResilience
     return success;
   }
   
-  bool
-  VeloCMemoryBackend::restart_available( const std::string &label, int version )
-  {
-    // res is < 0 if no versions available, else it is the latest version
-    return version == latest_version( label );
-  }
-  
   int
-  VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
+  VeloCMemoryBackend::latest_version( const std::string &label, int max, bool as_global) const noexcept
   {
+    if(as_global) fprintf(stderr, "Warning, VeloC backend does not support checkpointing global objects\n");
     auto latest_iter = m_latest_version.find( label );
     if ( latest_iter == m_latest_version.end() )
     {
-      auto test = veloc_client->restart_test(label, 0);
-      m_latest_version[label] = test;
+      auto test = veloc_client->restart_test(label, max);
+      
+      //We store the absolute latest version only
+      if(max == 0) m_latest_version[label] = test;
+      
       return test;
+    } else if(max != 0 && latest_iter->second >= max) {
+      return veloc_client->restart_test(label, max);
     } else {
-     return latest_iter->second;
+      return latest_iter->second;
     }
   }
   
   bool
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::unordered_set< KokkosResilience::Registration > &_members )
+    const std::unordered_set< KokkosResilience::Registration > &_members, bool as_global)
   {
+    if(as_global) fprintf(stderr, "Warning, VeloC backend does not support checkpointing global objects\n");
     bool success;
     success = VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
     
@@ -154,8 +156,8 @@ namespace KokkosResilience
   void
   VeloCMemoryBackend::reset()
   {
-    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_context->m_pid, vconf);
+    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(m_context.m_pid, vconf);
 
     m_latest_version.clear();
   }
@@ -170,10 +172,10 @@ namespace KokkosResilience
     );
   }
 
-  VeloCFileBackend::VeloCFileBackend(ContextBase* ctx)
+  VeloCFileBackend::VeloCFileBackend(ContextBase& ctx)
       : AutomaticBackendBase(ctx) {
-    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client( m_context->m_pid, vconf);
+    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client( m_context.m_pid, vconf);
   }
 
   VeloCFileBackend::~VeloCFileBackend()
@@ -183,8 +185,10 @@ namespace KokkosResilience
   
   bool
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::unordered_set< KokkosResilience::Registration > &members )
+                                const std::unordered_set< KokkosResilience::Registration > &members,
+                                bool as_global)
   {
+    if(as_global) fprintf(stderr, "Warning, VeloC backend does not support checkpointing global objects\n");
     bool success;
 
     // Wait for previous checkpoint to finish
@@ -199,7 +203,7 @@ namespace KokkosResilience
       
       std::ofstream vfile( fname, std::ios::binary );
 
-      auto write_trace = Util::begin_trace<Util::TimingTrace>( *m_context, "write" );
+      auto write_trace = Util::begin_trace<Util::TimingTrace>( m_context, "write" );
       for ( auto &&member : members ) {
         success &= member->serializer()(vfile);
         if(!success) break;
@@ -215,23 +219,17 @@ namespace KokkosResilience
     return success;
   }
   
-  bool
-  VeloCFileBackend::restart_available( const std::string &label, int version )
+  int VeloCFileBackend::latest_version( const std::string &label, int max, bool as_global) const noexcept
   {
-    int latest = veloc_client->restart_test( label, version+1 );
-    
-    // res is < 0 if no versions available, else it is the latest version
-    return version == latest;
-  }
-  
-  int VeloCFileBackend::latest_version( const std::string &label ) const noexcept
-  {
-    return veloc_client->restart_test( label, 0 );
+    if(as_global) fprintf(stderr, "Warning, VeloC backend does not support checkpointing global objects\n");
+    return veloc_client->restart_test( label, max );
   }
   
   bool VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::unordered_set< KokkosResilience::Registration > &members )
+                                  const std::unordered_set< KokkosResilience::Registration > &members,
+                                  bool as_global)
   {
+    if(as_global) fprintf(stderr, "Warning, VeloC backend does not support checkpointing global objects\n");
     bool success;
     success = VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
    
@@ -241,7 +239,7 @@ namespace KokkosResilience
         
         std::ifstream vfile( fname, std::ios::binary );
 
-        auto read_trace = Util::begin_trace<Util::TimingTrace>( *m_context, "read" );
+        auto read_trace = Util::begin_trace<Util::TimingTrace>( m_context, "read" );
         for ( auto &&member : members ){
           success = member->deserializer()(vfile);
           if(!success) break;

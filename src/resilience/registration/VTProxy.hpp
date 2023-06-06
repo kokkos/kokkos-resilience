@@ -43,68 +43,27 @@
 #define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
 
 #include <memory>
-#include <tuple>
+
+#include <vt/vt.h>
+
 #include "resilience/registration/Registration.hpp"
 #include "resilience/context/VTContext.hpp"
-#include <vt/vt.h>
-#include <checkpoint/checkpoint.h>
-
-namespace KokkosResilience {
-namespace Detail {
-  template<typename T, typename... Traits>
-  struct VTRegistration : public RegistrationBase {
-    using VTProxyStatus = VTTemplates::VTProxyStatus;
-
-    VTRegistration(VTContext* ctx, T proxy, const std::string& label) : 
-        RegistrationBase(label),
-        m_proxy(VTTemplates::get_proxy(proxy)),
-        status( ctx->proxy_status(proxy) ) { };
-
-    //We just serialize the version + dependency info of this proxy,
-    const serializer_t serializer() const override {
-      return [&](std::ostream& stream){
-        checkpoint::serializeToStream<Traits...>(status, stream);
-        return stream.good();
-      };
-    }
-
-    const deserializer_t deserializer() const override {
-      return [&](std::istream& stream){
-        checkpoint::deserializeInPlaceFromStream<Traits...>(stream, &status);
-        return stream.good();
-      };
-    }
-
-    const bool is_same_reference(const Registration& other_reg) const override {
-      auto other = dynamic_cast<VTRegistration<T, Traits...>*>(other_reg.get());
-      
-      if(!other){
-        fprintf(stderr, "KokkosResilience: Warning, member name %s is shared by more than 1 registration type\n", name.c_str());
-        return false;
-      }
-      
-      return m_proxy == other->m_proxy;
-    }
-
-  private:
-    const VTProxyType m_proxy;
-    VTProxyStatus& status;
-  };
-}
-}
+#include "resilience/util/VTUtil.hpp"
 
 namespace KokkosResilience {
   template<typename T, typename... Traits>
-  struct create_registration<T, std::tuple<Traits...>, typename Detail::VTTemplates::is_proxy<T, void*>::type>{
+  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
     std::shared_ptr<Detail::RegistrationBase> reg;
 
     create_registration(ContextBase& context, T proxy, std::string label = ""){
-      label = Detail::VTTemplates::get_label(proxy);
-
       auto vtCtx = dynamic_cast<VTContext*>(&context);
       if(vtCtx){
-        reg = std::make_shared<Detail::VTRegistration<T, Traits...>>(vtCtx, proxy, label);
+        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
+        auto& proxy_holder = vtCtx->get_holder(proxy);
+        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), Traits...>>(proxy_holder, proxy_holder.label);
       } else {
+        //Register the full proxy, making sure to include CheckpointTrait
+        std::string label = Util::VT::proxy_label(proxy);
         reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
       }
     }

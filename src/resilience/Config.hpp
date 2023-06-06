@@ -62,8 +62,8 @@ namespace KokkosResilience
 
   struct ConfigValueError : std::runtime_error
   {
-    ConfigValueError()
-        : std::runtime_error( "value error" )
+    ConfigValueError(const std::string desc = "value error")
+        : std::runtime_error(desc)
     {}
   };
 

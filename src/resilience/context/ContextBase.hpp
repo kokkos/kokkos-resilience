@@ -165,7 +165,7 @@ namespace KokkosResilience
       }
 
       operator bool() const {
-        return m_members != nullptr;
+        return (m_members != nullptr);
       }
     };
 
@@ -199,10 +199,10 @@ namespace KokkosResilience
 
   protected:
     RegionsMap regions;
-    Region active_region;
+    Region active_region = {};
     
     //Performance helper
-    Region last_region;
+    Region last_region = {};
    
     std::unordered_set<Registration> global_members;
 

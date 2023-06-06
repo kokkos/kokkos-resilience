@@ -45,6 +45,10 @@
 #include "resilience/registration/Registration.hpp"
 #include <checkpoint/checkpoint.h>
 
+#ifdef KR_ENABLE_VT
+#include "resilience/util/VTUtil.hpp"
+#endif
+
 namespace KokkosResilience::Detail {
   //Registration for some type which Magistrate knows how to checkpoint.
   template 
@@ -93,7 +97,7 @@ namespace KokkosResilience::Detail {
   };
 }
 
-/*
+
 namespace KokkosResilience {
   template<
     typename T,
@@ -104,6 +108,9 @@ namespace KokkosResilience {
     std::tuple<Traits...>,
     std::enable_if_t<
       checkpoint::SerializableTraits<T>::is_traversable
+#ifdef KR_ENABLE_VT
+      and not Util::VT::is_proxy<T>::value
+#endif
     >*
   > {
     using BaseT = Detail::MagistrateRegistration<T, Traits...>;
@@ -117,6 +124,6 @@ namespace KokkosResilience {
     }
   };
 }
-*/
+
 
 #endif
