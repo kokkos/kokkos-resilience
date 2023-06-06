@@ -59,6 +59,7 @@
       "binaryDir": "/opt/build/kokkos-resilience",
       "cacheVariables": {
         "Kokkos_ROOT": "/opt/view/gcc-11.1.0/kokkos/4.0.01/",
+        "Boost_ROOT": "/opt/view/gcc-11.1.0/boost/1.81.0/",
         "veloc_ROOT": "/opt/veloc/"
       }
     }
