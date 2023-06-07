@@ -45,6 +45,7 @@
 #if defined(KOKKOS_ENABLE_HPX)
 #include <hpx/config.hpp>
 #endif
+
 #include <string>
 #include <utility>
 #include <memory>
@@ -52,12 +53,17 @@
 #include <chrono>
 #include <Kokkos_Core.hpp>
 #include <unordered_map>
+#include <set>
 
 #include "resilience/Config.hpp"
 #include "resilience/CheckpointFilter.hpp"
 #include "resilience/registration/Registration.hpp"
 #include "resilience/view_hooks/ViewHolder.hpp"
 #include "resilience/util/Trace.hpp"
+
+#ifdef KR_ENABLE_MAGISTRATE
+#include "../registration/Magistrate.hpp"
+#endif
 
 namespace KokkosResilience
 {
@@ -69,11 +75,11 @@ namespace KokkosResilience
     virtual ~ContextBase() {};
 
     template<typename... Traits, typename RegionFunc, typename FilterFunc, typename... T>
-    void run(const std::string& label, int iteration, RegionFunc&& fun, FilterFunc&& filter, 
+    void run(const std::string& label, int iteration, RegionFunc&& fun, FilterFunc&& filter,
              Detail::RegInfo<T>&... explicit_members);
 
     template<typename... Traits, typename RegionFunc, typename... T>
-    void run(const std::string& label, int iteration, RegionFunc&& fun, 
+    void run(const std::string& label, int iteration, RegionFunc&& fun,
              Detail::RegInfo<T>&... explicit_members) {
       run<Traits...>(label, iteration, std::forward<RegionFunc>(fun), default_filter(), explicit_members...);
     }
@@ -93,7 +99,7 @@ namespace KokkosResilience
     virtual void register_members(const std::set< KokkosResilience::Registration > &members) {
       for(auto& member : members) register_member(member);
     };
-   
+
     //Registers to the active region, requires an active region.
     template<typename... Traits, typename T>
     void register_to_active(T& member, const std::string& label = ""){
@@ -103,11 +109,11 @@ namespace KokkosResilience
     //Registers only if in an active region.
     template<typename... Traits, typename T>
     bool register_if_active(T& member, const std::string& label){
-      if(active_region == regions.end()) return false;
+      if(active_region.iter() == regions.end()) return false;
       register_to_active<Traits...>(member, label);
       return true;
     }
-    
+
     template<typename... Traits, typename T>
     void register_globally(T& member, const std::string& label){
       global_members.insert(impl_register<Traits...>(member, label));
@@ -127,30 +133,41 @@ namespace KokkosResilience
 
     //Pointer not guaranteed to remain valid, use immediately & discard.
     char* get_buffer(size_t minimum_size);
-    
+
     template<typename... Traits>
     void register_to_active(const ViewHolder& view){
       Registration registration = create_registration<ViewHolder, std::tuple<Traits...>>(*this, view);
       register_member(registration); //Virtual function to whatever inheriting class
-      active_region.insert(registration); 
+      active_region.insert(registration);
     }
 
   protected:
     using RegionsMap = std::unordered_map<std::string, std::set<Registration>>;
-    struct Region : RegionsMap::iterator {
-      Region(RegionsMap::iterator iter) : RegionsMap::iterator(iter) {};
+    class Region
+    {
+    public:
+
+      using map_iterator = RegionsMap::iterator;
+
+      Region(map_iterator iter) : m_map_iterator(iter) {};
       const std::string& label() const {
-        return (*this)->first;
+        return m_map_iterator->first;
       }
-      const std::set<Registration> members() const {
-        return (*this)->second;
+      const std::set<Registration> &members() const {
+        return m_map_iterator->second;
       }
       std::set<Registration>& members(){
-        return (*this)->second;
+        return m_map_iterator->second;
       }
-      void insert(Registration& member){
+      void insert(const Registration& member){
         members().insert(member);
       }
+
+      auto iter() { return m_map_iterator; }
+
+    private:
+
+      map_iterator m_map_iterator;
     };
 
     //Create Registration and register to implementation
@@ -161,12 +178,12 @@ namespace KokkosResilience
       register_member(registration); //Virtual function to whatever inheriting class
       return registration;
     }
-    
+
     template<typename... Traits, typename T>
     void register_to_active(Detail::RegInfo<T>& info){
       register_to_active<Traits...>(info.member, info.label);
     }
-  
+
   private:
     //Detect views being copied in, register them and any explicitly-listed members.
     template<typename... Traits, typename RegionFunc, typename... T>
@@ -183,10 +200,10 @@ namespace KokkosResilience
 
     RegionsMap regions;
     Region active_region = regions.end();
-    
+
     //Performance helper
     Region last_region = regions.end();
-   
+
     std::set<Registration> global_members;
 
   public:

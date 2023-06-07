@@ -50,6 +50,7 @@
 #include <Kokkos_Core.hpp>
 #include "view_hooks/ViewHolder.hpp"
 #include "view_hooks/DynamicViewHooks.hpp"
+#include "registration/ViewHolder.hpp"
 
 #include "context/ContextBase.hpp"
 
@@ -117,7 +118,7 @@ namespace KokkosResilience
     //Figure out how we should be handling this
     bool recover_region = false, checkpoint_region = false;
 
-    if(last_region != regions.end() && last_region.label() == label) {
+    if(last_region.iter() != regions.end() && last_region.label() == label) {
       active_region = last_region;
     } else {
       active_region = regions.insert({label, {}}).first;

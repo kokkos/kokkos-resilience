@@ -8,9 +8,9 @@
 #include <memory>
 
 namespace KokkosResilience
-{ 
+{
   struct Registration;
-  
+
   namespace Detail {
     struct RegistrationBase {
       typedef std::function<bool (std::ostream &)> serializer_t;
@@ -24,7 +24,7 @@ namespace KokkosResilience
       virtual const serializer_t serializer() const = 0;
       virtual const deserializer_t deserializer() const = 0;
       virtual const bool is_same_reference(const Registration&) const = 0;
-      
+
       bool operator==(const RegistrationBase& other) const {
           return this->name == other.name;
       }
@@ -39,14 +39,14 @@ namespace KokkosResilience
         }
         return static_cast<size_t>(hash%INT_MAX);
       }
-      
+
     protected:
-      RegistrationBase(const std::string member_name) : 
+      RegistrationBase(const std::string member_name) :
           name(member_name) { }
     };
-    
-    
-    //Helper for explicitly-listing data that a 
+
+
+    //Helper for explicitly-listing data that a
     //checkpoint region should also use.
     template<typename T>
     struct RegInfo {
@@ -56,28 +56,28 @@ namespace KokkosResilience
     };
   }
 
-  
+
   template<typename T, typename Traits = std::tuple<>, typename enable = void*>
   struct create_registration;
 
   struct Registration : public std::shared_ptr<Detail::RegistrationBase> {
     using serializer_t = typename Detail::RegistrationBase::serializer_t;
     using deserializer_t = typename Detail::RegistrationBase::deserializer_t;
-  
+
     template<typename RegType>
-    Registration(std::shared_ptr<RegType> base) 
+    Registration(std::shared_ptr<RegType> base)
       : std::shared_ptr<Detail::RegistrationBase>(std::move(base)) {}
 
     template<typename... T>
-    Registration(create_registration<T...> reg) 
-      : Registration(reg.get()) {};
+    Registration(create_registration<T...> reg)
+      : Registration(std::move(reg).get()) {};
 
     const size_t hash() const {
       return (*this)->hash();
     }
 
     bool operator==(const Registration& other){
-      return this->get() == other.get(); 
+      return this->get() == other.get();
     }
   };
 } //namespace KokkosResilience

@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
       wtime = MPI_Wtime();
       std::size_t i = 1 + KokkosResilience::latest_version(*ctx, "test_kokkos");
 
-      while(i < nsteps) {
+      while(i < nsteps ) {
 
          KokkosResilience::checkpoint(*ctx, "test_kokkos", i, [=]() {   // Nic, tell me what should I put for []/
 

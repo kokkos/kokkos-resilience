@@ -252,7 +252,7 @@ class ViewHolderImpl : public ViewHolderImplBase {
       stream.read(buf, data_type_size() * span());
       deep_copy_from_buffer((const unsigned char*)buf);
     } else {
-      stream.read(data(), data_type_size() * span());
+      stream.read(static_cast< char * >( data() ), data_type_size() * span());
     }
   }
 #endif

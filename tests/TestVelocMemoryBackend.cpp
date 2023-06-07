@@ -42,7 +42,7 @@
 
 #include <resilience/veloc/VelocBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/MPIContext.hpp>
+#include <resilience/context/MPIContext.hpp>
 #include <resilience/filesystem/Filesystem.hpp>
 
 #include <string>

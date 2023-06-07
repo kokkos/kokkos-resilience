@@ -40,6 +40,7 @@ option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
 option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" OFF)
 
 option(KR_ENABLE_MAGISTRATE "use Magistrate for serializing and deserializing" OFF)
+option(KR_ENABLE_RESILIENT_EXEC "enable resilient execution spaces" OFF)
 
 include(CMakeDependentOption)
 
