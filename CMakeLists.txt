@@ -101,6 +101,30 @@ if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 endif()
 
+# Devices
+list(FIND Kokkos_DEVICES "CUDA" _kokkos_cuda_found)
+if (_kokkos_cuda_found GREATER -1)
+  set(KR_CUDA_DEVICE_ENABLED TRUE)
+  mark_as_advanced(KR_CUDA_DEVICE_ENABLED)
+endif()
+list(FIND Kokkos_DEVICES "OPENMP" _kokkos_omp_found)
+if (_kokkos_omp_found GREATER -1)
+  set(KR_OPENMP_DEVICE_ENABLED TRUE)
+  mark_as_advanced(KR_OPENMP_DEVICE_ENABLED)
+endif()
+
+option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
+cmake_dependent_option(KR_ENABLE_CUDA_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED" OFF)
+cmake_dependent_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED" OFF)
+
+if (KR_ENABLE_CUDA_EXEC_SPACE)
+  message(STATUS "CUDA resilient execution spaces are enabled")
+endif()
+
+if (KR_ENABLE_OPENMP_EXEC_SPACE)
+  message(STATUS "OpenMP resilient execution spaces are enabled")
+endif()
+
 find_package(Boost REQUIRED)
 
 target_link_libraries(resilience PUBLIC Boost::boost)

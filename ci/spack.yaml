@@ -1,0 +1,22 @@
+spack:
+  definitions:
+    - compilers: [gcc@11.1.0]
+    - packages:
+      - kokkos@4.0.01
+      - boost@1.81.0
+  specs:
+    - matrix:
+      - [$packages]
+      - [$%compilers]
+      - [arch=linux-ubuntu20.04-x86_64_v3]
+  concretizer:
+    unify: false
+  config:
+    install_tree: /opt/software
+  view:
+    default:
+      root: /opt/view
+      projections:
+        all: '{compiler.name}-{compiler.version}/{name}/{version}'
+        link_type: symlink
+        link: run

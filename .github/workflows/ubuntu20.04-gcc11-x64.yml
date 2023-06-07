@@ -1,0 +1,31 @@
+name: Ubuntu 20.04 gcc 11 x64
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: CI Variables
+        id: vars
+        run: echo "::set-output name=docker_tag::$(git rev-parse --abbrev-ref ${{ github.head_ref || github.ref || 'HEAD' }} | sed 's/[^a-z0-9_-]/__/gi')"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build dependencies
+        id: kokkos-resilience-deps
+        uses: docker/build-push-action@v4
+        with:
+          push: false
+          tags: kokkos-resilience-deps:${{ steps.vars.outputs.docker_tag }}
+          context: .
+          file: ./ci/ubuntu20.04-gcc11-x64.dockerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/kokkos-resilience-deps.tar
+      - name: Build and Test
+        env:
+          DOCKER_IMAGE_TAG: ${{ steps.vars.outputs.docker_tag }}
+        run: |
+          docker load --input /tmp/kokkos-resilience-deps.tar
+          docker-compose run build-deps-kr-ubuntu

@@ -82,7 +82,12 @@ namespace KokkosResilience
       template< typename T, typename = std::enable_if_t< std::is_constructible< variant_type, T >::value > >
       explicit Value( T &&val )
       {
-        m_variant = std::forward< T >( val );
+        if constexpr ( std::is_constructible_v< std::string, std::add_rvalue_reference_t< T > > )
+        {
+          m_variant.emplace< std::string >( std::forward< T >( val ) );
+        } else {
+          m_variant = std::forward< T >( val );
+        }
       }
 
       template< typename T >

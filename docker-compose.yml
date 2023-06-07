@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  build-deps-kr-ubuntu:
+    image: "kokkos-resilience-deps:${DOCKER_IMAGE_TAG}"
+    build:
+      context: .
+      dockerfile: ci/ubuntu20.04-gcc11-x64.dockerfile
+    volumes:
+      - .:/opt/src/kokkos-resilience
+    working_dir: /opt/src/kokkos-resilience
+    command: /bin/bash "/opt/src/kokkos-resilience/ci/build-and-test.sh"
