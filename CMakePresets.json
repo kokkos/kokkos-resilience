@@ -60,7 +60,11 @@
       "cacheVariables": {
         "Kokkos_ROOT": "/opt/view/gcc-11.1.0/kokkos/4.0.01/",
         "Boost_ROOT": "/opt/view/gcc-11.1.0/boost/1.81.0/",
-        "veloc_ROOT": "/opt/veloc/"
+        "veloc_ROOT": "/opt/veloc/",
+        "KR_ENABLE_TESTS": "ON",
+        "KR_ENABLE_EXAMPLES": "ON",
+        "KR_ALL_WARNINGS": "ON",
+        "KR_WARNINGS_AS_ERRORS": "ON"
       }
     }
   ],
