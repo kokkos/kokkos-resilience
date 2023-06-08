@@ -88,6 +88,7 @@ namespace KokkosResilience
     void clear_checkpoints();
 
     void register_member(KokkosResilience::Registration& member) override;
+    void unregister_member(const Registration &member) override;
 
     void reset() override;
     void register_alias( const std::string &original, const std::string &alias );

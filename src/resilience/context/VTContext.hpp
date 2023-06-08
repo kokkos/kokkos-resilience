@@ -114,22 +114,22 @@ namespace KokkosResilience {
   class VTContext : public ContextBase {
   public:
     explicit VTContext(const std::string& config_file)
-        : ContextBase(config_file, vt::theContext()->getNode()), 
+        : ContextBase(config_file, vt::theContext()->getNode()),
           contexts_proxy(vt::theObjGroup()->makeCollective(this, "kr::VTContext")) {
       next_epoch = vt::theTerm()->makeEpochCollective("kr::VTContext initial checkpoint epoch");
     }
-   
+
     using ProxyID       = KokkosResilience::Util::VT::ProxyID;
     using VTProxyHolder = Detail::VTProxyHolder;
     using VTAction      = Detail::VTAction;
     using VTActionMsg   = Detail::VTActionMsg;
-   
+
     VTContext(const VTContext &)     = delete;
     VTContext(VTContext &&) noexcept = default;
-   
+
     VTContext &operator=(const VTContext &) = delete;
     VTContext &operator=(VTContext &&) noexcept = default;
-   
+
     virtual ~VTContext() {
       //Wait for next_epoch to finish being created, then finish it.
       vt::theSched()->runSchedulerWhile([&]{return next_epoch == vt::no_epoch;});
@@ -137,11 +137,11 @@ namespace KokkosResilience {
 
       vt::theObjGroup()->destroyCollective(contexts_proxy);
     }
-   
+
     bool restart_available(const std::string &label, int version) override {
       return m_backend->restart_available(label, version);
     }
-   
+
     void restart(const std::string &label, int version,
                  const std::unordered_set<Registration> &members) override {
       begin_operation();
@@ -151,7 +151,7 @@ namespace KokkosResilience {
 
       end_operation();
     }
-   
+
     void checkpoint(const std::string &label, int version,
                     const std::unordered_set<Registration> &members) override {
       begin_operation();
@@ -161,18 +161,19 @@ namespace KokkosResilience {
 
       end_operation();
     }
-   
+
     int latest_version(const std::string &label) const noexcept override {
       return m_backend->latest_version(label);
     }
-    
-    void reset() override { m_backend->reset(); }
 
     //Handles initialization for new holders
     template<typename T>
     VTProxyHolder& get_holder(T proxy, bool mark_modified = true);
 
   private:
+
+    void reset_impl() override { m_backend->reset(); }
+
     //Start a new resilience operation
     //  Manages the epochs, waiting for previous, beginning new, etc.
     void begin_operation();
@@ -182,7 +183,7 @@ namespace KokkosResilience {
     void checkpoint_proxies();
 
     //Recursive restart which manages potentially non-registered proxies
-    //  assume_collective to assume non-local proxies are already known by their 
+    //  assume_collective to assume non-local proxies are already known by their
     //  local context to need to recover
     void restart_proxy(ProxyID proxy, int version, bool is_remote_request = false);
     void restart_proxies();
@@ -190,10 +191,10 @@ namespace KokkosResilience {
     //Handle marking element or group as modified and the possible
     //remote operations required.
     template<typename ProxyT>
-    void mark_modified(ProxyT& proxy, VTProxyHolder& holder, 
+    void mark_modified(ProxyT& proxy, VTProxyHolder& holder,
         bool is_remote_request = false);
 
-    
+
     //Send an action to be executed before the next checkpoint/recovery function
     //can begin.
     void msg_before_checkpoint(VTProxyHolder& holder, VTAction action, int arg = 0);
@@ -201,7 +202,7 @@ namespace KokkosResilience {
     void msg_before_checkpoint(VTContextElmProxy dest, Args... args);
     template<auto func, typename... Args>
     void msg_before_checkpoint(VTContextProxy dest, Args... args);
-   
+
     template<typename ProxyT, typename GroupProxyT>
     void action_handler(ProxyT elm, GroupProxyT group, const VTActionMsg& msg);
 
@@ -210,13 +211,13 @@ namespace KokkosResilience {
     template<typename GroupProxyT>
     void register_group(GroupProxyT group, bool should_mark_modified);
     void restart_group(ProxyID group, int version);
-    
+
     //For recovering unregistered entities, manually generate an element
     //registration from a reference to the group (potentially gathered from
     //some other registered element).
     template<typename GroupProxyT>
     void register_element(GroupProxyT group, uint64_t index_bits);
-    
+
     //Remote context notifiying us
     template<typename ProxyT>
     void remotely_modified(ProxyT proxy);
@@ -238,7 +239,7 @@ namespace KokkosResilience {
     //Map from a collection/objgroup to some registered proxy within it,
     //for reconstructing as needed.
     std::unordered_map<ProxyID, ProxyID> groups;
-   
+
     //Local proxies known to have been changed since last checkpoint
     std::unordered_set<ProxyID> modified_proxies;
 

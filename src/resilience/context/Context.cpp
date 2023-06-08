@@ -86,4 +86,19 @@ namespace KokkosResilience
     }
     return buffer.data();
   }
+
+  void
+  ContextBase::reset()
+  {
+    // Unregister all regions
+    for ( auto &&[name, members] : regions )
+    {
+      for ( const auto &m : members)
+      {
+        m_backend->unregister_member(m);
+      }
+    }
+
+    reset_impl();
+  }
 }

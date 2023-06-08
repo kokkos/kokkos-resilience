@@ -55,23 +55,24 @@ public:
   explicit AutomaticBackendBase(ContextBase& ctx) : m_context(ctx) {};
 
   virtual ~AutomaticBackendBase() = default;
- 
+
   //All members should be registered before being checkpointed or restarted
   virtual void register_member(Registration& member) = 0;
+  virtual void unregister_member(const Registration &member) = 0;
 
   //as_global to checkpoint indepently of PID
   virtual bool checkpoint(const std::string& label, int version,
                           const std::unordered_set<Registration> &members,
                           bool as_global = false) = 0;
-  
-  //Get the highest version available which is still less than max 
+
+  //Get the highest version available which is still less than max
   //  (or just the highest, if max=0)
   virtual int latest_version(const std::string& label, int max = 0, bool as_global = false) const noexcept = 0;
 
   //Returns failure flag for recovering the specified members.
   //as_global to restart independently of PID
   virtual bool restart(const std::string& label, int version,
-                       const std::unordered_set<Registration> &members, 
+                       const std::unordered_set<Registration> &members,
                        bool as_global = false) = 0;
 
   //Reset any state, useful for online-recovery.
@@ -88,15 +89,15 @@ public:
   };
 
   ContextBase& m_context;
-  
-  
+
+
   //Delete potentially problematic functions for maintaining consistent state
   AutomaticBackendBase(const AutomaticBackendBase&) = delete;
   AutomaticBackendBase(AutomaticBackendBase&&) noexcept = delete;
   AutomaticBackendBase &operator=( const AutomaticBackendBase & ) = delete;
   AutomaticBackendBase &operator=( AutomaticBackendBase && ) = default;
 };
-  
+
 using AutomaticBackend = std::shared_ptr<AutomaticBackendBase>;
 }
 

@@ -110,15 +110,16 @@ class StdFileContext : public ContextBase {
     return m_backend.latest_version(label);
   }
 
-  void reset() override {
-    m_backend.reset();
-  }
-
   void register_alias( const std::string &original, const std::string &alias ) override {
 
   }
 
  private:
+
+  void reset_impl() override {
+    m_backend.reset();
+  }
+
   std::string m_filename;
   Backend m_backend;
 };

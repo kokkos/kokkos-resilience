@@ -95,7 +95,7 @@ namespace KokkosResilience
       //TODO
     };
 
-    virtual void reset() = 0;
+    void reset();
 
     virtual void register_member(KokkosResilience::Registration member){
       m_backend->register_member(member);
@@ -190,6 +190,8 @@ namespace KokkosResilience
     //Detect views being copied in, register them and any explicitly-listed members.
     template<typename... Traits, typename RegionFunc, typename... T>
     void detect_and_register(RegionFunc&& fun, Detail::RegInfo<T>... explicit_members);
+
+    virtual void reset_impl() = 0;
 
     //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
     std::vector<char> buffer;

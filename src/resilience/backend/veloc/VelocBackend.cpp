@@ -48,6 +48,7 @@
 
 #include "resilience/AutomaticCheckpoint.hpp"
 
+#include "resilience/registration/Registration.hpp"
 #include "resilience/util/Trace.hpp"
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
@@ -103,7 +104,15 @@ namespace KokkosResilience
     if(success) {
       std::set<int> ids;
       for(auto member : _members) ids.insert(static_cast<int>(member.hash()));
-
+      std::cout << "checkpointing ids (";
+      std::size_t count = 0;
+      for ( auto &&id : ids )
+      {
+        std::cout << id;
+        if ( ++count != ids.size() )
+          std::cout << id << ", ";
+      }
+      std::cout << ")\n";
       success = VELOC_SAFE_CALL( veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids) );
     }
 
@@ -144,7 +153,15 @@ namespace KokkosResilience
     if(success){
       std::set<int> ids;
       for(auto member : _members) ids.insert(static_cast<int>(member.hash()));
-
+      std::cout << "restarting ids (";
+      std::size_t count = 0;
+      for ( auto &&id : ids )
+      {
+        std::cout << id;
+        if ( ++count != ids.size() )
+          std::cout << ", ";
+      }
+      std::cout << ")\n";
       success = VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
     }
 
@@ -165,11 +182,23 @@ namespace KokkosResilience
   void
   VeloCMemoryBackend::register_member(KokkosResilience::Registration &member)
   {
+    auto sfun = member->serializer();
+    if ( !sfun )
+      throw std::runtime_error( "invalid member serializer" );
+    auto dfun = member->deserializer();
+    if ( !dfun )
+      throw std::runtime_error( "invalid member deserializer" );
     veloc_client->mem_protect(
         static_cast<int>(member.hash()),
-        member->serializer(),
-        member->deserializer()
+        std::move(sfun),
+        std::move(dfun)
     );
+  }
+
+  void
+  VeloCMemoryBackend::unregister_member(const Registration &member)
+  {
+    veloc_client->mem_unprotect(static_cast<int>(member.hash()));
   }
 
   VeloCFileBackend::VeloCFileBackend(ContextBase& ctx)

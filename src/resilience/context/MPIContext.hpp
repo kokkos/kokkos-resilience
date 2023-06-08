@@ -130,9 +130,10 @@ class MPIContext : public ContextBase {
     return latest;
   }
 
-  void reset() override { m_backend->reset(); }
-
 private:
+
+  void reset_impl() override { m_backend->reset(); }
+
   MPI_Comm m_comm;
 };
 
