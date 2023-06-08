@@ -193,6 +193,9 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveAssign )
 
   KokkosResilience::DynamicViewHooks::move_assignment_set.set_callback(
       [&holder](const KokkosResilience::ViewHolder &vh) mutable {
+        // In both cases here, holder is uninitialized
+        EXPECT_EQ(holder.data(), nullptr);
+        EXPECT_NE(vh.data(), nullptr);
         holder = vh;
       });
 
@@ -200,6 +203,9 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveAssign )
       .set_const_callback(
           [&const_holder](
               const KokkosResilience::ConstViewHolder &vh) mutable {
+            // In both cases here, const_holder is uninitialized
+            EXPECT_EQ(const_holder.data(), nullptr);
+            EXPECT_NE(vh.data(), nullptr);
             const_holder = vh;
           });
 
@@ -207,16 +213,20 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveAssign )
   void *cmp = testa.data();
   test_view_type testb;
 
+  const_test_view_type testa_const(
+      testa);  // Won't trigger the callback since this is not a copy
+               // constructor call
+
   // Trigger the non-const move assign callback
   testb = std::move(testa);
   EXPECT_EQ(cmp, holder.data());
   EXPECT_EQ(const_holder.data(), nullptr);
-  const_test_view_type testa_const(
-      testa);  // Won't trigger the callback since this is not a copy
-               // constructor call
+
   const_test_view_type testb_const;
 
   // Trigger the const move assign callback
   testb_const = std::move(testa_const);
   EXPECT_EQ(cmp, const_holder.data());
+
+  KokkosResilience::DynamicViewHooks::reset();
 }
