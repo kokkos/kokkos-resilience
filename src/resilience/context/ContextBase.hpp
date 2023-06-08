@@ -169,12 +169,6 @@ namespace KokkosResilience
       operator bool() const {
         return (m_members != nullptr);
       }
-
-      auto iter() { return m_map_iterator; }
-
-    private:
-
-      map_iterator m_map_iterator;
     };
 
     //Create Registration and register to implementation

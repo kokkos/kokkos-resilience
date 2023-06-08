@@ -125,7 +125,4 @@ namespace KokkosResilience {
   };
 }
 
-
-#endif
-
 #endif  // INC_RESILIENCE_MAGISTRATE_HPP

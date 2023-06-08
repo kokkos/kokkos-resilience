@@ -72,9 +72,6 @@ namespace KokkosResilience
   Registration custom_registration(serializer_t&& s_fun, deserializer_t&& d_fun, const std::string label);
 
   struct Registration : public std::shared_ptr<Detail::RegistrationBase> {
-    using serializer_t = typename Detail::RegistrationBase::serializer_t;
-    using deserializer_t = typename Detail::RegistrationBase::deserializer_t;
-
     template<typename RegType>
     Registration(std::shared_ptr<RegType> base)
       : std::shared_ptr<Detail::RegistrationBase>(std::move(base)) {}

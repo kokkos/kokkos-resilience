@@ -80,7 +80,7 @@ namespace KokkosResilience
   VeloCMemoryBackend::VeloCMemoryBackend(ContextBase& ctx)
       : AutomaticBackendBase(ctx) {
     const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(ctx.m_pid, vconf);
+    veloc_client = veloc::get_client(static_cast< unsigned int >( ctx.m_pid ), vconf);
   }
 
   VeloCMemoryBackend::~VeloCMemoryBackend()
@@ -157,7 +157,7 @@ namespace KokkosResilience
   VeloCMemoryBackend::reset()
   {
     const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_context.m_pid, vconf);
+    veloc_client = veloc::get_client(static_cast< unsigned int >( m_context.m_pid ), vconf);
 
     m_latest_version.clear();
   }
@@ -175,7 +175,7 @@ namespace KokkosResilience
   VeloCFileBackend::VeloCFileBackend(ContextBase& ctx)
       : AutomaticBackendBase(ctx) {
     const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client( m_context.m_pid, vconf);
+    veloc_client = veloc::get_client( static_cast< unsigned int >( m_context.m_pid ), vconf );
   }
 
   VeloCFileBackend::~VeloCFileBackend()

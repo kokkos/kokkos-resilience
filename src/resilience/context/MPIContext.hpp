@@ -56,17 +56,19 @@ static int comm_rank(MPI_Comm &comm){
 }
 
 class MPIContext : public ContextBase {
-public:
- explicit MPIContext(MPI_Comm comm, const std::string& cfg)
-     : ContextBase(cfg, comm_rank(comm)), m_comm(comm) {}
+ public:
+  explicit MPIContext(MPI_Comm comm, const Config &cfg)
+      : ContextBase(cfg, comm_rank(comm)), m_comm(comm) {}
+  explicit MPIContext(MPI_Comm comm, const std::string &cfg)
+      : ContextBase(cfg, comm_rank(comm)), m_comm(comm) {}
 
- MPIContext(const MPIContext &)     = delete;
- MPIContext(MPIContext &&) noexcept = default;
+  MPIContext(const MPIContext &)     = delete;
+  MPIContext(MPIContext &&) noexcept = default;
 
- MPIContext &operator=(const MPIContext &) = delete;
- MPIContext &operator=(MPIContext &&) noexcept = default;
+  MPIContext &operator=(const MPIContext &)     = delete;
+  MPIContext &operator=(MPIContext &&) noexcept = default;
 
- virtual ~MPIContext() {
+  virtual ~MPIContext() {
 #ifdef KR_ENABLE_TRACING
     int rank = -1;
     MPI_Comm_rank(m_comm, &rank);
