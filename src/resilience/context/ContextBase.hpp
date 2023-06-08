@@ -71,7 +71,7 @@ namespace KokkosResilience
     explicit ContextBase( const std::string& cfg_filename , int proc_id = 0)
           : ContextBase(Config{cfg_filename}, proc_id) {};
 
-    virtual ~ContextBase() {};
+    virtual ~ContextBase();
 
     template<typename... Traits, typename RegionFunc, typename FilterFunc, typename... T>
     void run(const std::string& label, int iteration, RegionFunc&& fun, FilterFunc&& filter,
@@ -191,6 +191,7 @@ namespace KokkosResilience
     template<typename... Traits, typename RegionFunc, typename... T>
     void detect_and_register(RegionFunc&& fun, Detail::RegInfo<T>... explicit_members);
 
+    void unregister_all_regions();
     virtual void reset_impl() = 0;
 
     //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
