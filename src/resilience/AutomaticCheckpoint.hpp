@@ -87,7 +87,7 @@ namespace KokkosResilience
       
     //Copy the lambda/functor to trigger copy-constructor hooks
     using FuncType = typename std::remove_reference<F>::type;
-    FuncType f = fun;
+    [[maybe_unused]] FuncType f = fun;
 
     //Disable ViewHolder hook
     KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
@@ -112,13 +112,20 @@ namespace KokkosResilience
     
     //Figure out how we should be handling this
     bool recover_region = false, checkpoint_region = false;
-    
+   
+    auto parent_region = active_region;
+    auto parent_context = active_context;
+    auto* parent_filter = active_filter;
+
     if(last_region && last_region.label() == label) {
       active_region = last_region;
     } else {
       auto info = regions.insert({std::string(label), std::unordered_set<Registration>()});
       active_region = info.first;
     }
+    std::function< bool(int) > m_filter = filter;
+    active_filter = &m_filter;
+
 
     if(filter(iteration)){
       //Make sure the data members are registered to the context for this region.
@@ -136,23 +143,27 @@ namespace KokkosResilience
       auto restart_trace = begin_trace<TimingTrace>( *this, "restart" );
       this->restart(active_region.label(), iteration, active_region.members());
     } else {
+      enter_region(active_region, iteration);
       auto function_trace = begin_trace<TimingTrace>( *this, "function" );
       fun();
       function_trace.end();
+      exit_region(active_region, iteration);
 
       if(checkpoint_region){
           auto write_trace = begin_trace<TimingTrace>( *this, "checkpoint" );
           auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-          std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
+          if(m_pid == 0) std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint of iteration " << iteration << "\n";
           this->checkpoint(active_region.label(), iteration, active_region.members());
           write_trace.end();
       }
     }
 
+
     //Region no longer active
     last_region = active_region;
-    active_region = Region();
-    active_context = nullptr;
+    active_region = parent_region;
+    active_context = parent_context;
+    active_filter = parent_filter;
   }
 
   //RegionFunc = std::function<void()>;

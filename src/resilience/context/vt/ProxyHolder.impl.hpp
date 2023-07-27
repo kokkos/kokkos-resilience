@@ -38,48 +38,52 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
-#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#include "resilience/backend/AutomaticBase.hpp"
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYHOLDER_IMPL_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYHOLDER_IMPL_HPP
 
-#include <filesystem>
-#include <unordered_map>
+#include "ProxyHolder.hpp"
 
-namespace KokkosResilience {
+namespace KokkosResilience::Context::VT {
+template<typename ProxyT>
+ProxyHolder::ProxyHolder(ProxyT proxy, VTContext& context)
+  : ProxyID(proxy), 
+    data_reg(build_registration(proxy)),
+    ctx(&context)
+{
+  invoker = [this, proxy](ProxyAction action, std::any arg) {
+    return ctx->action_handler(proxy, *this, action, arg);
+  };
+  ctx->m_backend->register_member(metadata_registration());
+  ctx->m_backend->register_member(data_registration());
 
-class StdFileBackend : public AutomaticBackendBase {
- public:
-  StdFileBackend(ContextBase& ctx);
-  ~StdFileBackend() = default;
+  if constexpr(is_col<ProxyT>::value and not is_elm<ProxyT>::value){
+    using ObjT = typename elm_type<ProxyT>::type;
 
-  //No state to manage
-  void register_member(Registration) override {};
-  void deregister_member(Registration) override {};
-
-  bool checkpoint(const std::string &label, int version,
-                  const std::unordered_set<Registration>& members, bool as_global) override;
-
-  int latest_version(const std::string &label, int max, bool as_global) const noexcept override;
-  bool restart_available(const std::string& label, int version, bool as_global) override;
-
-  bool restart(const std::string &label, int version,
-               const std::unordered_set<Registration>& members, bool as_global) override;
-
-  //No state to reset
-  void reset() override {};
-
- private:
-  using path = std::filesystem::path;
-  path checkpoint_dir = "./";
-  std::string checkpoint_prefix = "kr_chkpt_";
-
-  mutable std::unordered_map<std::string, int> latest_versions;
-
-  //The file to checkpoint/recover with
-  path checkpoint_file(const std::string& label, int version, bool as_global) const;
+    using EventT = vt::vrt::collection::listener::ElementEventEnum;
+    using IndexT = typename ObjT::IndexType;
+    listener_id = vt::theCollection()->registerElementListener<ObjT, IndexT>(
+        proxy_bits,
+        [this, proxy](EventT event, IndexT index, vt::NodeType elm_home){
+          ctx->handle_element_event(proxy[index], event);
+          return;
+        }
+    );
+  }
 };
 
-}  // namespace KokkosResilience
+template<typename SerT>
+void ProxyHolder::serialize(SerT& s){
+  [[maybe_unused]] const auto old_proxy_bits = proxy_bits;
+  s | proxy_bits | _status;
+  assert(old_proxy_bits == proxy_bits);
 
-#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+/*if(!s.hasTraits(BasicCheckpointTrait()) && (s.isPacking() || s.isUnpacking())) 
+  fmt::print("{}: {} status {} to version {}. Tracked: {}\n", ctx->m_proxy, *this, s.isPacking() ? "Packed" : "Unpacked", _status.checkpointed_version, tracked());
+if(s.hasTraits(BasicCheckpointTrait()) && (s.isPacking() || s.isUnpacking())) 
+  fmt::print("{}: {} basic status {} to version {}\n", ctx->m_proxy, *this, s.isPacking() ? "Packed" : "Unpacked", _status.checkpointed_version);*/
+}
+
+}
+
+#endif

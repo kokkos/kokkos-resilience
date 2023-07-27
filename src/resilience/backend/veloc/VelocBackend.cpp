@@ -163,12 +163,20 @@ namespace KokkosResilience
   }
   
   void
-  VeloCMemoryBackend::register_member(KokkosResilience::Registration &member)
+  VeloCMemoryBackend::register_member(KokkosResilience::Registration member)
   {
     veloc_client->mem_protect(
         static_cast<int>(member.hash()), 
         member->serializer(), 
         member->deserializer() 
+    );
+  }
+
+  void
+  VeloCMemoryBackend::deregister_member(KokkosResilience::Registration member)
+  {
+    veloc_client->mem_unprotect(
+        static_cast<int>(member.hash()) 
     );
   }
 

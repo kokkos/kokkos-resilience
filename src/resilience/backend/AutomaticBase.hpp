@@ -57,7 +57,8 @@ public:
   virtual ~AutomaticBackendBase() = default;
  
   //All members should be registered before being checkpointed or restarted
-  virtual void register_member(Registration& member) = 0;
+  virtual void register_member(Registration member) = 0;
+  virtual void deregister_member(Registration member) = 0;
 
   //as_global to checkpoint indepently of PID
   virtual bool checkpoint(const std::string& label, int version,
@@ -76,12 +77,6 @@ public:
 
   //Reset any state, useful for online-recovery.
   virtual void reset() = 0;
-
-
-
-  virtual void register_members(std::unordered_set<Registration>& members){
-    for(auto member : members) register_member(member);
-  }
 
   virtual bool restart_available(const std::string& label, int version, bool as_global = false){
     return latest_version(label, version+1, as_global) == version;

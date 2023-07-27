@@ -4,6 +4,8 @@ target_sources(resilience PRIVATE
                ${CMAKE_CURRENT_LIST_DIR}/ResilientRef.cpp
                )
 
+add_subdirectory(util)
+
 add_subdirectory(registration)
 add_subdirectory(context)
 add_subdirectory(backend)
@@ -15,12 +17,16 @@ add_subdirectory(stdio)
 list(FIND Kokkos_DEVICES "CUDA" _cuda_found)
 
 if (${_cuda_found} GREATER "-1")
-  add_subdirectory(cuda)
+  if ($KR_ENABLE_CUDA)
+    add_subdirectory(cuda)
+  endif()
 endif()
 
 list(FIND Kokkos_DEVICES "OPENMP" _omp_found)
 
 if (${_omp_found} GREATER "-1")
-  add_subdirectory(openMP)
+  if ($KR_ENABLE_OPENMP)
+    add_subdirectory(openMP)
+  endif()
 endif()
 

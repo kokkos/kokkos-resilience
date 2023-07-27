@@ -38,48 +38,27 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
-#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#include "resilience/backend/AutomaticBase.hpp"
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_IMPL_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_IMPL_HPP
 
-#include <filesystem>
-#include <unordered_map>
+#include "ProxyMap.hpp"
+#include "VTContext.hpp"
 
-namespace KokkosResilience {
+namespace KokkosResilience::Context::VT {
 
-class StdFileBackend : public AutomaticBackendBase {
- public:
-  StdFileBackend(ContextBase& ctx);
-  ~StdFileBackend() = default;
+template <typename ProxyT, typename enable>
+ProxyHolder& ProxyMap::operator[](ProxyT proxy){
+  auto iter = id_to_holder.find(proxy);
+  if(iter == id_to_holder.end()){
+    iter = id_to_holder.try_emplace(proxy, proxy, ctx).first;
+    ctx.init_holder(proxy, iter->second);
 
-  //No state to manage
-  void register_member(Registration) override {};
-  void deregister_member(Registration) override {};
+    group_to_member_id.emplace(ProxyID(proxy).proxy_bits, proxy);
+  }
+  return iter->second;
+}
 
-  bool checkpoint(const std::string &label, int version,
-                  const std::unordered_set<Registration>& members, bool as_global) override;
+}
 
-  int latest_version(const std::string &label, int max, bool as_global) const noexcept override;
-  bool restart_available(const std::string& label, int version, bool as_global) override;
-
-  bool restart(const std::string &label, int version,
-               const std::unordered_set<Registration>& members, bool as_global) override;
-
-  //No state to reset
-  void reset() override {};
-
- private:
-  using path = std::filesystem::path;
-  path checkpoint_dir = "./";
-  std::string checkpoint_prefix = "kr_chkpt_";
-
-  mutable std::unordered_map<std::string, int> latest_versions;
-
-  //The file to checkpoint/recover with
-  path checkpoint_file(const std::string& label, int version, bool as_global) const;
-};
-
-}  // namespace KokkosResilience
-
-#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+#endif

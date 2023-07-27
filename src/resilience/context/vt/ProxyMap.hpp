@@ -38,48 +38,66 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
-#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#include "resilience/backend/AutomaticBase.hpp"
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_HPP
 
-#include <filesystem>
-#include <unordered_map>
+#include <optional>
+#include "common.hpp"
+#include "ProxyHolder.hpp"
 
-namespace KokkosResilience {
+namespace KokkosResilience::Context::VT {
 
-class StdFileBackend : public AutomaticBackendBase {
- public:
-  StdFileBackend(ContextBase& ctx);
-  ~StdFileBackend() = default;
+class ProxyMap {
+public:
+  ProxyMap(VTContext& context) : ctx(context) {};
+ 
+  //Get existing, or initialize and get proxy holder for this proxy.
+  template <
+    typename ProxyT,
+    typename enable = typename is_proxy<ProxyT>::type
+  >
+  ProxyHolder& operator[](ProxyT proxy);
 
-  //No state to manage
-  void register_member(Registration) override {};
-  void deregister_member(Registration) override {};
+  //Get existing, or attempt to initialize. May return nullptr;
+  ProxyHolder* operator[](ProxyID proxy_id){
+    auto iter = id_to_holder.find(proxy_id);
+    if(iter != id_to_holder.end()) return &(iter->second);
+    
+    auto group_iter = group_to_member_id.find(proxy_id.proxy_bits);
+    if(group_iter == group_to_member_id.end()) return nullptr;
+    
+    auto& group_holder = id_to_holder[group_iter->second];
+    return group_holder.get_holder(proxy_id);
+  }
 
-  bool checkpoint(const std::string &label, int version,
-                  const std::unordered_set<Registration>& members, bool as_global) override;
+  //If a registration's hash matches a held proxy's, return pointer to it.
+  ProxyHolder* operator[](Registration& reg){
+    auto iter = hash_to_id.find(reg.hash());
+    if(iter == hash_to_id.end()) return nullptr;
 
-  int latest_version(const std::string &label, int max, bool as_global) const noexcept override;
-  bool restart_available(const std::string& label, int version, bool as_global) override;
+    return (*this)[iter->second];
+  }
 
-  bool restart(const std::string &label, int version,
-               const std::unordered_set<Registration>& members, bool as_global) override;
+  void add_reg_mapping(size_t reg_hash, ProxyID proxy_id){
+    hash_to_id[reg_hash] = proxy_id;
+  }
 
-  //No state to reset
-  void reset() override {};
+  std::unordered_map<ProxyID, ProxyHolder>& map(){
+    return id_to_holder;
+  }
 
- private:
-  using path = std::filesystem::path;
-  path checkpoint_dir = "./";
-  std::string checkpoint_prefix = "kr_chkpt_";
+private:
+  VTContext& ctx;
 
-  mutable std::unordered_map<std::string, int> latest_versions;
+  std::unordered_map<ProxyID, ProxyHolder> id_to_holder;
 
-  //The file to checkpoint/recover with
-  path checkpoint_file(const std::string& label, int version, bool as_global) const;
+  //Find a proxy ID from the hash of its (core) registration.
+  std::unordered_map<size_t, ProxyID> hash_to_id;
+
+  //Find a representative member of a group by its proxy bits
+  std::unordered_map<uint64_t, ProxyID> group_to_member_id;
 };
 
-}  // namespace KokkosResilience
-
-#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+}
+#endif

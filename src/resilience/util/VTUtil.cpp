@@ -38,48 +38,25 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
-#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#include "resilience/backend/AutomaticBase.hpp"
+#include "VTUtil.hpp"
 
-#include <filesystem>
-#include <unordered_map>
+namespace KokkosResilience::Util::VT {
+  void delaySerializeUntil(vt::EpochType epoch){
+    if(!vt::sched::ThreadAction::isThreadActive()){
+      vt::runSchedulerThrough(epoch);
+    } else {
+      auto thread_id = vt::sched::ThreadAction::getActiveThreadID();
+      vt::theTerm()->addAction(epoch, [thread_id](){
+      vt::theSched()->enqueue([thread_id](){
+        vt::theSched()->getThreadManager()->getThread(thread_id)->resume();
+      });
+      });
 
-namespace KokkosResilience {
-
-class StdFileBackend : public AutomaticBackendBase {
- public:
-  StdFileBackend(ContextBase& ctx);
-  ~StdFileBackend() = default;
-
-  //No state to manage
-  void register_member(Registration) override {};
-  void deregister_member(Registration) override {};
-
-  bool checkpoint(const std::string &label, int version,
-                  const std::unordered_set<Registration>& members, bool as_global) override;
-
-  int latest_version(const std::string &label, int max, bool as_global) const noexcept override;
-  bool restart_available(const std::string& label, int version, bool as_global) override;
-
-  bool restart(const std::string &label, int version,
-               const std::unordered_set<Registration>& members, bool as_global) override;
-
-  //No state to reset
-  void reset() override {};
-
- private:
-  using path = std::filesystem::path;
-  path checkpoint_dir = "./";
-  std::string checkpoint_prefix = "kr_chkpt_";
-
-  mutable std::unordered_map<std::string, int> latest_versions;
-
-  //The file to checkpoint/recover with
-  path checkpoint_file(const std::string& label, int version, bool as_global) const;
-};
-
-}  // namespace KokkosResilience
-
-#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+      vt::EpochType parent_epoch = vt::theTerm()->getEpoch();
+      vt::theTerm()->popEpoch(parent_epoch);
+      vt::sched::ThreadAction::suspend();
+      vt::theTerm()->pushEpoch(parent_epoch);
+    }
+  }
+}

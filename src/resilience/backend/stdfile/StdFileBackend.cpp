@@ -92,7 +92,7 @@ bool StdFileBackend::checkpoint(
 
   auto write_trace = Util::begin_trace<Util::TimingTrace>(m_context, "write");
   bool success = true;
-  try {
+  //try {
     std::ofstream file(filename, std::ios::binary);
     file.seekp(header_size);
 
@@ -102,7 +102,8 @@ bool StdFileBackend::checkpoint(
       member_offsets[index] = file.tellp();
 
       if(!member->serializer()(file)){
-        fprintf(stderr, "Warning: In checkpoint of %s version %d, member %s serialization failed!\n", label.c_str(), version, member->name.c_str()); 
+        fprintf(stderr, "Warning: In checkpoint of %s version %d, member %s serialization failed! Stream bits: good:%d fail:%d bad:%d eof:%d \n", label.c_str(), version, member->name.c_str(), file.good(), file.fail(), file.bad(), file.eof());
+        success = false;
       }
       index++;
     }
@@ -118,11 +119,11 @@ bool StdFileBackend::checkpoint(
     }
 
     latest_versions[label] = version;
-  } catch (std::exception& e) {
-    fprintf(stderr, "Error checkpointing region %s version %d to file %s: %s\n",
-            label.c_str(), version, std::string(filename).c_str(), e.what());
-    success = false;
-  }
+  //} catch (std::exception& e) {
+  //  fprintf(stderr, "Error checkpointing region %s version %d to file %s: %s\n",
+  //          label.c_str(), version, std::string(filename).c_str(), e.what());
+  //  success = false;
+  //}
   write_trace.end();
   return success;
 }
@@ -185,8 +186,9 @@ struct FileMember {
 //We want to read through the file in-order where possible,
 //so we build an ordered vector representing which registration to 
 //restore to as we go.
+//File path used for providing error context.
 std::vector<FileMember>
-read_header(std::istream& file, const std::unordered_set<Registration>& registrations){
+read_header(std::istream& file, const std::unordered_set<Registration>& registrations, std::filesystem::path filename){
   std::vector<FileMember> members;
   std::unordered_map<int, int> hash_to_member;
 
@@ -212,7 +214,12 @@ read_header(std::istream& file, const std::unordered_set<Registration>& registra
       header_size = start;
     }
   }
-  members.back().stop = file_size;
+  if(members.empty()){
+    fprintf(stderr, "No members found in file %s but %lu expected.\n", std::string(filename).c_str(), registrations.size());
+    return {};
+  } else {
+    members.back().stop = file_size;
+  }
   
   for(auto& reg : registrations){
     auto iter = hash_to_member.find(reg.hash());
@@ -232,11 +239,16 @@ bool StdFileBackend::restart(
     const std::unordered_set<Registration>& registrations,
     bool as_global) {
   auto read_trace = Util::begin_trace<Util::TimingTrace>(m_context, "read");
+  if(registrations.empty()){
+    read_trace.end();
+    return true;
+  }
 
   try {
-    std::ifstream file(checkpoint_file(label, version, as_global), std::ios::binary);
+    auto filename = checkpoint_file(label, version, as_global);
+    std::ifstream file(filename, std::ios::binary);
     
-    auto file_members = read_header(file, registrations);
+    auto file_members = read_header(file, registrations, filename);
   
     for(auto& member : file_members){
       if(member.registration == nullptr) continue;
