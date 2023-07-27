@@ -87,8 +87,8 @@ namespace KokkosResilience
 
     void clear_checkpoints();
 
-    void register_member(KokkosResilience::Registration& member) override;
-    void unregister_member(const Registration &member) override;
+    void register_member(Registration member) override;
+    void deregister_member(const Registration& member) override;
 
     void reset() override;
     void register_alias( const std::string &original, const std::string &alias );
@@ -144,7 +144,7 @@ namespace KokkosResilience
                   const std::unordered_set< KokkosResilience::Registration > &views,
                   bool as_global);
 
-    void register_member( KokkosResilience::Registration & ) {} // Do nothing
+    void register_member( KokkosResilience::Registration  ) override {} // Do nothing
 
   private:
       veloc::client_t* veloc_client;

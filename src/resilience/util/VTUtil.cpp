@@ -39,44 +39,24 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
-#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#include "VTUtil.hpp"
 
-#include <memory>
+namespace KokkosResilience::Util::VT {
+  void delaySerializeUntil(vt::EpochType epoch){
+    if(!vt::sched::ThreadAction::isThreadActive()){
+      vt::runSchedulerThrough(epoch);
+    } else {
+      auto thread_id = vt::sched::ThreadAction::getActiveThreadID();
+      vt::theTerm()->addAction(epoch, [thread_id](){
+      vt::theSched()->enqueue([thread_id](){
+        vt::theSched()->getThreadManager()->getThread(thread_id)->resume();
+      });
+      });
 
-#include <vt/vt.h>
-
-#include "resilience/registration/Registration.hpp"
-#include "resilience/context/vt/VTContext.hpp"
-#include "resilience/util/VTUtil.hpp"
-
-namespace KokkosResilience {
-  template<typename T, typename... Traits>
-  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
-    std::shared_ptr<Detail::RegistrationBase> reg;
-
-    create_registration(ContextBase& context, T& proxy, std::string label = ""){
-      using namespace Context::VT;
-        
-      label = proxy_label(proxy);
-
-      auto vtCtx = dynamic_cast<VTContext*>(&context);
-      if(vtCtx){
-        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
-        auto& proxy_holder = vtCtx->get_holder(proxy);
-        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), BasicCheckpointTrait, Traits...>>
-          (proxy_holder, label);
-
-        //If deregistering, vtCtx needs help going from registration to ProxyID
-        vtCtx->add_reg_mapping(reg->hash(), proxy);
-      } else {
-        //Register the full proxy, making sure to include CheckpointTrait
-        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
-      }
+      vt::EpochType parent_epoch = vt::theTerm()->getEpoch();
+      vt::theTerm()->popEpoch(parent_epoch);
+      vt::sched::ThreadAction::suspend();
+      vt::theTerm()->pushEpoch(parent_epoch);
     }
-
-    auto get(){return reg;}
-  };
+  }
 }
-
-#endif

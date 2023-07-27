@@ -67,7 +67,7 @@ namespace KokkosResilience::Detail {
         checkpoint::serializeToStream<
           Traits...
         >(m_member, stream);
-        return stream.good();
+        return bool(stream);
       };
     }
 
@@ -76,7 +76,7 @@ namespace KokkosResilience::Detail {
         checkpoint::deserializeInPlaceFromStream<
           Traits...
         >(stream, &m_member);
-        return stream.good();
+        return bool(stream);
       };
     }
 

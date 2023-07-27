@@ -39,8 +39,8 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_VTTYPES_HPP
-#define INC_KOKKOS_RESILIENCE_VTTYPES_HPP
+#ifndef INC_KOKKOS_RESILIENCE_UTIL_VT_HPP
+#define INC_KOKKOS_RESILIENCE_UTIL_VT_HPP
 
 #include <type_traits>
 #include <tuple>
@@ -58,70 +58,82 @@ namespace KokkosResilience::Util::VT {
 
   //Get the type of the actual elements referenced by the proxy.
   template<typename T>
-  struct elm_type;
+  struct _elm_type;
 
   template<typename T>
-  struct elm_type<VTCol<T>> {
+  struct _elm_type<VTCol<T>> {
     using type = T;
   };
   template<typename T>
-  struct elm_type<VTColElm<T>>{
+  struct _elm_type<VTColElm<T>>{
     using type = T;
   };
   template<typename T>
-  struct elm_type<VTObj<T>>{
+  struct _elm_type<VTObj<T>>{
     using type = T;
   };
   template<typename T>
-  struct elm_type<VTObjElm<T>>{
+  struct _elm_type<VTObjElm<T>>{
     using type = T;
   };
+
+  template<typename T>
+  struct elm_type : public _elm_type<typename std::decay<T>::type> {};
 
   
   //Any collection or its elements
-  template<typename T, typename as = void>
-  struct is_col { static constexpr bool value = false; };
+  template<typename T, typename as>
+  struct _is_col { static constexpr bool value = false; };
 
   template<typename T, typename as>
-  struct is_col<VTCol<T>, as> {
+  struct _is_col<VTCol<T>, as> {
     using type = as;
     static constexpr bool value = true;
   };
 
   template<typename T, typename as>
-  struct is_col<VTColElm<T>, as> : public is_col<VTCol<T>, as> {};
+  struct _is_col<VTColElm<T>, as> : public _is_col<VTCol<T>, as> {};
+  
+  template<typename T, typename as = void>
+  struct is_col : public _is_col<typename std::decay<T>::type, as> {};
   
   
   //Any objgroup or its elements
-  template<typename T, typename as = void>
-  struct is_obj { static constexpr bool value = false; };
+  template<typename T, typename as>
+  struct _is_obj { static constexpr bool value = false; };
   
   template<typename T, typename as>
-  struct is_obj<VTObj<T>, as> {
+  struct _is_obj<VTObj<T>, as> {
     using type = as;
     static constexpr bool value = true;
   };
   
   template<typename T, typename as>
-  struct is_obj<VTObjElm<T>, as> : public is_obj<VTObj<T>, as> {};
+  struct _is_obj<VTObjElm<T>, as> : public _is_obj<VTObj<T>, as> {};
+  
+  template<typename T, typename as = void>
+  struct is_obj : public _is_obj<typename std::decay<T>::type, as> {};
   
   
   //Element of any objgroup/collection
-  template<typename T, typename as = void>
-  struct is_elm { static constexpr bool value = false; };
+  template<typename T, typename as>
+  struct _is_elm { static constexpr bool value = false; };
   
   template<typename T, typename as>
-  struct is_elm<VTColElm<T>, as> {
+  struct _is_elm<VTColElm<T>, as> {
     using type = as;
     static constexpr bool value = true;
   };
   
   template<typename T, typename as>
-  struct is_elm<VTObjElm<T>, as> {
+  struct _is_elm<VTObjElm<T>, as> {
     using type = as;
     static constexpr bool value = true;
   };
 
+  template<typename T, typename as = void>
+  struct is_elm : public _is_elm<typename std::decay<T>::type, as> {};
+  
   
   //Any objgroup/collection and their elements
   template<typename T, typename as = void, typename enable = void*>
@@ -141,9 +153,9 @@ namespace KokkosResilience::Util::VT {
       typename ProxyT,
       typename enable = typename is_proxy<ProxyT, void*>::type
     >
-    ProxyID(ProxyT proxy) : 
-      proxy_bits(get_proxy_bits(proxy)),
-      index_bits(get_index_bits(proxy)) { };
+    ProxyID(ProxyT&& proxy) : 
+      proxy_bits(get_proxy_bits(std::forward<ProxyT>(proxy))),
+      index_bits(get_index_bits(std::forward<ProxyT>(proxy))) { };
 
     ProxyID() = default;
 
@@ -163,9 +175,17 @@ namespace KokkosResilience::Util::VT {
     uint64_t proxy_bits;
     uint64_t index_bits;
 
+    //The indexless collection/objgroup from
+    //an element within it.
+    ProxyID get_group_id(){
+      ProxyID group = *this;
+      group.index_bits = -1;
+      return group;
+    }
+
   private:
     template<typename ProxyT>
-    uint64_t get_proxy_bits(ProxyT proxy){
+    uint64_t get_proxy_bits(ProxyT&& proxy){
       if constexpr(is_col<ProxyT>::value and is_elm<ProxyT>::value){
         return proxy.getCollectionProxy();
       } else {
@@ -174,7 +194,7 @@ namespace KokkosResilience::Util::VT {
     }
 
     template<typename ProxyT>
-    uint64_t get_index_bits(ProxyT proxy){
+    uint64_t get_index_bits(ProxyT&& proxy){
       if constexpr(not is_elm<ProxyT>::value){
         return -1;
       } else if constexpr(is_col<ProxyT>::value){
@@ -201,7 +221,7 @@ namespace std {
 namespace KokkosResilience::Util::VT {
 
   template<typename ProxyT, typename enable = typename is_proxy<ProxyT, void*>::type>
-  std::string proxy_label(ProxyT& proxy, const ProxyID& id){
+  std::string proxy_label(ProxyT proxy, const ProxyID& id){
     std::string label;
 
     if constexpr (is_col<ProxyT>::value) {
@@ -221,9 +241,62 @@ namespace KokkosResilience::Util::VT {
   }
 
   template<typename ProxyT>
-  std::string proxy_label(ProxyT& proxy){
-    return proxy_label(proxy, ProxyID(proxy));
+  inline std::string proxy_label(ProxyT proxy){
+    return proxy_label(proxy, proxy);
   }
+
+  template<typename ProxyT>
+  inline bool is_local(ProxyT&& proxy){
+    if constexpr(not is_elm<ProxyT>::value){
+      return false;
+    } else if constexpr(is_col<ProxyT>::value){
+      return proxy.tryGetLocalPtr() != nullptr;
+    } else {
+      return proxy.getNode() == vt::theContext()->getNode();
+    }
+  }
+
+  //Send if proxy is an element, else broadcast
+  template<auto F, typename ProxyT, typename MsgT>
+  inline void msg(ProxyT proxy, MsgT& msg){
+    if constexpr(is_elm<ProxyT>::value) {
+      proxy.template send<F>(msg);
+    } else {
+      proxy.template broadcast<F>(msg);
+    }
+  }
+
+  //Returns a proxy guaranteed to be a Collection/ObjGroup
+  template<typename ProxyT>
+  auto deindex(ProxyT proxy){
+    if constexpr(not is_elm<ProxyT>::value){
+      return proxy;
+    } else if constexpr(is_col<ProxyT>::value){
+      using ObjT = typename elm_type<ProxyT>::type;
+      return VTCol<ObjT>(proxy.getCollectionProxy());
+    } else {
+      return vt::theObjGroup()->proxyGroup(proxy);
+    }
+  }
+
+  //Returns proxy belonging to same group but with the given index
+  template<typename ProxyT>
+  auto reindex(ProxyT proxy, uint64_t index) {
+    if constexpr(is_col<ProxyT>::value){
+      //Collections indexed by custom type, whose storage is type-defined
+      using IndexT = typename elm_type<ProxyT>::type::IndexType;
+      IndexT typed_index = IndexT::uniqueBitsToIndex(index);
+      
+      return deindex(proxy)[typed_index];
+    } else {
+      //ObjGroups indexed by rank, which is directly stored as uint64_t
+      return deindex(proxy)[index];
+    }
+  }
+
+
+  //Optimizes for case of being called within a serialize user thread.
+  void delaySerializeUntil(vt::EpochType epoch);
 }
 
 

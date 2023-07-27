@@ -1,4 +1,5 @@
 #include "Automatic.hpp"
+#include "resilience/context/ContextBase.hpp"
 #include <stdexcept>
 
 #ifdef KR_ENABLE_VELOC

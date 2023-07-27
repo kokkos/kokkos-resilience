@@ -39,44 +39,57 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
-#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_COMMON_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_COMMON_HPP
 
-#include <memory>
+#include <string_view>
 
 #include <vt/vt.h>
-
-#include "resilience/registration/Registration.hpp"
-#include "resilience/context/vt/VTContext.hpp"
 #include "resilience/util/VTUtil.hpp"
 
-namespace KokkosResilience {
-  template<typename T, typename... Traits>
-  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
-    std::shared_ptr<Detail::RegistrationBase> reg;
+//#define VTCONTEXT_LOG_EVENTS
 
-    create_registration(ContextBase& context, T& proxy, std::string label = ""){
-      using namespace Context::VT;
-        
-      label = proxy_label(proxy);
+namespace KokkosResilience::Context::VT {
+  using namespace KokkosResilience::Util::VT;
 
-      auto vtCtx = dynamic_cast<VTContext*>(&context);
-      if(vtCtx){
-        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
-        auto& proxy_holder = vtCtx->get_holder(proxy);
-        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), BasicCheckpointTrait, Traits...>>
-          (proxy_holder, label);
+  //Actions available through the VTContext action handler
+  //Not all actions are valid for all proxy types.
+  //Use macros to automatically generate to_string
+#define KR_VT_PROXY_ACTIONS(f) \
+    f(GET_HOLDER_AT),\
+    f(FETCH_STATUS),\
+    f(SET_STATUS),\
+    f(SET_TRACKED),\
+    f(SET_CHECKPOINTED_VERSION),\
+    f(SET_RESTARTED_VERSION),\
+    f(MODIFY),\
+    f(REGISTER),\
+    f(DEREGISTER),\
+    f(CHECK_LOCAL),\
+    f(CHECK_DYNAMIC),\
+    f(CHECK_MISSING),\
+    f(DEREGISTER_EVENT_LISTENER),\
+    f(MIGRATE_STATUS)
 
-        //If deregistering, vtCtx needs help going from registration to ProxyID
-        vtCtx->add_reg_mapping(reg->hash(), proxy);
-      } else {
-        //Register the full proxy, making sure to include CheckpointTrait
-        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
-      }
-    }
+#define KR_VT_ENUM_LIST(x) x
+#define KR_VT_ENUM_LIST_STR(x) #x 
 
-    auto get(){return reg;}
+  enum ProxyAction {
+    KR_VT_PROXY_ACTIONS(KR_VT_ENUM_LIST)
   };
+  
+  //Information about checkpoint/recovery state
+  struct ProxyStatus;
+
+  //Untyped holder with re-typing capabilities.
+  //Holds ProxyStatus, manages access.
+  class ProxyHolder;
+  
+  class ProxyMap;
+  
+  class VTContext;
+  using VTContextProxy = VTObj<VTContext>;
+  using VTContextElmProxy = VTObjElm<VTContext>;
 }
 
 #endif

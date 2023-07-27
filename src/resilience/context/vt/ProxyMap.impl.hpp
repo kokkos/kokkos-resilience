@@ -39,44 +39,26 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
-#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_IMPL_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_IMPL_HPP
 
-#include <memory>
+#include "ProxyMap.hpp"
+#include "VTContext.hpp"
 
-#include <vt/vt.h>
+namespace KokkosResilience::Context::VT {
 
-#include "resilience/registration/Registration.hpp"
-#include "resilience/context/vt/VTContext.hpp"
-#include "resilience/util/VTUtil.hpp"
+template <typename ProxyT, typename enable>
+ProxyHolder& ProxyMap::operator[](ProxyT proxy){
+  auto iter = id_to_holder.find(proxy);
+  if(iter == id_to_holder.end()){
+    iter = id_to_holder.try_emplace(proxy, proxy, ctx).first;
+    ctx.init_holder(proxy, iter->second);
 
-namespace KokkosResilience {
-  template<typename T, typename... Traits>
-  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
-    std::shared_ptr<Detail::RegistrationBase> reg;
+    group_to_member_id.emplace(ProxyID(proxy).proxy_bits, proxy);
+  }
+  return iter->second;
+}
 
-    create_registration(ContextBase& context, T& proxy, std::string label = ""){
-      using namespace Context::VT;
-        
-      label = proxy_label(proxy);
-
-      auto vtCtx = dynamic_cast<VTContext*>(&context);
-      if(vtCtx){
-        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
-        auto& proxy_holder = vtCtx->get_holder(proxy);
-        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), BasicCheckpointTrait, Traits...>>
-          (proxy_holder, label);
-
-        //If deregistering, vtCtx needs help going from registration to ProxyID
-        vtCtx->add_reg_mapping(reg->hash(), proxy);
-      } else {
-        //Register the full proxy, making sure to include CheckpointTrait
-        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
-      }
-    }
-
-    auto get(){return reg;}
-  };
 }
 
 #endif

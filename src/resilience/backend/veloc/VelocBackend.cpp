@@ -180,7 +180,7 @@ namespace KokkosResilience
   }
 
   void
-  VeloCMemoryBackend::register_member(KokkosResilience::Registration &member)
+  VeloCMemoryBackend::register_member(KokkosResilience::Registration member)
   {
     auto sfun = member->serializer();
     if ( !sfun )
@@ -196,7 +196,7 @@ namespace KokkosResilience
   }
 
   void
-  VeloCMemoryBackend::unregister_member(const Registration &member)
+  VeloCMemoryBackend::deregister_member(const Registration &member)
   {
     veloc_client->mem_unprotect(static_cast<int>(member.hash()));
   }

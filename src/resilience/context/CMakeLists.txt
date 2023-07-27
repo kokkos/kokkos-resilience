@@ -1,11 +1,11 @@
 target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/Context.cpp)
 
 if (KR_ENABLE_MPI_BACKENDS)
- target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/MPIContext.cpp)
+  target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/MPIContext.cpp)
 endif()
 
 if (KR_ENABLE_VT)
- target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/VTContext.cpp)
+  add_subdirectory(vt)
 endif()
 
 #if (KR_ENABLE_STDFILE)

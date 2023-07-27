@@ -132,7 +132,7 @@ class MPIContext : public ContextBase {
 
 private:
 
-  void reset_impl() override { m_backend->reset(); }
+  void reset_impl() override { }
 
   MPI_Comm m_comm;
 };

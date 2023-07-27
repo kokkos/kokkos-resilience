@@ -44,6 +44,9 @@ option(KR_ENABLE_RESILIENT_EXEC "enable resilient execution spaces" OFF)
 
 option(KR_ENABLE_VT "use VT for backend coordination" OFF)
 
+option(KR_ENABLE_OPENMP "enable the resilient OpenMP execution space" OFF)
+option(KR_ENABLE_CUDA   "enable the resilient CUDA execution space" OFF)
+
 include(CMakeDependentOption)
 
 cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF "KR_ENABLE_VELOC" OFF)
@@ -65,6 +68,7 @@ if (KR_ENABLE_VT)
   target_link_libraries(resilience PUBLIC vt::runtime::vt)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_VT)
   
+  set(KR_ENABLE_MPI_BACKENDS ON)
   set(KR_ENABLE_MAGISTRATE ON)
 endif()
 
@@ -74,6 +78,8 @@ if (KR_ENABLE_STDFILE)
 endif()
 
 if (KR_ENABLE_MPI_BACKENDS)
+  find_package(MPI REQUIRED)
+  target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_MPI_BACKENDS)
 endif()
 

@@ -46,6 +46,8 @@
 #include "context/Context.hpp"
 #include "AutomaticCheckpoint.hpp"
 
+#include "registration/RegistrationHeaders.hpp"
+
 #include "backend/Automatic.hpp"
 
 #ifdef KR_ENABLE_MANUAL_CHECKPOINT

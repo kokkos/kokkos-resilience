@@ -39,44 +39,65 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
-#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_HPP
 
-#include <memory>
+#include <optional>
+#include "common.hpp"
+#include "ProxyHolder.hpp"
 
-#include <vt/vt.h>
+namespace KokkosResilience::Context::VT {
 
-#include "resilience/registration/Registration.hpp"
-#include "resilience/context/vt/VTContext.hpp"
-#include "resilience/util/VTUtil.hpp"
+class ProxyMap {
+public:
+  ProxyMap(VTContext& context) : ctx(context) {};
+ 
+  //Get existing, or initialize and get proxy holder for this proxy.
+  template <
+    typename ProxyT,
+    typename enable = typename is_proxy<ProxyT>::type
+  >
+  ProxyHolder& operator[](ProxyT proxy);
 
-namespace KokkosResilience {
-  template<typename T, typename... Traits>
-  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
-    std::shared_ptr<Detail::RegistrationBase> reg;
+  //Get existing, or attempt to initialize. May return nullptr;
+  ProxyHolder* operator[](ProxyID proxy_id){
+    auto iter = id_to_holder.find(proxy_id);
+    if(iter != id_to_holder.end()) return &(iter->second);
+    
+    auto group_iter = group_to_member_id.find(proxy_id.proxy_bits);
+    if(group_iter == group_to_member_id.end()) return nullptr;
+    
+    auto& group_holder = id_to_holder[group_iter->second];
+    return group_holder.get_holder(proxy_id);
+  }
 
-    create_registration(ContextBase& context, T& proxy, std::string label = ""){
-      using namespace Context::VT;
-        
-      label = proxy_label(proxy);
+  //If a registration's hash matches a held proxy's, return pointer to it.
+  ProxyHolder* operator[](Registration& reg){
+    auto iter = hash_to_id.find(reg.hash());
+    if(iter == hash_to_id.end()) return nullptr;
 
-      auto vtCtx = dynamic_cast<VTContext*>(&context);
-      if(vtCtx){
-        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
-        auto& proxy_holder = vtCtx->get_holder(proxy);
-        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), BasicCheckpointTrait, Traits...>>
-          (proxy_holder, label);
+    return (*this)[iter->second];
+  }
 
-        //If deregistering, vtCtx needs help going from registration to ProxyID
-        vtCtx->add_reg_mapping(reg->hash(), proxy);
-      } else {
-        //Register the full proxy, making sure to include CheckpointTrait
-        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
-      }
-    }
+  void add_reg_mapping(size_t reg_hash, ProxyID proxy_id){
+    hash_to_id[reg_hash] = proxy_id;
+  }
 
-    auto get(){return reg;}
-  };
+  std::unordered_map<ProxyID, ProxyHolder>& map(){
+    return id_to_holder;
+  }
+
+private:
+  VTContext& ctx;
+
+  std::unordered_map<ProxyID, ProxyHolder> id_to_holder;
+
+  //Find a proxy ID from the hash of its (core) registration.
+  std::unordered_map<size_t, ProxyID> hash_to_id;
+
+  //Find a representative member of a group by its proxy bits
+  std::unordered_map<uint64_t, ProxyID> group_to_member_id;
+};
+
 }
-
 #endif

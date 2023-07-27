@@ -54,8 +54,8 @@ class StdFileBackend : public AutomaticBackendBase {
   ~StdFileBackend() = default;
 
   //No state to manage
-  void register_member(Registration&) override {};
-  void unregister_member(const Registration &) override {}
+  void register_member(Registration) override {};
+  void deregister_member(const Registration &) override {}
 
   bool checkpoint(const std::string &label, int version,
                   const std::unordered_set<Registration>& members, bool as_global) override;

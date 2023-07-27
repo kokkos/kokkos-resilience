@@ -56,8 +56,8 @@
 #endif
 
 #ifdef KR_ENABLE_VT
-  #include "vt/vt.h"
-  #include "VTContext.hpp"
+  #include <vt/vt.h>
+  #include "./vt/VTContext.impl.hpp"
 #endif
 
 namespace KokkosResilience {  
@@ -72,8 +72,5 @@ namespace KokkosResilience {
   std::unique_ptr< ContextBase > make_context( const std::string &config );
 #endif
 }
-
-
-#include "resilience/registration/Registration.impl.hpp"
 
 #endif  // INC_RESILIENCE_CONTEXT_HPP

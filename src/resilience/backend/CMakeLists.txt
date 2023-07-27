@@ -4,9 +4,7 @@ if (KR_ENABLE_VELOC)
   add_subdirectory(veloc)
 endif()
 
-if (KR_ENABLE_STDFILE)
-  add_subdirectory(stdfile)
-endif()
+add_subdirectory(stdfile)
 
 if (KR_ENABLE_HDF5)
   add_subdirectory(hdf5)

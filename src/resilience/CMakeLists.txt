@@ -4,6 +4,8 @@ target_sources(resilience PRIVATE
                ${CMAKE_CURRENT_LIST_DIR}/ResilientRef.cpp
                )
 
+add_subdirectory(util)
+
 add_subdirectory(registration)
 add_subdirectory(context)
 add_subdirectory(backend)

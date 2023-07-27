@@ -67,7 +67,7 @@ private:
 
 namespace KokkosResilience {
   template<typename Traits> //Unused
-  struct create_registration<KokkosResilience::ViewHolder, Traits>{
+  struct create_registration<const KokkosResilience::ViewHolder, Traits>{
     using RegT = Detail::ViewHolderRegistration;
     std::shared_ptr<RegT> reg;
 

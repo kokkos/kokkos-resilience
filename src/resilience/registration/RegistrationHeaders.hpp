@@ -1,9 +1,7 @@
-#ifndef _INC_RESILIENCE_REGISTRATION_IMPL_HPP
-#define _INC_RESILIENCE_REGISTRATION_IMPL_HPP
+#ifndef _INC_RESILIENCE_REGISTRATION_HEADERS_HPP
+#define _INC_RESILIENCE_REGISTRATION_HEADERS_HPP
 
-#include "Registration.hpp"
-
-#include "resilience/context/ContextBase.hpp"
+#include "./Registration.hpp"
 
 #include "./ViewHolder.hpp"
 #include "./Custom.hpp"

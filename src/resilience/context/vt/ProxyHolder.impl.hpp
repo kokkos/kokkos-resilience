@@ -39,44 +39,51 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
-#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYHOLDER_IMPL_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYHOLDER_IMPL_HPP
 
-#include <memory>
+#include "ProxyHolder.hpp"
 
-#include <vt/vt.h>
-
-#include "resilience/registration/Registration.hpp"
-#include "resilience/context/vt/VTContext.hpp"
-#include "resilience/util/VTUtil.hpp"
-
-namespace KokkosResilience {
-  template<typename T, typename... Traits>
-  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
-    std::shared_ptr<Detail::RegistrationBase> reg;
-
-    create_registration(ContextBase& context, T& proxy, std::string label = ""){
-      using namespace Context::VT;
-        
-      label = proxy_label(proxy);
-
-      auto vtCtx = dynamic_cast<VTContext*>(&context);
-      if(vtCtx){
-        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
-        auto& proxy_holder = vtCtx->get_holder(proxy);
-        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), BasicCheckpointTrait, Traits...>>
-          (proxy_holder, label);
-
-        //If deregistering, vtCtx needs help going from registration to ProxyID
-        vtCtx->add_reg_mapping(reg->hash(), proxy);
-      } else {
-        //Register the full proxy, making sure to include CheckpointTrait
-        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
-      }
-    }
-
-    auto get(){return reg;}
+namespace KokkosResilience::Context::VT {
+template<typename ProxyT>
+ProxyHolder::ProxyHolder(ProxyT proxy, VTContext& context)
+  : ProxyID(proxy), 
+    data_reg(build_registration(proxy)),
+    ctx(&context)
+{
+  invoker = [this, proxy](ProxyAction action, std::any arg) {
+    return ctx->action_handler(proxy, *this, action, arg);
   };
+  ctx->m_backend->register_member(metadata_registration());
+  ctx->m_backend->register_member(data_registration());
+
+  if constexpr(is_col<ProxyT>::value and not is_elm<ProxyT>::value){
+    using ObjT = typename elm_type<ProxyT>::type;
+
+    using EventT = vt::vrt::collection::listener::ElementEventEnum;
+    using IndexT = typename ObjT::IndexType;
+    listener_id = vt::theCollection()->registerElementListener<ObjT, IndexT>(
+        proxy_bits,
+        [this, proxy](EventT event, IndexT index, vt::NodeType elm_home){
+          ctx->handle_element_event(proxy[index], event);
+          return;
+        }
+    );
+  }
+};
+
+template<typename SerT>
+void ProxyHolder::serialize(SerT& s){
+  [[maybe_unused]] const auto old_proxy_bits = proxy_bits;
+  s | proxy_bits | _status;
+  assert(old_proxy_bits == proxy_bits);
+
+/*if(!s.hasTraits(BasicCheckpointTrait()) && (s.isPacking() || s.isUnpacking())) 
+  fmt::print("{}: {} status {} to version {}. Tracked: {}\n", ctx->m_proxy, *this, s.isPacking() ? "Packed" : "Unpacked", _status.checkpointed_version, tracked());
+if(s.hasTraits(BasicCheckpointTrait()) && (s.isPacking() || s.isUnpacking())) 
+  fmt::print("{}: {} basic status {} to version {}\n", ctx->m_proxy, *this, s.isPacking() ? "Packed" : "Unpacked", _status.checkpointed_version);*/
+}
+
 }
 
 #endif
