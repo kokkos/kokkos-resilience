@@ -405,7 +405,7 @@ namespace KokkosResilience::Context::VT {
       case CHECK_MISSING:
         if constexpr(elm && col) {
           if(!local){
-            vt::theCollection()->getElementLocation(
+            /*vt::theCollection()->getElementLocation(
                 proxy,
                 [proxy, arg](vt::NodeType location){
                   if(location == vt::uninitialized_destination){
@@ -413,7 +413,7 @@ namespace KokkosResilience::Context::VT {
                   }
                 },
                 false
-            );
+            );*/
           }
         }
         return nullptr;
