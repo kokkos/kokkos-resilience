@@ -176,6 +176,14 @@ namespace KokkosResilience
     }
     return false;
   }
+  
+  template<typename... Traits, typename T>
+  bool deregister_if_active(T& member, std::string label){
+    if(ContextBase::active_context != nullptr){
+      return ContextBase::active_context->deregister_if_active<Traits...>(member, label);
+    }
+    return false;
+  }
 
   template<typename... Traits, typename F, typename FilterFunc, typename... T>
   void checkpoint( ContextBase& ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Detail::RegInfo<T>... explicit_members )
