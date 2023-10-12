@@ -107,7 +107,10 @@ namespace KokkosResilience {
     T,
     std::tuple<Traits...>,
     std::enable_if_t<
-      checkpoint::SerializableTraits<T>::is_traversable
+      checkpoint::SerializableTraits<
+        T,
+        checkpoint::StreamPacker<>
+      >::is_traversable
 #ifdef KR_ENABLE_VT
       and not Util::VT::is_proxy<T>::value
 #endif
