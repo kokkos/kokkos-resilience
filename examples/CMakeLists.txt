@@ -50,6 +50,6 @@ if (KR_ENABLE_STDFILE)
 endif()
 
 if(KR_ENABLE_VT)
-    add_example(jacobi_checkpoint SOURCES jacobi.cpp
-        RESOURCES config_jacobi.json config_jacobi_async.json config_jacobi_1.json config_jacobi_more_async.json)
+    add_example(jacobi_checkpoint SOURCES jacobi/main.cpp jacobi/solver.cpp jacobi/config.cpp
+        RESOURCES jacobi/config_jacobi.json jacobi/config_jacobi_async.json jacobi/config_jacobi_1.json jacobi/config_jacobi_more_async.json)
 endif()
