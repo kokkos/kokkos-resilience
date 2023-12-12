@@ -47,6 +47,7 @@ void iterate( KokkosResilience::ContextBase &ctx, int max_ts )
   if ( ns < 0 )
     ns = 0;
 
+  // These can be regular views, since they are not captured directly
   Kokkos::View< double * > ping( "ping", 1000 );
   Kokkos::View< double * > pong( "pong", 1000 );
 
@@ -62,8 +63,9 @@ void iterate( KokkosResilience::ContextBase &ctx, int max_ts )
 
   for ( int i = ns; i < max_ts; ++i )
   {
-    Kokkos::View< const double * > read;
-    Kokkos::View< double * > write;
+    // We use our special hooked types for checkpointable views
+    KokkosResilience::View< const double * > read;
+    KokkosResilience::View< double * > write;
     if ( i % 2 )
     {
       read = pong;
