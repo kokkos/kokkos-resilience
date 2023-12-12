@@ -119,6 +119,7 @@ cmake_dependent_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient CUDA ex
 
 if (KR_ENABLE_CUDA_EXEC_SPACE)
   message(STATUS "CUDA resilient execution spaces are enabled")
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA_EXEC_SPACE)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
@@ -136,10 +137,6 @@ export(TARGETS resilience
        NAMESPACE Kokkos::
        FILE resilienceTargets.cmake
        )
-
-if (Kokkos_ENABLE_Cuda)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
-endif()
 
 # Set up find_package config and version file
 # Allow same major version compatibility
