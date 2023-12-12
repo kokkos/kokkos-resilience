@@ -56,10 +56,10 @@
 #include "AutomaticCheckpoint.hpp"
 #endif
 
-#ifdef KR_ENABLE_CUDA
-   #include "cuda/ResCuda.hpp"
-   #include "cuda/ResCudaSpace.hpp"
-   #include "cuda/CudaResParallel.hpp"
+#ifdef KR_ENABLE_CUDA_EXEC_SPACE
+#include "cuda/ResCuda.hpp"
+#include "cuda/ResCudaSpace.hpp"
+#include "cuda/CudaResParallel.hpp"
 #endif
 
 
