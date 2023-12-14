@@ -40,11 +40,11 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.20.0" https://github.com/spack/spack.git
+RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.20.3" https://github.com/spack/spack.git
 ADD ./ci/packages.yaml /opt/spack/etc/spack/packages.yaml
 RUN . /opt/spack/share/spack/setup-env.sh && spack compiler find
 RUN . /opt/spack/share/spack/setup-env.sh && spack external find --not-buildable && spack external list
-RUN . /opt/spack/share/spack/setup-env.sh && spack mirror add spack-build-cache-v0.20 https://binaries.spack.io/releases/v0.20 && spack buildcache keys --install --trust
+RUN . /opt/spack/share/spack/setup-env.sh && spack mirror add spack-build-cache-v0.20 https://binaries.spack.io/v0.20.0 && spack buildcache keys --install --trust
 
 ADD ./ci/spack.yaml /opt/spack-environment/spack.yaml
 RUN cd /opt/spack-environment \
@@ -60,6 +60,6 @@ RUN cd /opt/spack-environment \
 
 # We need to build a specific branch of VeloC until https://github.com/ECP-VeloC/VELOC/pull/43 is resolved
 RUN mkdir -p /opt/build/ && cd /opt/build/ && git clone --depth 1 --branch "add-cmake-config-support" https://github.com/nmm0/VELOC.git
-RUN mkdir -p /opt/veloc && cd /opt/build/VELOC && python3 ./auto-install.py --without-boost /opt/veloc '"-DBoost_ROOT=/opt/view/gcc-11.1.0/boost/1.81.0"'
+RUN mkdir -p /opt/veloc && cd /opt/build/VELOC && python3 ./auto-install.py --without-boost /opt/veloc '"-DBoost_ROOT=/opt/view/gcc-11.4.0/boost/1.81.0"'
 RUN rm -rf /opt/build
 ENV LD_LIBRARY_PATH /opt/veloc/lib:$LD_LIBRARY_PATH
