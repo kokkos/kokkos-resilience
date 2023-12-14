@@ -305,10 +305,11 @@ namespace KokkosResilience
     // No-op, don't do anything
   }
 
-  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &,
+  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &ctx,
                                      MPI_Comm mpi_comm,
-                                     const std::string &veloc_config) {
-    VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str()));
+                                     const std::string &veloc_config)
+      : m_context(&ctx) {
+    VELOC_SAFE_CALL(VELOC_Init(mpi_comm, veloc_config.c_str()));
   }
 
   VeloCFileBackend::~VeloCFileBackend()
