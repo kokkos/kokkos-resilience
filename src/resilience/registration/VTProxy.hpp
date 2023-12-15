@@ -38,8 +38,45 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "AutomaticCheckpoint.hpp"
 
-namespace KokkosResilience
-{
+#ifndef INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+#define INC_KOKKOS_RESILIENCE_REGISTRATION_VTPROXY_HPP
+
+#include <memory>
+
+#include <vt/vt.h>
+
+#include "resilience/registration/Registration.hpp"
+#include "resilience/context/vt/VTContext.hpp"
+#include "resilience/util/VTUtil.hpp"
+
+namespace KokkosResilience {
+  template<typename T, typename... Traits>
+  struct create_registration<T, std::tuple<Traits...>, typename Util::VT::is_proxy<T, void*>::type>{
+    std::shared_ptr<Detail::RegistrationBase> reg;
+
+    create_registration(ContextBase& context, T& proxy, std::string label = ""){
+      using namespace Context::VT;
+        
+      label = proxy_label(proxy);
+
+      auto vtCtx = dynamic_cast<VTContext*>(&context);
+      if(vtCtx){
+        //VTContext handles checkpointing the actual proxy, just register a small metadata member.
+        auto& proxy_holder = vtCtx->get_holder(proxy);
+        reg = std::make_shared<Detail::MagistrateRegistration<decltype(proxy_holder), BasicCheckpointTrait, Traits...>>
+          (proxy_holder, label);
+
+        //If deregistering, vtCtx needs help going from registration to ProxyID
+        vtCtx->add_reg_mapping(reg->hash(), proxy);
+      } else {
+        //Register the full proxy, making sure to include CheckpointTrait
+        reg = std::make_shared<Detail::MagistrateRegistration<T, vt::vrt::CheckpointTrait, Traits...>>(proxy, label);
+      }
+    }
+
+    auto get(){return reg;}
+  };
 }
+
+#endif

@@ -50,134 +50,157 @@
 #include <Kokkos_Core.hpp>
 #include "view_hooks/ViewHolder.hpp"
 #include "view_hooks/DynamicViewHooks.hpp"
+#include "registration/ViewHolder.hpp"
 
-#include "Cref.hpp"
+#include "context/ContextBase.hpp"
+
 #include "CheckpointFilter.hpp"
 
 // Tracing support
-#ifdef KR_ENABLE_TRACING
 #include "util/Trace.hpp"
 #include <sstream>
-#endif
 
-// Workaround for C++ < 17
-#define KR_CHECKPOINT_THIS _kr_self = *this
-#define KR_CHECKPOINT( x ) _kr_chk_##x = kr::check_ref< int >( x, #x )
+#define KR_CHECKPOINT(x) KokkosResilience::Detail::RegInfo(x, std::string(#x))
+//#define KR_REGISTER( context, x ) _kr_chk_##x = kr::check_ref<decltype( context )>( #x, x )
 
 namespace KokkosResilience
 {
-
   template< typename Context >
   int latest_version( Context &ctx, const std::string &label )
   {
-
     return ctx.latest_version( label );
   }
 
-  namespace Detail
+  template<typename... Traits, typename F, typename... T>
+  void ContextBase::detect_and_register(F&& fun, Detail::RegInfo<T>... explicit_members){
+    using namespace Util;
+#ifdef KR_ENABLE_TRACING
+    auto reg_hashes = begin_trace<TimingTrace>( *this, "register" );
+#endif
+
+    //Gather up the explicitly-listed members.
+    (register_to_active<Traits...>(explicit_members), ...);
+
+    //Enable ViewHolder copy constructor hooks to register the views
+    KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback(
+      [ctx = this](const KokkosResilience::ViewHolder &view) {
+        ctx->register_to_active<Traits...>(view);
+      }
+    );
+
+    //Copy the lambda/functor to trigger copy-constructor hooks
+    using FuncType = typename std::remove_reference<F>::type;
+    [[maybe_unused]] FuncType f = fun;
+
+    //Disable ViewHolder hook
+    KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
+
+#ifdef KR_ENABLE_TRACING
+    reg_hashes.end();
+#endif
+  }
+
+  template<typename... Traits, typename RegionFunc, typename FilterFunc, typename... T>
+  void ContextBase::run(const std::string &label, int iteration, RegionFunc&& fun,
+                        FilterFunc&& filter, Detail::RegInfo<T>&... explicit_members)
   {
-    template< typename Context, typename F, typename FilterFunc >
-    void checkpoint_impl( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
-    {
-      // Trace if enabled
-  #ifdef KR_ENABLE_TRACING
-      std::ostringstream oss;
-      oss << "checkpoint_" << label;
-      auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( ctx, oss.str(), iteration );
+    using namespace Util;
+#ifdef KR_ENABLE_TRACING
+    //Only build iteration label if tracing.
+    std::ostringstream oss;
+    oss << "checkpoint_" << label;
+    auto chk_trace = begin_trace<IterTimingTrace>(*this, oss.str(), iteration);
+#endif
+    auto overhead_trace = begin_trace<TimingTrace>( *this, "overhead" );
 
-      auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "overhead" );
-  #endif
+    active_context = this;
 
-      using fun_type = typename std::remove_reference< F >::type;
+    //Figure out how we should be handling this
+    bool recover_region = false, checkpoint_region = false;
+   
+    auto parent_region = active_region;
+    auto parent_context = active_context;
+    auto* parent_filter = active_filter;
 
-      if ( filter( iteration ) )
-      {
-        // Copy the functor, since if it has any views we can turn on view tracking
-        std::vector< KokkosResilience::ViewHolder > views;
+    if(last_region && last_region.label() == label) {
+      active_region = last_region;
+    } else {
+      auto info = regions.insert({std::string(label), std::unordered_set<Registration>()});
+      active_region = info.first;
+    }
+    std::function< bool(int) > m_filter = filter;
+    active_filter = &m_filter;
 
-        // Don't do anything with const views since they can never be checkpointed in this context
-        KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback( [&views]( const KokkosResilience::ViewHolder &view ) {
-          views.emplace_back( view );
-        } );
 
-        std::vector< Detail::CrefImpl > crefs;
-        Detail::Cref::check_ref_list = &crefs;
+    if(filter(iteration)){
+      //Make sure the data members are registered to the context for this region.
+      detect_and_register<Traits...>(std::forward<RegionFunc>(fun), explicit_members...);
 
-        fun_type f = fun;
+      auto check_restart = begin_trace<TimingTrace>( *this, "check" );
+      recover_region = this->restart_available(label, iteration);
+      check_restart.end();
 
-        Detail::Cref::check_ref_list = nullptr;
+      checkpoint_region = !recover_region;
+    }
+    overhead_trace.end();
 
-        KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
 
-  #ifdef KR_ENABLE_TRACING
-        auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
-  #endif
-        // Register any views that haven't already been registered
-        ctx.register_hashes( views, crefs );
+    if(recover_region){
+      auto restart_trace = begin_trace<TimingTrace>( *this, "restart" );
+      this->restart(active_region.label(), iteration, active_region.members());
+    } else {
+      enter_region(active_region, iteration);
+      auto function_trace = begin_trace<TimingTrace>( *this, "function" );
+      fun();
+      function_trace.end();
+      exit_region(active_region, iteration);
 
-  #ifdef KR_ENABLE_TRACING
-        reg_hashes.end();
-        auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
-  #endif
-
-        bool restart_available = ctx.restart_available( label, iteration );
-  #ifdef KR_ENABLE_TRACING
-        check_restart.end();
-        overhead_trace.end();
-  #endif
-
-        if ( restart_available )
-        {
-          // Load views with data
-  #ifdef KR_ENABLE_TRACING
-          auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
-  #endif
-          ctx.restart( label, iteration, views );
-        } else
-        {
-          // Execute functor and checkpoint
-  #ifdef KR_ENABLE_TRACING
-          auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
-  #endif
-          fun();
-  #ifdef KR_ENABLE_TRACING
-          Kokkos::fence();  // Get accurate measurements for function_trace end
-          function_trace.end();
-  #endif
-
-          {
-  #ifdef KR_ENABLE_TRACING
-            auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
-  #endif
-            auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-            std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
-            ctx.checkpoint( label, iteration, views );
-          }
-        }
-      } else {  // Iteration is filtered, just execute
-  #ifdef KR_ENABLE_TRACING
-        overhead_trace.end();
-        auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
-  #endif
-        fun();
-  #ifdef KR_ENABLE_TRACING
-        Kokkos::fence();  // Get accurate measurements for function_trace end
-        function_trace.end();
-  #endif
+      if(checkpoint_region){
+          auto write_trace = begin_trace<TimingTrace>( *this, "checkpoint" );
+          auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
+          if(m_pid == 0) std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint of iteration " << iteration << "\n";
+          this->checkpoint(active_region.label(), iteration, active_region.members());
+          write_trace.end();
       }
     }
+
+
+    //Region no longer active
+    last_region = active_region;
+    active_region = parent_region;
+    active_context = parent_context;
+    active_filter = parent_filter;
   }
 
-  template< typename Context, typename F, typename FilterFunc >
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter )
-  {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ) );
+  //RegionFunc = std::function<void()>;
+  //FilterFunc = std::function<bool(int)>;
+
+  template<typename... Traits, typename T>
+  bool register_if_active(T& member, std::string label){
+    if(ContextBase::active_context != nullptr){
+      return ContextBase::active_context->register_if_active<Traits...>(member, label);
+    }
+    return false;
+  }
+  
+  template<typename... Traits, typename T>
+  bool deregister_if_active(T& member, std::string label){
+    if(ContextBase::active_context != nullptr){
+      return ContextBase::active_context->deregister_if_active<Traits...>(member, label);
+    }
+    return false;
   }
 
-  template< typename Context, typename F >
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun )
+  template<typename... Traits, typename F, typename FilterFunc, typename... T>
+  void checkpoint( ContextBase& ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Detail::RegInfo<T>... explicit_members )
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter() );
+    ctx.run<Traits...>(label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), explicit_members...);
+  }
+
+  template< typename... Traits, typename F, typename... T>
+  void checkpoint( ContextBase& ctx, const std::string &label, int iteration, F&& fun, Detail::RegInfo<T>... explicit_members )
+  {
+    ctx.run<Traits...>(label, iteration, std::forward< F >( fun ), ctx.default_filter(), explicit_members... );
   }
 
 }

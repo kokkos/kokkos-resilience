@@ -38,31 +38,45 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "MPIContext.hpp"
-#ifdef KR_ENABLE_VELOC
-#include "veloc/VelocBackend.hpp"
-#endif
-#include <unordered_map>
-#include <functional>
 
-namespace KokkosResilience {
-std::unique_ptr< ContextBase >
-make_context( MPI_Comm comm, const std::string &config )
-{
-  auto cfg = Config{ config };
+#ifndef _INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
+#define _INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
 
-  using fun_type = std::function< std::unique_ptr< ContextBase >() >;
-  static std::unordered_map< std::string, fun_type > backends = {
-#ifdef KR_ENABLE_VELOC
-      { "veloc", [&](){ return std::make_unique< MPIContext< VeloCMemoryBackend > >( comm, cfg ); } },
-      { "veloc-noop", [&](){ return std::make_unique< MPIContext< VeloCRegisterOnlyBackend > >( comm, cfg ); } }
-#endif
+#include "Registration.hpp"
+
+namespace KokkosResilience::Detail {
+  struct CustomRegistration : public RegistrationBase {
+    CustomRegistration() = delete;
+    CustomRegistration(serializer_t&& serializer, deserializer_t&& deserializer, const std::string name) : 
+        RegistrationBase(name),
+        m_serializer(serializer),
+        m_deserializer(deserializer) {};
+
+    const serializer_t serializer() const override{
+        return m_serializer;
+    }
+
+    const deserializer_t deserializer() const override{
+        return m_deserializer;
+    }
+
+    const bool is_same_reference(const Registration& other_reg) const override{
+      auto other = dynamic_cast<CustomRegistration*>(other_reg.get());
+      
+      if(!other){
+        //We wouldn't expect this to happen, and it may indicate a hash collision
+        fprintf(stderr, "KokkosResilience: Warning, member name %s is shared by more than 1 registration type\n", name.c_str());
+        return false;
+      }
+
+      return (&m_serializer == &(other->m_serializer)) && 
+           (&m_deserializer == &(other->m_deserializer));
+    }
+
+  private:
+    const serializer_t m_serializer;
+    const deserializer_t m_deserializer;
   };
-
-  auto pos = backends.find( cfg["backend"].as< std::string >() );
-  if ( pos == backends.end() )
-    return std::unique_ptr< ContextBase >{};
-
-  return pos->second();
 }
-}
+
+#endif

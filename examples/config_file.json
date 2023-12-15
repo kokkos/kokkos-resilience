@@ -2,7 +2,8 @@
   "backend": "stdfile",
   "backends": {
     "stdfile": {
-      "config": "file_test.cfg"
+      "directory": "./stdfile_chkpts/",
+      "filename_prefix": "simple_"
     }
   },
   "filter": {

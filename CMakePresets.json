@@ -64,7 +64,8 @@
         "KR_ENABLE_TESTS": "ON",
         "KR_ENABLE_EXAMPLES": "ON",
         "KR_ALL_WARNINGS": "ON",
-        "KR_WARNINGS_AS_ERRORS": "ON"
+        "KR_WARNINGS_AS_ERRORS": "ON",
+        "KR_ENABLE_STDFILE": "OFF"
       }
     }
   ],

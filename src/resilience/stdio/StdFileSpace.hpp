@@ -48,7 +48,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <impl/Kokkos_SharedAlloc.hpp>
-#include "resilience/filesystem/ExternalIOInterface.hpp"
+#include "resilience/backend/filesystem/ExternalIOInterface.hpp"
 #include <fstream>
 
 

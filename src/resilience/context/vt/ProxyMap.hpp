@@ -38,55 +38,66 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Config.hpp"
-#include <pico/picojson.h>
-#include <fstream>
 
-namespace KokkosResilience
-{
-  namespace
-  {
-    Config::Entry parse_json( const picojson::object &json )
-    {
-      Config::Entry e;
-      for ( auto &&entry : json )
-      {
-        if ( entry.second.is< picojson::object >() )
-        {
-          e.emplace( entry.first, parse_json( entry.second.get< picojson::object >() ) );
-        } else if ( entry.second.is< std::string >() )
-        {
-          e.emplace( entry.first, Config::Value( entry.second.get< std::string >() ) );
-        } else if ( entry.second.is< double >() ) {
-          e.emplace( entry.first, Config::Value( entry.second.get< double >() ) );
-        }
-      }
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_HPP
 
-      return e;
-    }
+#include <optional>
+#include "common.hpp"
+#include "ProxyHolder.hpp"
+
+namespace KokkosResilience::Context::VT {
+
+class ProxyMap {
+public:
+  ProxyMap(VTContext& context) : ctx(context) {};
+ 
+  //Get existing, or initialize and get proxy holder for this proxy.
+  template <
+    typename ProxyT,
+    typename enable = typename is_proxy<ProxyT>::type
+  >
+  ProxyHolder& operator[](ProxyT proxy);
+
+  //Get existing, or attempt to initialize. May return nullptr;
+  ProxyHolder* operator[](ProxyID proxy_id){
+    auto iter = id_to_holder.find(proxy_id);
+    if(iter != id_to_holder.end()) return &(iter->second);
+    
+    auto group_iter = group_to_member_id.find(proxy_id.proxy_bits);
+    if(group_iter == group_to_member_id.end()) return nullptr;
+    
+    auto& group_holder = id_to_holder[group_iter->second];
+    return group_holder.get_holder(proxy_id);
   }
 
-  Config::Config( const std::filesystem::path &p )
-  {
-    std::ifstream instrm{ p.string() };
+  //If a registration's hash matches a held proxy's, return pointer to it.
+  ProxyHolder* operator[](Registration& reg){
+    auto iter = hash_to_id.find(reg.hash());
+    if(iter == hash_to_id.end()) return nullptr;
 
-    if(!instrm.is_open() || !instrm.good()){
-      throw ConfigFileError(p.string());
-    }
-
-    using iter_type = std::istream_iterator< char >;
-
-    iter_type input( instrm );
-    picojson::value v;
-    std::string err;
-
-    input = picojson::parse( v, input, iter_type{}, &err );
-    if ( !err.empty() )
-    {
-      std::cerr << err << std::endl;
-    }
-
-    auto baseobj = v.get< picojson::object >();
-    m_root = parse_json( baseobj );
+    return (*this)[iter->second];
   }
+
+  void add_reg_mapping(size_t reg_hash, ProxyID proxy_id){
+    hash_to_id[reg_hash] = proxy_id;
+  }
+
+  std::unordered_map<ProxyID, ProxyHolder>& map(){
+    return id_to_holder;
+  }
+
+private:
+  VTContext& ctx;
+
+  std::unordered_map<ProxyID, ProxyHolder> id_to_holder;
+
+  //Find a proxy ID from the hash of its (core) registration.
+  std::unordered_map<size_t, ProxyID> hash_to_id;
+
+  //Find a representative member of a group by its proxy bits
+  std::unordered_map<uint64_t, ProxyID> group_to_member_id;
+};
+
 }
+#endif

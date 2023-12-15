@@ -38,55 +38,52 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Config.hpp"
-#include <pico/picojson.h>
-#include <fstream>
 
-namespace KokkosResilience
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYHOLDER_IMPL_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYHOLDER_IMPL_HPP
+
+#include "ProxyHolder.hpp"
+
+namespace KokkosResilience::Context::VT {
+template<typename ProxyT>
+ProxyHolder::ProxyHolder(ProxyT proxy, VTContext& context)
+  : ProxyID(proxy), 
+    data_reg(build_registration(proxy)),
+    ctx(&context)
 {
-  namespace
-  {
-    Config::Entry parse_json( const picojson::object &json )
-    {
-      Config::Entry e;
-      for ( auto &&entry : json )
-      {
-        if ( entry.second.is< picojson::object >() )
-        {
-          e.emplace( entry.first, parse_json( entry.second.get< picojson::object >() ) );
-        } else if ( entry.second.is< std::string >() )
-        {
-          e.emplace( entry.first, Config::Value( entry.second.get< std::string >() ) );
-        } else if ( entry.second.is< double >() ) {
-          e.emplace( entry.first, Config::Value( entry.second.get< double >() ) );
+  invoker = [this, proxy](ProxyAction action, std::any arg) {
+    return ctx->action_handler(proxy, *this, action, arg);
+  };
+  ctx->m_backend->register_member(metadata_registration());
+  ctx->m_backend->register_member(data_registration());
+
+  if constexpr(is_col<ProxyT>::value and not is_elm<ProxyT>::value){
+    using ObjT = typename elm_type<ProxyT>::type;
+
+    using EventT = vt::vrt::collection::listener::ElementEventEnum;
+    using IndexT = typename ObjT::IndexType;
+    listener_id = vt::theCollection()->registerElementListener<ObjT, IndexT>(
+        proxy_bits,
+        [this, proxy](EventT event, IndexT index, vt::NodeType elm_home){
+          ctx->handle_element_event(proxy[index], event);
+          return;
         }
-      }
-
-      return e;
-    }
+    );
   }
+};
 
-  Config::Config( const std::filesystem::path &p )
-  {
-    std::ifstream instrm{ p.string() };
+template<typename SerT>
+void ProxyHolder::serialize(SerT& s){
+  [[maybe_unused]] const auto old_proxy_bits = proxy_bits;
+  s | proxy_bits | _status;
+  assert(old_proxy_bits == proxy_bits);
 
-    if(!instrm.is_open() || !instrm.good()){
-      throw ConfigFileError(p.string());
-    }
-
-    using iter_type = std::istream_iterator< char >;
-
-    iter_type input( instrm );
-    picojson::value v;
-    std::string err;
-
-    input = picojson::parse( v, input, iter_type{}, &err );
-    if ( !err.empty() )
-    {
-      std::cerr << err << std::endl;
-    }
-
-    auto baseobj = v.get< picojson::object >();
-    m_root = parse_json( baseobj );
-  }
+/*if(!s.hasTraits(BasicCheckpointTrait()) && (s.isPacking() || s.isUnpacking())) 
+  fmt::print("{}: {} status {} to version {}. Tracked: {}\n", ctx->m_proxy, *this, s.isPacking() ? "Packed" : "Unpacked", _status.checkpointed_version, tracked());
+if(s.hasTraits(BasicCheckpointTrait()) && (s.isPacking() || s.isUnpacking())) 
+  fmt::print("{}: {} basic status {} to version {}\n", ctx->m_proxy, *this, s.isPacking() ? "Packed" : "Unpacked", _status.checkpointed_version);*/
 }
+
+}
+
+#endif

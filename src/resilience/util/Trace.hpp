@@ -52,6 +52,7 @@
 #include <fstream>
 
 #include <pico/picojson.h>
+#include <Kokkos_Core.hpp>
 
 #include "Timer.hpp"
 
@@ -162,7 +163,9 @@ namespace KokkosResilience
       public:
         
         TraceStack()
+        #ifdef KR_ENABLE_TRACING
           : m_current( nullptr )
+        #endif
         {}
         
         ~TraceStack() = default;
@@ -175,6 +178,7 @@ namespace KokkosResilience
     
         void push( std::unique_ptr< TraceBase > &&tr )
         {
+        #ifdef KR_ENABLE_TRACING
           if ( m_current )
           {
             m_current = m_current->add_child( std::move( tr ) );
@@ -182,10 +186,12 @@ namespace KokkosResilience
             m_traces.emplace_back( std::move( tr ) );
             m_current = m_traces.back().get();
           }
+        #endif
         }
     
         void try_pop( TraceBase *tr )
         {
+        #ifdef KR_ENABLE_TRACING
           if ( !tr )
             return;
           
@@ -200,10 +206,12 @@ namespace KokkosResilience
             m_current->end();
             m_current = tr->parent();
           }
+        #endif
         }
         
         std::ostream &write( std::ostream &strm )
         {
+        #ifdef KR_ENABLE_TRACING
           picojson::object root;
           
           picojson::array traces;
@@ -220,14 +228,16 @@ namespace KokkosResilience
           
           val.serialize( std::ostream_iterator< char >( strm ), true );
           
+        #endif
           return strm;
         }
   
       private:
-        
+        #ifdef KR_ENABLE_TRACING
         std::vector< std::unique_ptr< TraceBase > > m_traces;
         
         TraceBase *m_current;
+        #endif
       };
       
       
@@ -338,6 +348,10 @@ namespace KokkosResilience
        return TraceShell();
     }
 #endif
+    template< template<typename...> typename TraceTempl, typename Context, typename... Args>
+    auto begin_trace(Context& ctx, Args&&... args){
+      return begin_trace<TraceTempl<Args...>, Context, Args...>(ctx, std::move(args...));
+    }
     
     template< typename Id >
     class TimingTrace : public Trace< Id >
@@ -394,6 +408,12 @@ namespace KokkosResilience
         ret["iteration"] = detail::make_json_value( m_iteration );
     
         return ret;
+      }
+
+      void end() override
+      {
+        Kokkos::fence();
+        TimingTrace<Id>::end();
       }
 
     private:

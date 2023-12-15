@@ -38,49 +38,58 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
-#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-#include <Kokkos_Core.hpp>
-#include "../view_hooks/ViewHolder.hpp"
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_COMMON_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_COMMON_HPP
 
-#include <memory>
-#include <string>
-#include <vector>
+#include <string_view>
 
-#include "../Cref.hpp"
-#include "../StdFileContext.hpp"
+#include <vt/vt.h>
+#include "resilience/util/VTUtil.hpp"
 
-namespace KokkosResilience {
+//#define VTCONTEXT_LOG_EVENTS
 
-class StdFileBackend {
- public:
-  StdFileBackend(StdFileContext<StdFileBackend> &ctx,
-                 std::string const &filename);
-  ~StdFileBackend();
+namespace KokkosResilience::Context::VT {
+  using namespace KokkosResilience::Util::VT;
 
-  void checkpoint(
-      const std::string &label, int version,
-      const std::vector< KokkosResilience::ViewHolder > &views);
+  //Actions available through the VTContext action handler
+  //Not all actions are valid for all proxy types.
+  //Use macros to automatically generate to_string
+#define KR_VT_PROXY_ACTIONS(f) \
+    f(GET_HOLDER_AT),\
+    f(FETCH_STATUS),\
+    f(SET_STATUS),\
+    f(SET_TRACKED),\
+    f(SET_CHECKPOINTED_VERSION),\
+    f(SET_RESTARTED_VERSION),\
+    f(MODIFY),\
+    f(REGISTER),\
+    f(DEREGISTER),\
+    f(CHECK_LOCAL),\
+    f(CHECK_DYNAMIC),\
+    f(CHECK_MISSING),\
+    f(DEREGISTER_EVENT_LISTENER),\
+    f(MIGRATE_STATUS)
 
-  bool restart_available(const std::string &label, int version);
-  int latest_version(const std::string &label) const noexcept;
+#define KR_VT_ENUM_LIST(x) x
+#define KR_VT_ENUM_LIST_STR(x) #x 
 
-  void restart(
-      const std::string &label, int version,
-      const std::vector< KokkosResilience::ViewHolder > &views);
+  enum ProxyAction {
+    KR_VT_PROXY_ACTIONS(KR_VT_ENUM_LIST)
+  };
+  
+  //Information about checkpoint/recovery state
+  struct ProxyStatus;
 
-  void reset() {}
+  //Untyped holder with re-typing capabilities.
+  //Holds ProxyStatus, manages access.
+  class ProxyHolder;
+  
+  class ProxyMap;
+  
+  class VTContext;
+  using VTContextProxy = VTObj<VTContext>;
+  using VTContextElmProxy = VTObjElm<VTContext>;
+}
 
-  void register_hashes(
-      const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector<Detail::CrefImpl> &crefs) {}
-
- private:
-  std::string m_filename;
-  StdFileContext<StdFileBackend> &m_context;
-};
-
-}  // namespace KokkosResilience
-
-#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+#endif

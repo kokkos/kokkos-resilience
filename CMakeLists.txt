@@ -37,7 +37,15 @@ set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
-option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
+option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" OFF)
+
+option(KR_ENABLE_MAGISTRATE "use Magistrate for serializing and deserializing" OFF)
+option(KR_ENABLE_RESILIENT_EXEC "enable resilient execution spaces" OFF)
+
+option(KR_ENABLE_VT "use VT for backend coordination" OFF)
+
+option(KR_ENABLE_OPENMP "enable the resilient OpenMP execution space" OFF)
+option(KR_ENABLE_CUDA   "enable the resilient CUDA execution space" OFF)
 
 include(CMakeDependentOption)
 
@@ -55,12 +63,23 @@ if (KR_ENABLE_VELOC)
   endif()
 endif()
 
+if (KR_ENABLE_VT)
+  find_package(vt REQUIRED)
+  target_link_libraries(resilience PUBLIC vt::runtime::vt)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_VT)
+  
+  set(KR_ENABLE_MPI_BACKENDS ON)
+  set(KR_ENABLE_MAGISTRATE ON)
+endif()
+
 # StdFile backend
 if (KR_ENABLE_STDFILE)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_STDFILE)
 endif()
 
 if (KR_ENABLE_MPI_BACKENDS)
+  find_package(MPI REQUIRED)
+  target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_MPI_BACKENDS)
 endif()
 
@@ -68,6 +87,12 @@ endif()
 option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
 if (KR_ENABLE_TRACING)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
+endif()
+
+if (KR_ENABLE_MAGISTRATE)
+    find_package(checkpoint REQUIRED)
+    target_link_libraries(resilience PUBLIC vt::lib::checkpoint)
+    target_compile_definitions(resilience PUBLIC KR_ENABLE_MAGISTRATE)
 endif()
 
 option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )

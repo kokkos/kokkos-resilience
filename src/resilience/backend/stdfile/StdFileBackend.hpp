@@ -38,55 +38,48 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Config.hpp"
-#include <pico/picojson.h>
-#include <fstream>
+#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
 
-namespace KokkosResilience
-{
-  namespace
-  {
-    Config::Entry parse_json( const picojson::object &json )
-    {
-      Config::Entry e;
-      for ( auto &&entry : json )
-      {
-        if ( entry.second.is< picojson::object >() )
-        {
-          e.emplace( entry.first, parse_json( entry.second.get< picojson::object >() ) );
-        } else if ( entry.second.is< std::string >() )
-        {
-          e.emplace( entry.first, Config::Value( entry.second.get< std::string >() ) );
-        } else if ( entry.second.is< double >() ) {
-          e.emplace( entry.first, Config::Value( entry.second.get< double >() ) );
-        }
-      }
+#include "resilience/backend/AutomaticBase.hpp"
 
-      return e;
-    }
-  }
+#include <filesystem>
+#include <unordered_map>
 
-  Config::Config( const std::filesystem::path &p )
-  {
-    std::ifstream instrm{ p.string() };
+namespace KokkosResilience {
 
-    if(!instrm.is_open() || !instrm.good()){
-      throw ConfigFileError(p.string());
-    }
+class StdFileBackend : public AutomaticBackendBase {
+ public:
+  StdFileBackend(ContextBase& ctx);
+  ~StdFileBackend() = default;
 
-    using iter_type = std::istream_iterator< char >;
+  //No state to manage
+  void register_member(Registration) override {};
+  void deregister_member(const Registration &) override {}
 
-    iter_type input( instrm );
-    picojson::value v;
-    std::string err;
+  bool checkpoint(const std::string &label, int version,
+                  const std::unordered_set<Registration>& members, bool as_global) override;
 
-    input = picojson::parse( v, input, iter_type{}, &err );
-    if ( !err.empty() )
-    {
-      std::cerr << err << std::endl;
-    }
+  int latest_version(const std::string &label, int max, bool as_global) const noexcept override;
+  bool restart_available(const std::string& label, int version, bool as_global) override;
 
-    auto baseobj = v.get< picojson::object >();
-    m_root = parse_json( baseobj );
-  }
-}
+  bool restart(const std::string &label, int version,
+               const std::unordered_set<Registration>& members, bool as_global) override;
+
+  //No state to reset
+  void reset() override {};
+
+ private:
+  using path = std::filesystem::path;
+  path checkpoint_dir = "./";
+  std::string checkpoint_prefix = "kr_chkpt_";
+
+  mutable std::unordered_map<std::string, int> latest_versions;
+
+  //The file to checkpoint/recover with
+  path checkpoint_file(const std::string& label, int version, bool as_global) const;
+};
+
+}  // namespace KokkosResilience
+
+#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP

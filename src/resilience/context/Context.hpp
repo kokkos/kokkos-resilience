@@ -38,85 +38,38 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+
 #ifndef INC_RESILIENCE_CONTEXT_HPP
 #define INC_RESILIENCE_CONTEXT_HPP
 
-#include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_HPX)
-#include <hpx/config.hpp>
-#endif
-#include <string>
-#include <utility>
-#include <memory>
-#include <functional>
-#include <chrono>
-#include "Config.hpp"
-#include "Cref.hpp"
-#include "CheckpointFilter.hpp"
-#include <Kokkos_Core.hpp>
-#include "view_hooks/ViewHolder.hpp"
+#include "resilience/registration/Registration.hpp"
+
+#include "ContextBase.hpp"
+
+//#ifdef KR_ENABLE_STDFILE
+//  #include "StdFileContext.hpp"
+//#endif
+
 #ifdef KR_ENABLE_MPI_BACKENDS
-#include <mpi.h>
+  #include <mpi.h>
+  #include "MPIContext.hpp"
 #endif
 
-// Tracing support
-#ifdef KR_ENABLE_TRACING
-#include "util/Trace.hpp"
+#ifdef KR_ENABLE_VT
+  #include <vt/vt.h>
+  #include "./vt/VTContext.impl.hpp"
 #endif
 
-namespace KokkosResilience
-{
-  namespace detail
-  {
-  }
-
-  class ContextBase
-  {
-  public:
-
-    explicit ContextBase( Config cfg );
-
-    virtual ~ContextBase() = default;
-
-    virtual void register_hashes(const std::vector< KokkosResilience::ViewHolder > &views,
-                                 const std::vector< Detail::CrefImpl > &crefs) = 0;
-    virtual bool restart_available( const std::string &label, int version ) = 0;
-    virtual void restart( const std::string &label, int version,
-                          const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
-    virtual void checkpoint( const std::string &label, int version,
-                             const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
-
-    virtual int latest_version( const std::string &label ) const noexcept = 0;
-    virtual void register_alias( const std::string &original, const std::string &alias ) = 0;
-
-    virtual void reset() = 0;
-
-    const std::function< bool( int ) > &default_filter() const noexcept { return m_default_filter; }
-
-    Config &config() noexcept { return m_config; }
-    const Config &config() const noexcept { return m_config; }
-
-#ifdef KR_ENABLE_TRACING
-    Util::detail::TraceStack  &trace() { return m_trace; };
-#endif
-
-  private:
-
-    Config m_config;
-
-    std::function< bool( int ) > m_default_filter;
-
-#ifdef KR_ENABLE_TRACING
-    Util::detail::TraceStack  m_trace;
-#endif
-  };
-
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
+namespace KokkosResilience {  
 #ifdef KR_ENABLE_MPI_BACKENDS
   std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
 #endif
+#ifdef KR_ENABLE_VT
+  //theContext just for identifying this context type.
+  std::unique_ptr< ContextBase > make_context(vt::ctx::Context* theContext, const std::string &config );
+#endif
 #ifdef KR_ENABLE_STDFILE
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
+  std::unique_ptr< ContextBase > make_context( const std::string &config );
 #endif
 }
 

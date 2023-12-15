@@ -38,47 +38,28 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_CREF_HPP
-#define INC_RESILIENCE_CREF_HPP
+#include "StdFileContext.hpp"
+#include "resilience/stdfile/StdFileBackend.hpp"
 
-#include <vector>
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
-namespace KokkosResilience
-{
-  namespace Detail
-  {
-    struct CrefImpl
-    {
-      CrefImpl( void *p, std::size_t s, std::size_t n, const char *_name )
-          : ptr( p ), sz( s ), num( n ), name( _name )
-      {}
+namespace KokkosResilience {
+std::unique_ptr<ContextBase> make_context(const std::string& filename,
+                                          const std::string& config) {
+  auto cfg = Config{config};
 
-      void *ptr;
-      std::size_t sz;
-      std::size_t num;
-      const char *name;
-    };
+  using fun_type = std::function<std::unique_ptr<ContextBase>()>;
+  static std::unordered_map<std::string, fun_type> backends = {
+      {"stdfile", [&]() {
+         return std::make_unique<StdFileContext<StdFileBackend> >(filename, cfg);
+       }}};
 
-    struct Cref : public CrefImpl
-    {
-      using CrefImpl::CrefImpl;
+  auto pos = backends.find(cfg["backend"].as<std::string>());
+  if (pos == backends.end()) return std::unique_ptr<ContextBase>{};
 
-      Cref( const Cref &_other )
-          : CrefImpl( _other.ptr, _other.sz, _other.num, _other.name )
-      {
-        if ( check_ref_list )
-          check_ref_list->emplace_back( ptr, sz, num, name );
-      }
-
-      static std::vector< CrefImpl > *check_ref_list;
-    };
-  }
-
-  template< typename T >
-  auto check_ref( T &_t, const char *_str )
-  {
-    return Detail::Cref{ reinterpret_cast< void * >( &_t ), sizeof( T ), 1, _str };
-  }
+  return pos->second();
 }
-
-#endif  // INC_RESILIENCE_CREF_HPP
+}  // namespace KokkosResilience

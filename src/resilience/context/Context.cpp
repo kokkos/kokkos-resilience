@@ -39,15 +39,17 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 #include "Context.hpp"
+#include "resilience/backend/Automatic.hpp"
 #include <fstream>
 #include <chrono>
 #include <stdexcept>
 
 namespace KokkosResilience
 {
-  ContextBase::ContextBase( Config cfg )
+  ContextBase::ContextBase( Config cfg, int proc_id)
       : m_config( std::move( cfg ) ),
-        m_default_filter{ Filter::DefaultFilter{} }
+        m_default_filter{ Filter::DefaultFilter{} },
+        m_pid(proc_id)
   {
     auto filter_opt = m_config.get( "filter" );
 
@@ -65,12 +67,52 @@ namespace KokkosResilience
         throw std::runtime_error( "invalid filter specified" );
       }
     }
+
+    m_backend = Detail::make_backend(*this);
   }
+
+  ContextBase* ContextBase::active_context = nullptr;
 
   std::unique_ptr< ContextBase >
   make_context( const std::string &config )
   {
     auto cfg = Config{ config };
     return std::unique_ptr< ContextBase >{};
+  }
+
+  char* ContextBase::get_buffer(size_t minimum_size){
+    if(buffer.size() < minimum_size){
+      buffer.resize(minimum_size);
+    }
+    return buffer.data();
+  }
+
+  ContextBase::~ContextBase()
+  {
+    deregister_all_regions();
+  }
+
+  void
+  ContextBase::reset()
+  {
+    reset_impl();
+    deregister_all_regions();
+    m_backend->reset();
+  }
+
+  void
+  ContextBase::deregister_all_regions()
+  {
+    auto region_iter = regions.begin();
+    while(region_iter != regions.end())
+    {
+      for ( const auto &member : region_iter->second)
+      {
+        if(count_registrations(member) == 1){
+          m_backend->deregister_member(member);
+        }
+      }
+      region_iter = regions.erase(region_iter);
+    }
   }
 }

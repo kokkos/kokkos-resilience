@@ -38,55 +38,25 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Config.hpp"
-#include <pico/picojson.h>
-#include <fstream>
 
-namespace KokkosResilience
-{
-  namespace
-  {
-    Config::Entry parse_json( const picojson::object &json )
-    {
-      Config::Entry e;
-      for ( auto &&entry : json )
-      {
-        if ( entry.second.is< picojson::object >() )
-        {
-          e.emplace( entry.first, parse_json( entry.second.get< picojson::object >() ) );
-        } else if ( entry.second.is< std::string >() )
-        {
-          e.emplace( entry.first, Config::Value( entry.second.get< std::string >() ) );
-        } else if ( entry.second.is< double >() ) {
-          e.emplace( entry.first, Config::Value( entry.second.get< double >() ) );
-        }
-      }
+#include "VTUtil.hpp"
 
-      return e;
+namespace KokkosResilience::Util::VT {
+  void delaySerializeUntil(vt::EpochType epoch){
+    if(!vt::sched::ThreadAction::isThreadActive()){
+      vt::runSchedulerThrough(epoch);
+    } else {
+      auto thread_id = vt::sched::ThreadAction::getActiveThreadID();
+      vt::theTerm()->addAction(epoch, [thread_id](){
+      vt::theSched()->enqueue([thread_id](){
+        vt::theSched()->getThreadManager()->getThread(thread_id)->resume();
+      });
+      });
+
+      vt::EpochType parent_epoch = vt::theTerm()->getEpoch();
+      vt::theTerm()->popEpoch(parent_epoch);
+      vt::sched::ThreadAction::suspend();
+      vt::theTerm()->pushEpoch(parent_epoch);
     }
-  }
-
-  Config::Config( const std::filesystem::path &p )
-  {
-    std::ifstream instrm{ p.string() };
-
-    if(!instrm.is_open() || !instrm.good()){
-      throw ConfigFileError(p.string());
-    }
-
-    using iter_type = std::istream_iterator< char >;
-
-    iter_type input( instrm );
-    picojson::value v;
-    std::string err;
-
-    input = picojson::parse( v, input, iter_type{}, &err );
-    if ( !err.empty() )
-    {
-      std::cerr << err << std::endl;
-    }
-
-    auto baseobj = v.get< picojson::object >();
-    m_root = parse_json( baseobj );
   }
 }

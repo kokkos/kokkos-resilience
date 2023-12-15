@@ -38,12 +38,27 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Cref.hpp"
 
-namespace KokkosResilience
-{
-  namespace Detail
-  {
-    std::vector< CrefImpl > *Cref::check_ref_list = nullptr;
+#ifndef INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_IMPL_HPP
+#define INC_KOKKOS_RESILIENCE_CONTEXT_VT_PROXYMAP_IMPL_HPP
+
+#include "ProxyMap.hpp"
+#include "VTContext.hpp"
+
+namespace KokkosResilience::Context::VT {
+
+template <typename ProxyT, typename enable>
+ProxyHolder& ProxyMap::operator[](ProxyT proxy){
+  auto iter = id_to_holder.find(proxy);
+  if(iter == id_to_holder.end()){
+    iter = id_to_holder.try_emplace(proxy, proxy, ctx).first;
+    ctx.init_holder(proxy, iter->second);
+
+    group_to_member_id.emplace(ProxyID(proxy).proxy_bits, proxy);
   }
+  return iter->second;
 }
+
+}
+
+#endif

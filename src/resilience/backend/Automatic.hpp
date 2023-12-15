@@ -38,28 +38,15 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "StdFileContext.hpp"
-#include "stdfile/StdFileBackend.hpp"
+#ifndef INC_RESILIENCE_BACKEND_AUTOMATIC_HPP
+#define INC_RESILIENCE_BACKEND_AUTOMATIC_HPP
 
-#include <functional>
-#include <memory>
-#include <string>
-#include <unordered_map>
 
-namespace KokkosResilience {
-std::unique_ptr<ContextBase> make_context(const std::string& filename,
-                                          const std::string& config) {
-  auto cfg = Config{config};
+#include "AutomaticBase.hpp"
+#include "resilience/Config.hpp"
 
-  using fun_type = std::function<std::unique_ptr<ContextBase>()>;
-  static std::unordered_map<std::string, fun_type> backends = {
-      {"stdfile", [&]() {
-         return std::make_unique<StdFileContext<StdFileBackend> >(filename, cfg);
-       }}};
-
-  auto pos = backends.find(cfg["backend"].as<std::string>());
-  if (pos == backends.end()) return std::unique_ptr<ContextBase>{};
-
-  return pos->second();
+namespace KokkosResilience::Detail {
+  AutomaticBackend make_backend(ContextBase& ctx);
 }
-}  // namespace KokkosResilience
+
+#endif
