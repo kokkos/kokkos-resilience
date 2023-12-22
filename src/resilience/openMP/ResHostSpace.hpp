@@ -39,7 +39,6 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-// Header guard, format: directory_directory_filename
 #ifndef INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
 #define INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
 
@@ -50,6 +49,10 @@
 
 // Resilience
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
+// Not including KOKKOS_ENABLE_OPENMP because it's host space, may
+// desire it to work with other spaces later.
+
 #include <typeinfo>
 #include <map>
 
