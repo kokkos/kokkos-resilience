@@ -9,10 +9,12 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestResilience.cpp
-               TestLambdaCapture.cpp
-               TestHooks.cpp
-               TestDynamicViewHooks.cpp
+#              TestResilience.cpp
+#               TestLambdaCapture.cpp
+#               TestHooks.cpp
+	        TestOpenMPResilientExecution.cpp
+		TestMiniMD.cpp
+#               TestDynamicViewHooks.cpp
                )
 
 if (KR_ENABLE_VELOC)

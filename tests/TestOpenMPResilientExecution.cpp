@@ -57,6 +57,7 @@
 
 //Resilient
 using range_policy = Kokkos::RangePolicy<ExecSpace>;
+using MD_range_policy = Kokkos::MDRangePolicy<ExecSpace>;
 using ViewVectorIntSubscriber = Kokkos::View< int* , Kokkos::LayoutRight, MemSpace,
         Kokkos::Experimental::SubscribableViewHooks<
                 KokkosResilience::ResilientDuplicatesSubscriber > >;
@@ -244,16 +245,64 @@ TEST(TestResOpenMP, TestConstViewSubscriber)
 
 }
 
-// gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter,
+// KOKKOS MULTIDIMENSIONAL TEST
+// gTest runs parallel_for with Kokkos doubles assignment and atomic counter,
 // on a multidimensional view.
 // Expect counter to count iterations.
-TEST(TestResOpenMP, TestResilientFor2D)
+TEST(TestResOpenMP, TestKokkos2D)
+{
+// Allocate 2D y, x vectors.
+  Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace> x( "x", N, N );
+  Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace> y( "y", N, N );
+
+  //Kokkos::View<int, Kokkos::HostSpace> counter;  
+  Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);  
+
+  std::cout << "Check 1: The error was after declarations/definitions." << std::endl;
+
+  Kokkos::Timer timer;
+  counter(0) = 0;
+  //counter() = 0;
+ 
+  std::cout << "Check 2: The error was after counter access." << std::endl;
+
+  //std::cout << "Kokkos integer counter " << counter(0) << std::endl << std::endl;
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
+    for (int j = 0; j < N; j++){
+      y ( i,j ) = i+j;
+      Kokkos::atomic_increment(&counter(0));
+    }
+  });
+  
+  std::cout << "Check 3: The error was after parallel_for." << std::endl;
+
+  Kokkos::deep_copy(x,y);
+  
+  std::cout << "Check 4: The error was after deepcopy." << std::endl;
+  
+  for ( int i = 0; i < N; i++) {
+    for ( int j = 0; j < N; j++) {
+      ASSERT_EQ(x(i,j), i+j);
+    }
+  }
+  ASSERT_EQ(counter(0), N*N);
+ 
+  std::cout << std::endl <<std::endl;
+ 
+}
+
+// gTest runs parallel_for with resilient Kokkos doubles assignment
+// and atomic counter on a multidimensional view.
+// Expect counter to count accesses to each vector element.
+TEST(TestResOpenMP, TestResilient2D)
 {
 // Allocate y, x vectors.
   ViewVectorDoubleSubscriber2D y( "y", N, N );
   ViewVectorDoubleSubscriber2D x( "x", N, N );
 
-  //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
+  //Integer vector 1 long to count data accesses, because scalar view bugs
   ViewVectorIntSubscriber counter( "DataAccesses", 1);
 
   Kokkos::Timer timer;
@@ -267,9 +316,9 @@ TEST(TestResOpenMP, TestResilientFor2D)
     }
   });
 
-  KokkosResilience::clear_duplicates_cache();
   Kokkos::deep_copy(x, y);
- 
+  KokkosResilience::clear_duplicates_cache(); 
+
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
       ASSERT_EQ(x(i,j), i+j);
@@ -318,6 +367,7 @@ TEST(TestResOpenMP, TestKokkosReduceDouble)
   ASSERT_EQ(dot_product, N);
 
 }
+//#if 0 
 
 // gTest runs parallel_reduce with resilient Kokkos to get a dot product.
 TEST(TestResOpenMP, TestResilientReduceDouble)
@@ -355,3 +405,4 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
   ASSERT_EQ(dot_product, N);
   KokkosResilience::clear_duplicates_cache();
 }
+//#endif
