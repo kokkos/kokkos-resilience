@@ -131,10 +131,10 @@ class ParallelFor< FunctorType
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 #endif
 
-#ifdef KR_ENABLE_DMR
-      wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
-#else
+#ifdef KR_ENABLE_WRAPPER
+
       wrapper_policy = surrogate_policy(0, 3 * work_size );
+
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
       auto m_functor_0 = m_functor;
@@ -180,6 +180,7 @@ class ParallelFor< FunctorType
 #ifdef KR_ENABLE_DMR
 
       //DMR with failover to TMR on error
+      wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
 
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
@@ -212,8 +213,9 @@ class ParallelFor< FunctorType
       }
 
       KokkosResilience::clear_duplicates_map();
+#endif
+#ifdef KR_ENABLE_WRAPPER
 
-#else
       // TMR with scheduling
       // Feed in three-times as long range policy (wrapper-policy)
       // With wrapped functor, so that the iterations are bound to the duplicated functors/views
