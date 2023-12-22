@@ -138,6 +138,18 @@ export(TARGETS resilience
        FILE resilienceTargets.cmake
        )
 
+if (Kokkos_ENABLE_Cuda)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
+endif()
+
+if (KR_ENABLE_TMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_TMR)
+endif()
+
+if (KR_ENABLE_DMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_DMR)
+endif()
+
 # Set up find_package config and version file
 # Allow same major version compatibility
 # Possibly in the future find_package(Kokkos REQUIRED COMPONENTS reslience)

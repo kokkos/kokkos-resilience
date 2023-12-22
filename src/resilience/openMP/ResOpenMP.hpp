@@ -44,7 +44,6 @@
 
 #include <Kokkos_Macros.hpp>
 #if defined( KOKKOS_ENABLE_OPENMP )
-
 #include <cstddef>
 #include <iosfwd>
 
@@ -76,8 +75,6 @@ class ResOpenMP : public Kokkos::OpenMP {
 
 /*------------------------------------*/
 
-    //Do not delete constructor, defined in cpp
-
     ~ResOpenMP() {}
     ResOpenMP();
 
@@ -107,11 +104,8 @@ namespace Impl {
 // Specialized to ResHostSpace, may need to extend to more
 template <>
 struct MemorySpaceAccess
-  < KokkosResilience::ResHostSpace
-  , Kokkos::OpenMP::scratch_memory_space
-  > : MemorySpaceAccess
-  < Kokkos::HostSpace
-  , Kokkos::OpenMP::scratch_memory_space >
+  < KokkosResilience::ResHostSpace, Kokkos::OpenMP::scratch_memory_space> : MemorySpaceAccess
+  < Kokkos::HostSpace, Kokkos::OpenMP::scratch_memory_space >
 {};
 
 }  // namespace Impl
