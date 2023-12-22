@@ -61,8 +61,7 @@ ResOpenMP::ResOpenMP()
   : OpenMP() {
 }
 
-void
-ResOpenMP::print_configuration(std::ostream& os, bool verbose) const
+void ResOpenMP::print_configuration( std::ostream & s , bool ) const
 {
   os << "KokkosResilience::ResOpenMP:\n";
 
