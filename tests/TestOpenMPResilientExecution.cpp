@@ -98,13 +98,13 @@ TEST(TestResOpenMP, TestKokkosFor)
   }
 }
 
-//Insert error test
-KokkosResilience::global_error_settings = KokkosResilience::Error(12345);
-
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
 {
+
+  KokkosResilience::global_error_settings = KokkosResilience::Error(12345, 0.001);
+
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
   ViewVectorDoubleSubscriber x( "x", N );
@@ -117,12 +117,19 @@ TEST(TestResOpenMP, TestResilientForDouble)
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  
+  
+Kokkos::Profiling::pushRegion("GTestResilientForDouble_For");
+ 
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_increment(&counter(0));
   });
 
   KokkosResilience::clear_duplicates_cache();
+
+Kokkos::Profiling::popRegion();
+
 
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
@@ -428,13 +435,17 @@ TEST(TestResOpenMP, TestRandomKokkos)
       double x = generator.drand(0.,1.);
       double y = generator.drand(0.,1.);  
      
-      printf("x,y = %f,%f\n in iteration %d",x,y,i);
+      if(x >= 0.01)
+        printf("In iteration %d, %f greater than threshold 0.01\n",i,x);
+
+      if(y >= 0.01)
+        printf("In iteration %d, %f greater than threshold 0.01\n",i,y);
     
       if(x < 0.01)
-        printf("x less than threshold, error inserted\n");
+        printf("In iteration %d, %f less than threshold 0.01, error inserted\n",i,x);
 
       if(y < 0.01)
-        printf("y less than threshold, error inserted\n");
+        printf("In iteration %d, %f less than threshold 0.01, error inserted\n",i,y);
 
       random_pool.free_state(generator);
 
