@@ -114,10 +114,6 @@ class ParallelFor< FunctorType
     bool success = 0; //! This bool indicates that all views successfully reached a consensus.
 
     while(success==0 && repeats > 0){
-
-      auto work_size = m_policy.end() - m_policy.begin();
-      auto offset = m_policy.begin();
-
       surrogate_policy wrapper_policy;
 
 #ifdef KR_ENABLE_TMR
@@ -130,7 +126,8 @@ class ParallelFor< FunctorType
 #endif
 
 #ifdef KR_ENABLE_WRAPPER
-
+      auto work_size = m_policy.end() - m_policy.begin();
+      auto offset = m_policy.begin();
       wrapper_policy = surrogate_policy(0, 3 * work_size );
 
       // Trigger Subscriber constructors
@@ -274,7 +271,6 @@ class ParallelReduce< FunctorType
   using WorkTag   = typename Policy::work_tag;
 
 
-  OpenMPExec* m_instance;
   FunctorType m_functor;
   const Policy m_policy;
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
@@ -429,7 +425,7 @@ class ParallelReduce< FunctorType
                         //,m_result_ptr(arg_view.data())
                         {
   }
-/*
+
   inline ParallelReduce(const FunctorType& arg_functor,
                         Policy arg_policy,
                         const ReducerType& reducer)

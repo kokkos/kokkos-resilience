@@ -117,6 +117,7 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
+  virtual void print() const = 0;
 };
 
 template< typename View >
@@ -157,7 +158,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     return success(0);
   }
 
-  void print () override {
+  void print() const override {
 #ifdef KR_ENABLE_DMR
     // Indicates dmr_failover_to_tmr has tripped
     if(duplicate_count == 2){
@@ -165,7 +166,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
       std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
 
-      for (int i=0; i<original.size();i++){
+      for (std::size_t i=0; i<original.size();i++){
         std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
         std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
         std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
@@ -175,7 +176,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       std::cout << "This is the original data pointer " << original.data() << std::endl;
       std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
 
-      for (int i=0; i<original.size();i++){
+      for (std::size_t i=0; i<original.size();i++){
         std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
         std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
       }
@@ -185,7 +186,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     std::cout << "This is copy[0] data pointer " << copy[0].data() << std::endl;
     std::cout << "This is copy[1]  data pointer " << copy[1].data() << std::endl;
 
-    for (int i=0; i<original.size();i++){
+    for (std::size_t i=0; i<original.size();i++){
       std::cout << "This is the original at index " << i << " with value" << original(i) << std::endl;
       std::cout << "This is copy[0] at index " << i << " with value" << copy[0](i) << std::endl;
       std::cout << "This is copy[1] at index " << i << " with value" << copy[1](i) << std::endl;
@@ -230,6 +231,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     //No match found, all three executions return different number
     success(0) = false;
+#endif
   }
 
 };
