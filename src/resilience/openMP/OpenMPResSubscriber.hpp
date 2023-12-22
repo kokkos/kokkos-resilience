@@ -82,9 +82,10 @@ namespace KokkosResilience {
 // Struct to gate error insertion
 struct Error{
 
-explicit Error(uint64_t seed) : local_seed(seed), local_random_pool(seed) {}
+explicit Error(uint64_t seed, double threshold) : local_seed(seed), local_random_pool(seed), error_rate(threshold) {}
 uint64_t local_seed;
 Kokkos::Random_XorShift64_Pool<> local_random_pool;
+double error_rate;
 };
 
 inline std::optional<Error> global_error_settings;
@@ -288,15 +289,15 @@ struct CombineDuplicates: public CombineDuplicatesBase
   
     global_error_settings->local_random_pool.free_state(generator);
    
-    if(x<0.00001){
+    if(x < global_error_settings->error_rate){
       printf("An error was inserted in the original\n");
       original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
       }
-    if(y<0.00001){
+    if(y < global_error_settings->error_rate){
       printf("An error was inserted in the first copy\n");
       copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...)) + 2 * y;
       }
-    if(z<0.00001){
+    if(z < global_error_settings->error_rate){
       printf("An error was inserted in the second copy\n");
       copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
       }
