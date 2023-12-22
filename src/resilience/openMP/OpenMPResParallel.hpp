@@ -75,6 +75,21 @@ namespace KokkosResilience{
 } // namespace KokkosResilience
 
 /*--------------------------------------------------------------------------*/
+/************************* ERROR INSERTION TEST CODE ************************/
+/*--------------------------------------------------------------------------*/
+/*
+namespace KokkosResilience{
+
+inline insert_error_duplicates(){
+// Goes over the Subscriber duplicate map (not cache map), inserting an error randomly
+  for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+    combiner.second->insert_error();
+  }
+}
+
+} // namespace KokkosResilience
+*/
+/*--------------------------------------------------------------------------*/
 /************************ RESILIENT PARALLEL FORS ***************************/
 /*--------------------------------------------------------------------------*/
 
