@@ -188,7 +188,6 @@ SharedAllocationRecord(
       const RecordBase::function_type    arg_dealloc = & deallocate)
   :SharedAllocationRecord< Kokkos::HostSpace, void >(exec_space, arg_space,arg_label,arg_alloc_size,arg_dealloc){}
 
-
   SharedAllocationRecord(
       const KokkosResilience::ResHostSpace               & arg_space,
       const std::string                                  & arg_label,
