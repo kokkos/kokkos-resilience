@@ -46,6 +46,7 @@
 #if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Random.hpp>
 #include <omp.h>
 #include <iostream>
 #include <cmath>
@@ -56,7 +57,6 @@
 #include <utility>
 #include <array>
 #include <cstdint>
-
 
 /*--------------------------------------------------------------------------
  ******************** ERROR MESSAGE GENERATION *****************************
@@ -78,6 +78,17 @@ namespace KokkosResilience {
  ----------------------------------------------------------------------------*/
 
 namespace KokkosResilience {
+
+// Struct to gate error insertion
+struct Error{
+
+explicit Error(uint64_t seed) : local_seed(seed), local_random_pool(seed) {}
+uint64_t local_seed;
+Kokkos::Random_XorShift64_Pool<> local_random_pool;
+};
+
+inline std::optional<Error> global_error_settings;
+
 
 // Helper template used to get Rank number of 0's for MDRangePolicy
 template< std::int64_t begin >
@@ -133,6 +144,7 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
+  //virtual void insert_error();
 };
 
 template< typename View >
@@ -147,6 +159,17 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // Note: 2 copies allocated even in DMR
   View copy[2];
 
+//#if 0
+  //Setup for error insertion
+  //Scope is one CombineDuplicates struct (one view), re-initializes per view?
+  //Seeds see paper?
+    //uint64_t seed = 12345;
+    
+    //Global variable in heatdis:
+    //templated on <class DeviceType>, should auto-get?
+    //Kokkos::Random_XorShift64_Pool<> random_pool{seed};
+//#endif
+
   //This hack for a bool was replacable in the CUDA version and may be a c++ <17 artifact
   Kokkos::View <bool*> success{"success", 1};
 
@@ -158,6 +181,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
   bool execute() override
   {
     success(0) = true;
+
+    
 
 #ifdef KR_ENABLE_DMR
     if (duplicate_count < 1){
@@ -190,8 +215,30 @@ struct CombineDuplicates: public CombineDuplicatesBase
   void operator ()(Args&&... its) const { //function parameter pack
 
 #ifdef KR_ENABLE_DMR
+//ERROR INSERTION 0 GATE HERE    
+   
+
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
+
+//Error Insertion Code
+#if 0
+      auto generator = random_pool.get_state();
+
+      double x = generator.drand(0., 1.);
+      double y = generator.drand(0., 1.);
+      double z = generator.drand(0., 1.);
+
+      random_pool.free_state(generator);
+
+      if(x<0.00001) 
+        original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
+      if(y<0.00001)
+        copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...) + 2 * y;
+      if(z<0.00001)
+        copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...) + 2 * z;
+#endif
+//Main Combiner begin, dmr failover has tripped into TMR
       for (int j = 0; j < 2; j ++) {
         if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
           return;
@@ -205,7 +252,24 @@ struct CombineDuplicates: public CombineDuplicatesBase
       success(0) = false;
     }
     // DMR has not failed over, only 1 copy exists
+    // Slight correction: 2 copies instantiated, 1 initialized
     else{
+//Error Insertion Code
+#if 0
+      auto generator = random_pool.get_state();
+
+      double x = generator.drand(0., 1.);
+      double y = generator.drand(0., 1.);
+
+      random_pool.free_state(generator);
+
+      if(x<0.00001) 
+        original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
+      if(y<0.00001)
+        copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...)) + 2 * y;
+      
+#endif
+//DMR Combiner Begin with no failover
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
         return;
       }
@@ -213,6 +277,33 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
 
 #else
+//Error Insertion Code
+//#if 0
+    if(global_error_settings){
+    auto generator = global_error_settings->local_random_pool.get_state();
+ 
+    double x = generator.drand(0., 1.);
+    double y = generator.drand(0., 1.);
+    double z = generator.drand(0., 1.);
+  
+    global_error_settings->local_random_pool.free_state(generator);
+   
+    if(x<0.00001){
+      printf("An error was inserted in the original\n");
+      original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
+      }
+    if(y<0.00001){
+      printf("An error was inserted in the first copy\n");
+      copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...)) + 2 * y;
+      }
+    if(z<0.00001){
+      printf("An error was inserted in the second copy\n");
+      copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
+      }
+    }
+//endif
+
+//Main Combiner Begin
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
         return;
@@ -226,7 +317,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     success(0) = false;
 #endif
   }
-
 };
 
 } // namespace KokkosResilience
