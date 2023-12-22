@@ -53,9 +53,9 @@
 
 #include <impl/Kokkos_InitializationSettings.hpp>
 
-//This space specific
-#include "ResHostSpace.hpp" //Resilient
+#include <impl/Kokkos_InitializationSettings.hpp>
 
+//This space specific
 /*------------------------------------------------------------------------*/
 
 namespace KokkosResilience {
@@ -129,7 +129,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 
 /*------------------------------------------------------------------------*/
 
-#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
+//#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
 #include <OpenMP/Kokkos_OpenMP_Team.hpp>
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
 #include <OpenMP/Kokkos_OpenMP_Task.hpp>
