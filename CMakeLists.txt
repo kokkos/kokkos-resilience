@@ -132,6 +132,10 @@ if (Kokkos_ENABLE_Cuda)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
 endif()
 
+if (KR_ENABLE_WRAPPER)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_WRAPPER)
+endif()
+
 if (KR_ENABLE_TMR)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_TMR)
 endif()
