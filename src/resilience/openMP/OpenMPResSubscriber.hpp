@@ -364,7 +364,7 @@ struct ResilientDuplicatesSubscriber {
 
 KOKKOS_INLINE_FUNCTION
 void print_duplicates_map(){
-  for (auto &&entry : KokkosResilience::ResilienceDuplicatesSubscriber::duplicates_map){
+  for (auto &&entry : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map){
     entry.second->print();
   }
 }
