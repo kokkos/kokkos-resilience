@@ -97,6 +97,9 @@ TEST(TestResOpenMP, TestKokkosFor)
   }
 }
 
+//Insert error test
+KokkosResilience::global_error_settings = KokkosResilience::Error(12345);
+
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
@@ -409,3 +412,35 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
   KokkosResilience::clear_duplicates_cache();
 }
 //#endif
+
+// Random Number Test
+TEST(TestResOpenMP, TestRandomKokkos)
+{
+
+  Kokkos::Random_XorShift64_Pool<> random_pool(12345);
+ 
+  Kokkos::parallel_for(
+    "Tooling", N,
+    KOKKOS_LAMBDA(int i) {
+      auto generator = random_pool.get_state();
+     
+      double x = generator.drand(0.,1.);
+      double y = generator.drand(0.,1.);  
+     
+      printf("x,y = %f,%f\n in iteration %d",x,y,i);
+    
+      if(x < 0.01)
+        printf("x less than threshold, error inserted\n");
+
+      if(y < 0.01)
+        printf("y less than threshold, error inserted\n");
+
+      random_pool.free_state(generator);
+
+      });
+
+  printf("Here Ends the Test\n");
+
+}
+
+
