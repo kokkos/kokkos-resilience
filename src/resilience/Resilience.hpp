@@ -64,6 +64,13 @@
 #include "cuda/CudaResParallel.hpp"
 #endif
 
+#ifdef KR_ENABLE_OPENMP_EXEC_SPACE
+#include "openMP/ResOpenMP.hpp"
+#include "openMP/ResHostSpace.hpp"
+#include "openMP/OpenMPResParallel.hpp"
+#include "openMP/OpenMPResSubscriber.hpp"
+#endif
+
 namespace KokkosResilience {
 /**
  * A function that will be invoked with the total number of retries if the
