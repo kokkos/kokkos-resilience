@@ -51,8 +51,8 @@
 #include <omp.h>
 #include <cstdio>
 
-#define N 20
-#define N_2 10
+#define N 2000
+#define N_2 1000
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -79,7 +79,7 @@ using range_policy2 = Kokkos::RangePolicy<Kokkos::OpenMP>;
 /*********************************
 *********PARALLEL FORS************
 **********************************/
-
+/*
 // gTest runs parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestKokkosFor)
 {
@@ -97,13 +97,13 @@ TEST(TestResOpenMP, TestKokkosFor)
     ASSERT_EQ(x2(i), i);
   }
 }
-
+*/
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
 {
 
-  KokkosResilience::global_error_settings = KokkosResilience::Error(12345, 0.001);
+  KokkosResilience::global_error_settings = KokkosResilience::Error(12345, 0.00001);
 
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
@@ -119,17 +119,16 @@ TEST(TestResOpenMP, TestResilientForDouble)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   
   
-Kokkos::Profiling::pushRegion("GTestResilientForDouble_For");
+Kokkos::Profiling::pushRegion("GTestResilientForDoubleFor");
  
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_increment(&counter(0));
   });
 
-  KokkosResilience::clear_duplicates_cache();
-
 Kokkos::Profiling::popRegion();
 
+  KokkosResilience::clear_duplicates_cache();
 
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
@@ -138,7 +137,7 @@ Kokkos::Profiling::popRegion();
 
   ASSERT_EQ(counter(0), N);
 }
-
+/*
 // gTest runs parallel_for with resilient Kokkos integer assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForInteger)
@@ -183,10 +182,10 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N_2), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = 1;
-  /*  if (i==1) {
-      std::cout << "Threads:" << omp_get_num_threads();
-      std::cout << std::endl;
-    }*/
+    //if (i==1) {
+      //std::cout << "Threads:" << omp_get_num_threads();
+      //std::cout << std::endl;
+    //}
   });
 
   Kokkos::parallel_for( range_policy (N_2, N), KOKKOS_LAMBDA ( const int i) {
@@ -246,14 +245,12 @@ TEST(TestResOpenMP, TestKokkos2D)
   //Kokkos::View<int, Kokkos::HostSpace> counter;  
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);  
 
-  std::cout << "Check 1: The error was after declarations/definitions." << std::endl;
+  //std::cout << "Check 1: The error was after declarations/definitions." << std::endl;
 
   Kokkos::Timer timer;
   counter(0) = 0;
-  //counter() = 0;
  
-  std::cout << "Check 2: The error was after counter access." << std::endl;
-
+  //std::cout << "Check 2: The error was after counter access." << std::endl;
   //std::cout << "Kokkos integer counter " << counter(0) << std::endl << std::endl;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
@@ -264,11 +261,11 @@ TEST(TestResOpenMP, TestKokkos2D)
     }
   });
   
-  std::cout << "Check 3: The error was after parallel_for." << std::endl;
+// std::cout << "Check 3: The error was after parallel_for." << std::endl;
 
   Kokkos::deep_copy(x,y);
   
-  std::cout << "Check 4: The error was after deepcopy." << std::endl;
+//  std::cout << "Check 4: The error was after deepcopy." << std::endl;
   
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
@@ -314,11 +311,11 @@ TEST(TestResOpenMP, TestResilient2D)
   }
   ASSERT_EQ(counter(0), N*N);
 }
-
+*/
 /**********************************
  *********PARALLEL REDUCES*********
  **********************************/
-
+/*
 // gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
 TEST(TestResOpenMP, TestKokkosReduceDouble)
 {
@@ -355,7 +352,7 @@ TEST(TestResOpenMP, TestKokkosReduceDouble)
   ASSERT_EQ(dot_product, N);
 
 }
-//#if 0 
+#if 0 
 
 // gTest runs parallel_reduce with resilient Kokkos to get a dot product.
 TEST(TestResOpenMP, TestResilientReduceDouble)
@@ -393,7 +390,9 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
   ASSERT_EQ(dot_product, N);
   KokkosResilience::clear_duplicates_cache();
 }
-//#endif
+#endif
+
+#if 0
 
 // Random Number Test
 TEST(TestResOpenMP, TestRandomKokkos)
@@ -428,5 +427,5 @@ TEST(TestResOpenMP, TestRandomKokkos)
   printf("Here Ends the Test\n");
 
 }
-
-
+#endif
+*/

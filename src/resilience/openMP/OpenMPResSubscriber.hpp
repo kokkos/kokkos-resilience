@@ -197,14 +197,25 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
     else {
       if constexpr(rank > 1){
-            
+         
+Kokkos::Profiling::pushRegion("SubCombinerMultiD");
+
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
 
         Kokkos::parallel_for(mdrange, *this);
-        Kokkos::fence();
+	Kokkos::fence();
+
+Kokkos::Profiling::popRegion();
+
       }else{
+
+Kokkos::Profiling::pushRegion("SubCombiner1D");
+
         Kokkos::parallel_for(original.size(), *this);
         Kokkos::fence();
+
+Kokkos::Profiling::popRegion();
+
       }
     }
     return success(0);
@@ -281,6 +292,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
 //Error Insertion Code
 //#if 0
     if(global_error_settings){
+
+Kokkos::Profiling::pushRegion("ErrorGeneration");	    
+
     auto generator = global_error_settings->local_random_pool.get_state();
  
     double x = generator.drand(0., 1.);
@@ -290,17 +304,20 @@ struct CombineDuplicates: public CombineDuplicatesBase
     global_error_settings->local_random_pool.free_state(generator);
    
     if(x < global_error_settings->error_rate){
-      printf("An error was inserted in the original\n");
+      // printf("An error was inserted in the original\n");
       original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
       }
     if(y < global_error_settings->error_rate){
-      printf("An error was inserted in the first copy\n");
+      // printf(An error was inserted in the first copy\n);
       copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...)) + 2 * y;
       }
     if(z < global_error_settings->error_rate){
-      printf("An error was inserted in the second copy\n");
+      // printf("An error was inserted in the second copy\n");
       copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
       }
+
+Kokkos::Profiling::popRegion();
+
     }
 //endif
 
@@ -342,8 +359,8 @@ struct ResilientDuplicatesSubscriber {
   // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
   // only once. Re-initialize copies to be like original view only if original not in cache map
   using key_type = void *;  // key_type should be data() pointer
-  static std::unordered_map<key_type, CombineDuplicatesBase *> duplicates_map;
-  static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
+  inline static std::unordered_map<key_type, CombineDuplicatesBase *> duplicates_map;
+  inline static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
 
   template<typename View>
   static CombineDuplicates<View> *

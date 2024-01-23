@@ -117,7 +117,7 @@ if (_kokkos_omp_found GREATER -1)
 endif()
 
 option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
-cmake_dependent_option(KR_ENABLE_CUDA_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED" OFF)
+#cmake_dependent_option(KR_ENABLE_CUDA_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED" OFF)
 cmake_dependent_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED" OFF)
 
 if (KR_ENABLE_CUDA_EXEC_SPACE)
@@ -125,6 +125,7 @@ if (KR_ENABLE_CUDA_EXEC_SPACE)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_OPENMP)
   message(STATUS "OpenMP resilient execution spaces are enabled")
 endif()
 

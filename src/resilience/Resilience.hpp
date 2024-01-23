@@ -62,5 +62,11 @@
    #include "cuda/CudaResParallel.hpp"
 #endif
 
+#ifdef KR_ENABLE_OPENMP
+   #include "openMP/ResOpenMP.hpp"
+   #include "openMP/ResHostSpace.hpp"
+   #include "openMP/OpenMPResParallel.hpp"
+   #include "openMP/OpenMPResSubscriber.hpp"
+#endif
 
 #endif  // INC_RESILIENCE_RESILIENCE_HPP
