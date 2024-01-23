@@ -126,6 +126,7 @@ if (KR_ENABLE_CUDA_EXEC_SPACE)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_OPENMP_EXEC_SPACE)
   message(STATUS "OpenMP resilient execution spaces are enabled")
 endif()
 
