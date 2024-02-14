@@ -86,10 +86,35 @@ explicit Error(uint64_t seed, double threshold) : local_seed(seed), local_random
 uint64_t local_seed;
 Kokkos::Random_XorShift64_Pool<> local_random_pool;
 double error_rate;
+
+/*
+//Error timer settings
+thread_local double elapsed_seconds;
+double total_error_time;
+
+//Mutex for total_error_time accumulation
+std::mutex global_time_mutex;
+*/
+
 };
 
 inline std::optional<Error> global_error_settings;
 
+/*
+// Struct to gate error timing
+struct ETimer{
+       
+explicit ETimer	(int subscriber_max_pool) : subcriber_max_threads (subcriber_max_pool){}
+int subscriber_max_threads;
+//global thread_local durations for error accumulation in combiner accross kernel
+thread_local std::chrono::duration<double> elapsed_seconds;
+//global duration for error accumulation accross iterations of kernels
+auto std::chrono::duration<double> total_error_time;
+
+};	
+
+inline std::optional<ETimer> global_timer_variables;
+*/
 
 // Helper template used to get Rank number of 0's for MDRangePolicy
 template< std::int64_t begin >
@@ -198,23 +223,32 @@ struct CombineDuplicates: public CombineDuplicatesBase
     else {
       if constexpr(rank > 1){
          
-Kokkos::Profiling::pushRegion("SubCombinerMultiD");
+//Kokkos::Profiling::pushRegion("SubCombinerMultiD");
 
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
 
         Kokkos::parallel_for(mdrange, *this);
 	Kokkos::fence();
 
-Kokkos::Profiling::popRegion();
+//Kokkos::Profiling::popRegion();
 
       }else{
 
-Kokkos::Profiling::pushRegion("SubCombiner1D");
+//Kokkos::Profiling::pushRegion("SubCombiner1D");
 
-        Kokkos::parallel_for(original.size(), *this);
+        Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
         Kokkos::fence();
 
-Kokkos::Profiling::popRegion();
+	/*
+        //Each thread will add their own thread_local global version of elapsed_seconds
+        #pragma omp parallel
+	{
+          std::lock_guard<std::mutex> lock(global_error_settings->global_time_mutex);
+          global_error_settings->total_error_time{ global_error_settings->total_error_time + global_error_settings->elapsed_seconds };
+
+        }*/
+
+//Kokkos::Profiling::popRegion();
 
       }
     }
@@ -292,8 +326,11 @@ Kokkos::Profiling::popRegion();
 //Error Insertion Code
 //#if 0
     if(global_error_settings){
+    
+    //Steady-clock should be thread-safe
+   // const auto start{std::chrono::steady_clock::now()};    
 
-Kokkos::Profiling::pushRegion("ErrorGeneration");	    
+//Kokkos::Profiling::pushRegion("ErrorGeneration");	    
 
     auto generator = global_error_settings->local_random_pool.get_state();
  
@@ -316,7 +353,10 @@ Kokkos::Profiling::pushRegion("ErrorGeneration");
       copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
       }
 
-Kokkos::Profiling::popRegion();
+    //const auto stop{std::chrono::steady_clock::now()};
+
+    //global_error_settings->elapsed_seconds{ elapsed_seconds + (stop - start) };
+//Kokkos::Profiling::popRegion();
 
     }
 //endif
