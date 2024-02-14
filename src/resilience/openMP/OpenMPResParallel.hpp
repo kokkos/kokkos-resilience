@@ -177,9 +177,9 @@ class ParallelFor< FunctorType
 
       // TMR execution with no wrapper scheduling
 
-      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure0(m_functor , wrapper_policy );
-      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1(m_functor_0 , wrapper_policy );
-      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure0( m_functor , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1( m_functor_0 , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2( m_functor_1 , wrapper_policy );
 
       closure0.execute();
       closure1.execute();

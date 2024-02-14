@@ -47,6 +47,8 @@
 #include <ctime>
 #include <iomanip>
 
+#include <iostream>
+
 #include <Kokkos_Core.hpp>
 #include "view_hooks/ViewHolder.hpp"
 #include "view_hooks/DynamicViewHooks.hpp"
