@@ -78,7 +78,7 @@ using range_policy2 = Kokkos::RangePolicy<Kokkos::OpenMP>;
 /*********************************
 *********PARALLEL FORS************
 **********************************/
-/*
+
 // gTest runs parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestKokkosFor)
 {
@@ -88,15 +88,18 @@ TEST(TestResOpenMP, TestKokkosFor)
 
   Kokkos::Timer timer;
   // Initialize y vector on host using parallel_for
-  Kokkos::parallel_for(
+
+//Kokkos::Profiling::pushRegion("GTestParallelDoubleFor");
+  Kokkos::parallel_for("GTestParallelDoubleFor",
       range_policy2(0, N), KOKKOS_LAMBDA(int i) { y2(i) = i; });
+//Kokkos::Profiling::popRegion();
 
   Kokkos::deep_copy(x2, y2);
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x2(i), i);
   }
 }
-*/
+
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
@@ -118,14 +121,14 @@ TEST(TestResOpenMP, TestResilientForDouble)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   
   
-Kokkos::Profiling::pushRegion("GTestResilientForDoubleFor");
+//Kokkos::Profiling::pushRegion("GTestResilientForDoubleFor");
  
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for("GTestResilientDoubleFor", range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
 
-Kokkos::Profiling::popRegion();
+//Kokkos::Profiling::popRegion();
 
   KokkosResilience::clear_duplicates_cache();
 
