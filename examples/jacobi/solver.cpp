@@ -15,11 +15,9 @@ void Solver::init(Config cfg_, DetectorProxy detector_){
     nElms[dim] = cfg.dataRange[dim]/cfg.colRange[dim];
     if(idx[dim] < (cfg.dataRange[dim]%cfg.colRange[dim]))
       nElms[dim]++;
-    if(nElms[dim] <= 1){
-      fmt::print(stderr, "{} running with only {} elements in dimension {}\n", getIndex().toString(), nElms[dim], dim);
-      assert(nElms[dim] > 0);
-    }
-    
+    assert(nElms[dim] > 0);
+
+    nElms[dim] += 2; 
     if(idx[dim] == 0) nNeighbors--;
     if(idx[dim] == cfg.colRange[dim]-1) nNeighbors--;
   }

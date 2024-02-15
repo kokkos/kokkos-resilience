@@ -322,19 +322,6 @@ void VTContext::checkpoint_proxies(const std::string& region, int version){
         vt::theSched()->enqueue([this, &holder](){
           checkpoint_proxy(holder, checkpoint_epoch);
         });
-      } else {
-        vt::theSched()->enqueue([this, &holder](){
-        vt::theSched()->getThreadManager()->allocateThreadRun(
-          [this, &holder](){
-            checkpoint_proxy(holder, checkpoint_epoch);
-
-            auto thread_id = vt::sched::ThreadAction::getActiveThreadID();
-            vt::theSched()->enqueue([thread_id](){
-              vt::theSched()->getThreadManager()->
-                deallocateThread(thread_id);
-            });
-          });
-        });
       }
     });
   }

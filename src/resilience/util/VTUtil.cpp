@@ -42,21 +42,4 @@
 #include "VTUtil.hpp"
 
 namespace KokkosResilience::Util::VT {
-  void delaySerializeUntil(vt::EpochType epoch){
-    if(!vt::sched::ThreadAction::isThreadActive()){
-      vt::runSchedulerThrough(epoch);
-    } else {
-      auto thread_id = vt::sched::ThreadAction::getActiveThreadID();
-      vt::theTerm()->addAction(epoch, [thread_id](){
-      vt::theSched()->enqueue([thread_id](){
-        vt::theSched()->getThreadManager()->getThread(thread_id)->resume();
-      });
-      });
-
-      vt::EpochType parent_epoch = vt::theTerm()->getEpoch();
-      vt::theTerm()->popEpoch(parent_epoch);
-      vt::sched::ThreadAction::suspend();
-      vt::theTerm()->pushEpoch(parent_epoch);
-    }
-  }
 }

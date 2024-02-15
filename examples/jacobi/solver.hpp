@@ -84,7 +84,7 @@ public:
         vt::theTerm()->addDependency(last_iter_epoch, chkpt_epoch);
         epochQueue.push_back(chkpt_epoch);
 
-        kr::Util::VT::delaySerializeUntil(last_iter_epoch);
+        vt::runSchedulerThrough(last_iter_epoch);
       }
     }
 

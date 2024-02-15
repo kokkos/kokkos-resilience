@@ -294,9 +294,6 @@ namespace KokkosResilience::Util::VT {
     }
   }
 
-
-  //Optimizes for case of being called within a serialize user thread.
-  void delaySerializeUntil(vt::EpochType epoch);
 }
 
 
