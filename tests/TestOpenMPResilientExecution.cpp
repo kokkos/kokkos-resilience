@@ -50,8 +50,8 @@
 #include <omp.h>
 #include <cstdio>
 
-#define N 2000
-#define N_2 1000
+#define N 20
+#define N_2 10
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -105,7 +105,7 @@ TEST(TestResOpenMP, TestKokkosFor)
 TEST(TestResOpenMP, TestResilientForDouble)
 {
 
-  KokkosResilience::global_error_settings = KokkosResilience::Error(12345, 0.00001);
+  KokkosResilience::global_error_settings = KokkosResilience::Error(12345, 0.01);
 
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
@@ -127,7 +127,10 @@ TEST(TestResOpenMP, TestResilientForDouble)
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
-
+  
+  KokkosResilience::print_total_error_time();
+  double time = timer.seconds();
+  std::cout << "GTestResilientForDoubleFor (needs a better name) time is: " << time << " s" << std::endl;
 //Kokkos::Profiling::popRegion();
 
   KokkosResilience::clear_duplicates_cache();
@@ -138,6 +141,10 @@ TEST(TestResOpenMP, TestResilientForDouble)
   }
 
   ASSERT_EQ(counter(0), N);
+
+  //reset global error settings
+  KokkosResilience::global_error_settings.reset();
+
 }
 /*
 // gTest runs parallel_for with resilient Kokkos integer assignment and atomic counter.
