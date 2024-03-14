@@ -82,39 +82,37 @@ namespace KokkosResilience {
 // Struct to gate error insertion
 struct Error{
 
-explicit Error(uint64_t seed, double threshold) : local_seed(seed), local_random_pool(seed), error_rate(threshold) {}
+explicit Error(uint64_t seed, double threshold) : local_seed(seed), local_random_pool(seed), error_rate(threshold){}
 uint64_t local_seed;
 Kokkos::Random_XorShift64_Pool<> local_random_pool;
 double error_rate;
 
+};
+
 /*
-//Error timer settings
-thread_local double elapsed_seconds;
-double total_error_time;
+struct SubTimer{
+
+//Time entire subscriber-added processes
+inline static thread_local std::chrono::duration<long int, std::ration<1, 1000000000>> seconds{};
+inline static std::chrono::duration<long int, std::ration<1, 1000000000>> total_sub_time{};
+
+//Mutex for total time collection
+inline static std::mutex global_sub_mutex;
+
+};*/
+
+struct ETimer{
+//Error timer settings zero-initialized
+inline static thread_local std::chrono::duration<long int, std::ratio<1, 1000000000>> elapsed_seconds{};
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> total_error_time{};
 
 //Mutex for total_error_time accumulation
-std::mutex global_time_mutex;
-*/
+inline static std::mutex global_time_mutex;
+
 
 };
 
 inline std::optional<Error> global_error_settings;
-
-/*
-// Struct to gate error timing
-struct ETimer{
-       
-explicit ETimer	(int subscriber_max_pool) : subcriber_max_threads (subcriber_max_pool){}
-int subscriber_max_threads;
-//global thread_local durations for error accumulation in combiner accross kernel
-thread_local std::chrono::duration<double> elapsed_seconds;
-//global duration for error accumulation accross iterations of kernels
-auto std::chrono::duration<double> total_error_time;
-
-};	
-
-inline std::optional<ETimer> global_timer_variables;
-*/
 
 // Helper template used to get Rank number of 0's for MDRangePolicy
 template< std::int64_t begin >
@@ -184,18 +182,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   // Note: 2 copies allocated even in DMR
   View copy[2];
-
-//#if 0
-  //Setup for error insertion
-  //Scope is one CombineDuplicates struct (one view), re-initializes per view?
-  //Seeds see paper?
-    //uint64_t seed = 12345;
-    
-    //Global variable in heatdis:
-    //templated on <class DeviceType>, should auto-get?
-    //Kokkos::Random_XorShift64_Pool<> random_pool{seed};
-//#endif
-
+  
   //This hack for a bool was replacable in the CUDA version and may be a c++ <17 artifact
   Kokkos::View <bool*> success{"success", 1};
 
@@ -207,8 +194,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
   bool execute() override
   {
     success(0) = true;
-
-    
 
 #ifdef KR_ENABLE_DMR
     if (duplicate_count < 1){
@@ -239,14 +224,15 @@ struct CombineDuplicates: public CombineDuplicatesBase
         Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
         Kokkos::fence();
 
-	/*
+ 	
         //Each thread will add their own thread_local global version of elapsed_seconds
         #pragma omp parallel
 	{
-          std::lock_guard<std::mutex> lock(global_error_settings->global_time_mutex);
-          global_error_settings->total_error_time{ global_error_settings->total_error_time + global_error_settings->elapsed_seconds };
-
-        }*/
+          std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
+	  ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
+          std::cout << "elapsed" << ETimer::elapsed_seconds.count() << "in thread" << omp_get_thread_num()<<std::endl;
+	  std::cout << "total" <<ETimer::total_error_time.count() << "in thread" << omp_get_thread_num()<<std::endl;
+        }
 
 //Kokkos::Profiling::popRegion();
 
@@ -328,9 +314,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     if(global_error_settings){
     
     //Steady-clock should be thread-safe
-   // const auto start{std::chrono::steady_clock::now()};    
-
-//Kokkos::Profiling::pushRegion("ErrorGeneration");	    
+    const auto start{std::chrono::steady_clock::now()};    
 
     auto generator = global_error_settings->local_random_pool.get_state();
  
@@ -353,11 +337,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
       copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
       }
 
-    //const auto stop{std::chrono::steady_clock::now()};
+    const auto stop{std::chrono::steady_clock::now()};
 
-    //global_error_settings->elapsed_seconds{ elapsed_seconds + (stop - start) };
-//Kokkos::Profiling::popRegion();
-
+    ETimer::elapsed_seconds = ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
     }
 //endif
 
@@ -501,6 +483,19 @@ struct ResilientDuplicatesSubscriber {
   template <typename View>
   static void copy_assigned(View &self, const View &other) {}
 };
+
+KOKKOS_INLINE_FUNCTION
+void print_total_error_time() {
+  std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
+  //actual time (in seconds) of duration d = d.count() * D::period::num / D::period::den
+  //D::period::num = 1
+  //D::period::den = 1000000000
+  //Selected because tick rate of stable_clock
+  auto time = ETimer::total_error_time.count() * 1 / 1000000000;
+  //const auto time = std::chrono::duration_cast<std::chrono::seconds>(ETimer::total_error_time);
+  std::cout << "The value of ETimer::total_error_time.count() is " << ETimer::total_error_time.count() << " nanoseconds." << std::endl;
+  std::cout << "The total error insertion time is currently " << time << " seconds." << std::endl;
+}
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_map() {
