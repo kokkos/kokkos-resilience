@@ -54,8 +54,8 @@ const std::string MAIN_LOOP = "Jacobi main loop";
 
 int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
-  {
   vt::initialize(argc, argv);
+  {
   const int this_node = vt::theContext()->getNode();
   
   Jacobi::Config app_cfg(argc, argv);
@@ -121,8 +121,8 @@ int main(int argc, char** argv) {
     next_boundary = std::min(std::min(next_phase_boundary, next_epoch_boundary), max_iter);
   }
   
-  vt::finalize();
   }
+  vt::finalize();
   Kokkos::finalize();
 }
 
