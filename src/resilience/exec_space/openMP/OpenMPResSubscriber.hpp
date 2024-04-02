@@ -221,18 +221,43 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
 //Kokkos::Profiling::pushRegion("SubCombiner1D");
 
-        Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
-        Kokkos::fence();
+        ETimer::global_time_mutex.lock();
+ 	std::cout << "This is a test; mutex unlock before subp4 tid " << omp_get_thread_num() << std::endl;
+	ETimer::global_time_mutex.unlock();
 
- 	
+
+	Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
+        //Kokkos::fence();
+
+	Kokkos::parallel_for("ErrorAccumulation", omp_get_max_threads(), KOKKOS_LAMBDA (const int i) {
+
+          ETimer::global_time_mutex.lock();
+          ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
+	  std::cout << "elapsed " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
+          std::cout << "total " <<ETimer::total_error_time.count() << " in thread " << omp_get_thread_num()<<std::endl;
+	  ETimer::elapsed_seconds = ETimer::elapsed_seconds - ETimer::elapsed_seconds;
+          std::cout << "elapsed is now " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
+          ETimer::global_time_mutex.unlock();	
+
+	});
+
+       
+        /*
         //Each thread will add their own thread_local global version of elapsed_seconds
         #pragma omp parallel
 	{
-          std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
+          //std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
+	  
+	  ETimer::global_time_mutex.lock();	
+	  
 	  ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
-          std::cout << "elapsed" << ETimer::elapsed_seconds.count() << "in thread" << omp_get_thread_num()<<std::endl;
+          
+	  std::cout << "elapsed" << ETimer::elapsed_seconds.count() << "in thread" << omp_get_thread_num()<<std::endl;
 	  std::cout << "total" <<ETimer::total_error_time.count() << "in thread" << omp_get_thread_num()<<std::endl;
-        }
+
+	  ETimer::global_time_mutex.unlock();
+
+        }*/
 
 //Kokkos::Profiling::popRegion();
 
@@ -340,6 +365,13 @@ struct CombineDuplicates: public CombineDuplicatesBase
     const auto stop{std::chrono::steady_clock::now()};
 
     ETimer::elapsed_seconds = ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      
+    ETimer::global_time_mutex.lock();
+    
+    std::cout << "The error accumulator for thread " << omp_get_thread_num() << " is " << ETimer::elapsed_seconds.count() << " nanoseconds." << std::endl;
+
+    ETimer::global_time_mutex.unlock();
+
     }
 //endif
 
@@ -486,15 +518,21 @@ struct ResilientDuplicatesSubscriber {
 
 KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
-  std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
+  //std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
+
+  ETimer::global_time_mutex.lock();
+
   //actual time (in seconds) of duration d = d.count() * D::period::num / D::period::den
   //D::period::num = 1
   //D::period::den = 1000000000
   //Selected because tick rate of stable_clock
-  auto time = ETimer::total_error_time.count() * 1 / 1000000000;
+  //auto time = ETimer::total_error_time.count() / 1000000000;
   //const auto time = std::chrono::duration_cast<std::chrono::seconds>(ETimer::total_error_time);
   std::cout << "The value of ETimer::total_error_time.count() is " << ETimer::total_error_time.count() << " nanoseconds." << std::endl;
-  std::cout << "The total error insertion time is currently " << time << " seconds." << std::endl;
+  std::cout << "The total error insertion time is currently " << ETimer::total_error_time.count() / 1000000000 << " seconds." << std::endl;
+
+  ETimer::global_time_mutex.unlock();
+
 }
 
 KOKKOS_INLINE_FUNCTION
