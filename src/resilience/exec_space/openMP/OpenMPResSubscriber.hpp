@@ -105,6 +105,12 @@ struct ETimer{
 //Error timer settings zero-initialized
 inline static thread_local std::chrono::duration<long int, std::ratio<1, 1000000000>> elapsed_seconds{};
 inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> total_error_time{};
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> max_error_time{};
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> min_error_time{};
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> average_error_time{};
+
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> temp_max{};
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> temp_min{};
 
 //Mutex for total_error_time accumulation
 inline static std::mutex global_time_mutex;
@@ -221,27 +227,64 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
 //Kokkos::Profiling::pushRegion("SubCombiner1D");
 
-        ETimer::global_time_mutex.lock();
- 	std::cout << "This is a test; mutex unlock before subp4 tid " << omp_get_thread_num() << std::endl;
-	ETimer::global_time_mutex.unlock();
-
+        //ETimer::global_time_mutex.lock();
+ 	//std::cout << "This is a test; mutex unlock before subp4 tid " << omp_get_thread_num() << std::endl;
+	//ETimer::global_time_mutex.unlock();
 
 	Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
         //Kokkos::fence();
+	
+	//Set base minimum thread 0 for minimum error time
+	if (omp_get_thread_num() == 0){
+	  ETimer::global_time_mutex.lock();
+          ETimer::temp_min = ETimer::elapsed_seconds;
+	  //std::cout << "Etimer::temp_min before loop is " << ETimer::temp_min.count() << std::endl <<std::endl;
+	  ETimer::global_time_mutex.unlock();
+	}	  
 
 	Kokkos::parallel_for("ErrorAccumulation", omp_get_max_threads(), KOKKOS_LAMBDA (const int i) {
 
           ETimer::global_time_mutex.lock();
-          ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
-	  std::cout << "elapsed " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
-          std::cout << "total " <<ETimer::total_error_time.count() << " in thread " << omp_get_thread_num()<<std::endl;
+          //Accumulate into total
+	  ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
+ 
+	  //Find and set max
+	  if(ETimer::temp_max.count() < ETimer::elapsed_seconds.count()){
+	    ETimer::temp_max = ETimer::elapsed_seconds;
+	  }
+
+	  //Find and set min
+	   if(ETimer::temp_min.count() > ETimer::elapsed_seconds.count()){
+            ETimer::temp_min = ETimer::elapsed_seconds;
+          }
+
+	  //Averaged over max_threads
+	  ETimer::average_error_time = ETimer::average_error_time + (ETimer::elapsed_seconds/omp_get_max_threads());
+	  
+	  //Prints to test
+	  //std::cout << "elapsed " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
+	  //std::cout << "max " << ETimer::temp_max.count() << " in thread " << omp_get_thread_num()<<std::endl;
+          //std::cout << "min " << ETimer::temp_min.count() << " in thread " << omp_get_thread_num()<<std::endl;
+
+          //std::cout << "total " <<ETimer::total_error_time.count() << " in thread " << omp_get_thread_num()<<std::endl;
 	  ETimer::elapsed_seconds = ETimer::elapsed_seconds - ETimer::elapsed_seconds;
-          std::cout << "elapsed is now " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
+          //std::cout << "elapsed is now " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
           ETimer::global_time_mutex.unlock();	
 
 	});
 
-       
+        //Accumulate total max and min, reset temp max and min
+        //ETimer::global_time_mutex.lock();
+
+	ETimer::max_error_time = ETimer::max_error_time + ETimer::temp_max;
+	ETimer::temp_max = ETimer::temp_max - ETimer::temp_max;
+
+        ETimer::min_error_time = ETimer::min_error_time + ETimer::temp_min;
+        ETimer::temp_min = ETimer::temp_min - ETimer::temp_min;
+
+
+	//ETimer::global_time_mutex.unlock();
+
         /*
         //Each thread will add their own thread_local global version of elapsed_seconds
         #pragma omp parallel
@@ -333,13 +376,13 @@ struct CombineDuplicates: public CombineDuplicatesBase
       success(0) = false;
     }
 
-#else
+#else      
 //Error Insertion Code
 //#if 0
-    if(global_error_settings){
-    
     //Steady-clock should be thread-safe
-    const auto start{std::chrono::steady_clock::now()};    
+    const auto start{std::chrono::steady_clock::now()};
+
+    if(global_error_settings){
 
     auto generator = global_error_settings->local_random_pool.get_state();
  
@@ -361,18 +404,18 @@ struct CombineDuplicates: public CombineDuplicatesBase
       // printf("An error was inserted in the second copy\n");
       copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
       }
+    }
 
     const auto stop{std::chrono::steady_clock::now()};
 
     ETimer::elapsed_seconds = ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      
-    ETimer::global_time_mutex.lock();
+
+//    ETimer::global_time_mutex.lock();
+
+//    std::cout << "The error accumulator for thread " << omp_get_thread_num() << " is " << ETimer::elapsed_seconds.count() << " nanoseconds." << std::endl;
+
+//    ETimer::global_time_mutex.unlock();
     
-    std::cout << "The error accumulator for thread " << omp_get_thread_num() << " is " << ETimer::elapsed_seconds.count() << " nanoseconds." << std::endl;
-
-    ETimer::global_time_mutex.unlock();
-
-    }
 //endif
 
 //Main Combiner Begin
@@ -529,8 +572,10 @@ void print_total_error_time() {
   //auto time = ETimer::total_error_time.count() / 1000000000;
   //const auto time = std::chrono::duration_cast<std::chrono::seconds>(ETimer::total_error_time);
   std::cout << "The value of ETimer::total_error_time.count() is " << ETimer::total_error_time.count() << " nanoseconds." << std::endl;
-  std::cout << "The total error insertion time is currently " << ETimer::total_error_time.count() / 1000000000 << " seconds." << std::endl;
-
+//  std::cout << "The total error insertion time is currently " << ETimer::total_error_time.count() << " seconds." << std::endl;
+  std::cout << "The minimum error insertion time is currently " << ETimer::min_error_time.count() << " nanoseconds." << std::endl;
+  std::cout << "The maximum error insertion time is currently " << ETimer::max_error_time.count() << " nanoseconds." << std::endl;
+  std::cout << "The average error insertion time is currently " << ETimer::average_error_time.count() << " nanoseconds." << std::endl;
   ETimer::global_time_mutex.unlock();
 
 }
