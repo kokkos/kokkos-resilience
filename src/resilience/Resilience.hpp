@@ -41,6 +41,8 @@
 #ifndef INC_RESILIENCE_RESILIENCE_HPP
 #define INC_RESILIENCE_RESILIENCE_HPP
 
+#include <functional>
+
 #include <resilience/config/Config.hpp>
 
 #include "Context.hpp"
@@ -62,5 +64,15 @@
 #include "cuda/CudaResParallel.hpp"
 #endif
 
+namespace KokkosResilience {
+/**
+ * A function that will be invoked with the total number of retries if the
+ * runtime encounters an unrecoverable data corruption.
+ */
+using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
+void default_unrecoverable_data_corruption_handler(std::size_t retries);
+void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
+unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
+}  // namespace KokkosResilience
 
 #endif  // INC_RESILIENCE_RESILIENCE_HPP

@@ -43,6 +43,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
+#include "resilience/Resilience.hpp"
 #if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <omp.h>
@@ -108,7 +109,8 @@ class ParallelFor< FunctorType
     //! There are some subtleties regarding which views are copied per kernel in the default subscriber
     //! See KokkosResilience::ResilienctDuplicatesSubscriber::duplicates_cache for details
 
-    int repeats = 5; //! This integer represents the maximum number of attempts to reach consensus allowed.
+    const int max_repeats = 5;
+    int repeats = max_repeats; //! This integer represents the maximum number of attempts to reach consensus allowed.
     bool success = 0; //! This bool indicates that all views successfully reached a consensus.
 
     while(success==0 && repeats > 0){
@@ -153,12 +155,14 @@ class ParallelFor< FunctorType
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
       repeats--;
+      std::cout << "success: " << success << " repeats: " << repeats << '\n';
 
     }// while (!success & repeats left)
 
     if(success==0 && repeats == 0){
       // Abort if 5 repeKokkos::abort(ated tries at executing failed to find acceptable match
-      Kokkos::abort("Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
+      auto &handler = KokkosResilience::get_unrecoverable_data_corruption_handler();
+      handler(max_repeats);
     }
 
   } // execute
