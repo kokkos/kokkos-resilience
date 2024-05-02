@@ -57,6 +57,7 @@
 #include <utility>
 #include <array>
 #include <cstdint>
+#include <random>
 
 /*--------------------------------------------------------------------------
  ******************** ERROR MESSAGE GENERATION *****************************
@@ -82,43 +83,26 @@ namespace KokkosResilience {
 // Struct to gate error insertion
 struct Error{
 
-explicit Error(uint64_t seed, double threshold) : local_seed(seed), local_random_pool(seed), error_rate(threshold){}
-uint64_t local_seed;
-Kokkos::Random_XorShift64_Pool<> local_random_pool;
+explicit Error(double rate) : error_rate(rate), geometric(rate){}
+
 double error_rate;
-
-};
-
-/*
-struct SubTimer{
-
-//Time entire subscriber-added processes
-inline static thread_local std::chrono::duration<long int, std::ration<1, 1000000000>> seconds{};
-inline static std::chrono::duration<long int, std::ration<1, 1000000000>> total_sub_time{};
-
-//Mutex for total time collection
-inline static std::mutex global_sub_mutex;
-
-};*/
-
-struct ETimer{
-//Error timer settings zero-initialized
-inline static thread_local std::chrono::duration<long int, std::ratio<1, 1000000000>> elapsed_seconds{};
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> total_error_time{};
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> max_error_time{};
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> min_error_time{};
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> average_error_time{};
-
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> temp_max{};
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> temp_min{};
-
-//Mutex for total_error_time accumulation
-inline static std::mutex global_time_mutex;
-
-
+std::geometric_distribution<> geometric{error_rate};
 };
 
 inline std::optional<Error> global_error_settings;
+
+struct ErrorInject{
+inline static int64_t error_counter;
+inline static std::mt19937 random_gen{0};
+inline static size_t global_next_inject = 0;
+};
+
+struct ETimer{
+//Error timer settings zero-initialized
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> elapsed_seconds{};
+inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> total_error_time{};
+inline static std::mutex global_time_mutex;
+};
 
 // Helper template used to get Rank number of 0's for MDRangePolicy
 template< std::int64_t begin >
@@ -174,7 +158,7 @@ struct CombineDuplicatesBase
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
   virtual bool execute() = 0;
-  //virtual void insert_error();
+  virtual void inject_error() = 0;
 };
 
 template< typename View >
@@ -214,96 +198,16 @@ struct CombineDuplicates: public CombineDuplicatesBase
     else {
       if constexpr(rank > 1){
          
-//Kokkos::Profiling::pushRegion("SubCombinerMultiD");
-
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
 
         Kokkos::parallel_for(mdrange, *this);
 	Kokkos::fence();
 
-//Kokkos::Profiling::popRegion();
 
       }else{
 
-//Kokkos::Profiling::pushRegion("SubCombiner1D");
-
-        //ETimer::global_time_mutex.lock();
- 	//std::cout << "This is a test; mutex unlock before subp4 tid " << omp_get_thread_num() << std::endl;
-	//ETimer::global_time_mutex.unlock();
-
 	Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
         //Kokkos::fence();
-	
-	//Set base minimum thread 0 for minimum error time
-	if (omp_get_thread_num() == 0){
-	  ETimer::global_time_mutex.lock();
-          ETimer::temp_min = ETimer::elapsed_seconds;
-	  //std::cout << "Etimer::temp_min before loop is " << ETimer::temp_min.count() << std::endl <<std::endl;
-	  ETimer::global_time_mutex.unlock();
-	}	  
-
-	Kokkos::parallel_for("ErrorAccumulation", omp_get_max_threads(), KOKKOS_LAMBDA (const int i) {
-
-          ETimer::global_time_mutex.lock();
-          //Accumulate into total
-	  ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
- 
-	  //Find and set max
-	  if(ETimer::temp_max.count() < ETimer::elapsed_seconds.count()){
-	    ETimer::temp_max = ETimer::elapsed_seconds;
-	  }
-
-	  //Find and set min
-	   if(ETimer::temp_min.count() > ETimer::elapsed_seconds.count()){
-            ETimer::temp_min = ETimer::elapsed_seconds;
-          }
-
-	  //Averaged over max_threads
-	  ETimer::average_error_time = ETimer::average_error_time + (ETimer::elapsed_seconds/omp_get_max_threads());
-	  
-	  //Prints to test
-	  //std::cout << "elapsed " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
-	  //std::cout << "max " << ETimer::temp_max.count() << " in thread " << omp_get_thread_num()<<std::endl;
-          //std::cout << "min " << ETimer::temp_min.count() << " in thread " << omp_get_thread_num()<<std::endl;
-
-          //std::cout << "total " <<ETimer::total_error_time.count() << " in thread " << omp_get_thread_num()<<std::endl;
-	  ETimer::elapsed_seconds = ETimer::elapsed_seconds - ETimer::elapsed_seconds;
-          //std::cout << "elapsed is now " << ETimer::elapsed_seconds.count() << " in thread " << omp_get_thread_num()<<std::endl;
-          ETimer::global_time_mutex.unlock();	
-
-	});
-
-        //Accumulate total max and min, reset temp max and min
-        //ETimer::global_time_mutex.lock();
-
-	ETimer::max_error_time = ETimer::max_error_time + ETimer::temp_max;
-	ETimer::temp_max = ETimer::temp_max - ETimer::temp_max;
-
-        ETimer::min_error_time = ETimer::min_error_time + ETimer::temp_min;
-        ETimer::temp_min = ETimer::temp_min - ETimer::temp_min;
-
-
-	//ETimer::global_time_mutex.unlock();
-
-        /*
-        //Each thread will add their own thread_local global version of elapsed_seconds
-        #pragma omp parallel
-	{
-          //std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
-	  
-	  ETimer::global_time_mutex.lock();	
-	  
-	  ETimer::total_error_time = ETimer::total_error_time + ETimer::elapsed_seconds;
-          
-	  std::cout << "elapsed" << ETimer::elapsed_seconds.count() << "in thread" << omp_get_thread_num()<<std::endl;
-	  std::cout << "total" <<ETimer::total_error_time.count() << "in thread" << omp_get_thread_num()<<std::endl;
-
-	  ETimer::global_time_mutex.unlock();
-
-        }*/
-
-//Kokkos::Profiling::popRegion();
-
       }
     }
     return success(0);
@@ -315,30 +219,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
   void operator ()(Args&&... its) const { //function parameter pack
 
 #ifdef KR_ENABLE_DMR
-//ERROR INSERTION 0 GATE HERE    
-   
-
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
 
-//Error Insertion Code
-#if 0
-      auto generator = random_pool.get_state();
-
-      double x = generator.drand(0., 1.);
-      double y = generator.drand(0., 1.);
-      double z = generator.drand(0., 1.);
-
-      random_pool.free_state(generator);
-
-      if(x<0.00001) 
-        original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
-      if(y<0.00001)
-        copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...) + 2 * y;
-      if(z<0.00001)
-        copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...) + 2 * z;
-#endif
-//Main Combiner begin, dmr failover has tripped into TMR
+      //Main Combiner begin, dmr failover has tripped into TMR
       for (int j = 0; j < 2; j ++) {
         if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
           return;
@@ -354,71 +238,14 @@ struct CombineDuplicates: public CombineDuplicatesBase
     // DMR has not failed over, only 1 copy exists
     // Slight correction: 2 copies instantiated, 1 initialized
     else{
-//Error Insertion Code
-#if 0
-      auto generator = random_pool.get_state();
-
-      double x = generator.drand(0., 1.);
-      double y = generator.drand(0., 1.);
-
-      random_pool.free_state(generator);
-
-      if(x<0.00001) 
-        original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
-      if(y<0.00001)
-        copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...)) + 2 * y;
-      
-#endif
-//DMR Combiner Begin with no failover
+      //DMR combiner begin with no failover
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
         return;
       }
       success(0) = false;
     }
-
-#else      
-//Error Insertion Code
-//#if 0
-    //Steady-clock should be thread-safe
-    const auto start{std::chrono::steady_clock::now()};
-
-    if(global_error_settings){
-
-    auto generator = global_error_settings->local_random_pool.get_state();
- 
-    double x = generator.drand(0., 1.);
-    double y = generator.drand(0., 1.);
-    double z = generator.drand(0., 1.);
-  
-    global_error_settings->local_random_pool.free_state(generator);
-   
-    if(x < global_error_settings->error_rate){
-      // printf("An error was inserted in the original\n");
-      original(std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(original(std::forward<Args>(its)...)) + 2 * x;
-      }
-    if(y < global_error_settings->error_rate){
-      // printf(An error was inserted in the first copy\n);
-      copy[0](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...)) + 2 * y;
-      }
-    if(z < global_error_settings->error_rate){
-      // printf("An error was inserted in the second copy\n");
-      copy[1](std::forward<Args>(its)...) = 2 * static_cast<typename View::value_type>(copy[1](std::forward<Args>(its)...)) + 2 * z;
-      }
-    }
-
-    const auto stop{std::chrono::steady_clock::now()};
-
-    ETimer::elapsed_seconds = ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-
-//    ETimer::global_time_mutex.lock();
-
-//    std::cout << "The error accumulator for thread " << omp_get_thread_num() << " is " << ETimer::elapsed_seconds.count() << " nanoseconds." << std::endl;
-
-//    ETimer::global_time_mutex.unlock();
-    
-//endif
-
-//Main Combiner Begin
+#endif
+    //Main Combiner Begin
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
         return;
@@ -430,8 +257,75 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     //No match found, all three executions return different number
     success(0) = false;
-#endif
   }
+
+  void inject_error() override
+  {
+    if constexpr(rank > 1){
+
+      //Worry about injecting errors here later (in extent(0) )
+      return;
+      
+    }else{
+      //Sequential, on original.size
+      if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
+      {
+        ErrorInject::global_next_inject = ErrorInject::global_next_inject - original.size();
+      }
+
+      size_t next_inject = ErrorInject::global_next_inject;
+
+#ifdef KR_ENABLE_DMR
+      if(duplicate_count == 2 ){
+	goto main_tmr_inject;
+      }
+      else{
+	for (int j = 0; j<2; j++){
+          while (next_inject < original.size())
+          {
+            if (j==0){
+              original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
+              ErrorInject::error_counter++;
+            }
+            else{
+              copy[j-1](next_inject) = 2 * static_cast<typename View::value_type>(copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
+              ErrorInject::error_counter++;
+            }
+            next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+
+          }
+          if(original.size() != 1){
+          next_inject = (next_inject) - (original.size());
+          }
+      
+        }
+      }
+
+#endif
+main_tmr_inject:      
+      for (int j = 0; j<3; j++){
+        while (next_inject < original.size())
+        { 
+          if (j==0){
+            //std::cout << "****!An error was inserted in the original at index " << next_inject << std::endl;
+            original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
+	    ErrorInject::error_counter++;
+          }  
+          else{
+	    //std::cout << "****!An error was inserted in copy[" << j - 1 << "] at index " << next_inject << std::endl;
+            copy[j-1](next_inject) = 2 * static_cast<typename View::value_type>(copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
+	    ErrorInject::error_counter++;
+          }
+          next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+
+        }
+	if(original.size() != 1){
+	  next_inject = (next_inject) - (original.size());
+        }
+      }
+    }
+  }
+
 };
 
 } // namespace KokkosResilience
@@ -572,10 +466,7 @@ void print_total_error_time() {
   //auto time = ETimer::total_error_time.count() / 1000000000;
   //const auto time = std::chrono::duration_cast<std::chrono::seconds>(ETimer::total_error_time);
   std::cout << "The value of ETimer::total_error_time.count() is " << ETimer::total_error_time.count() << " nanoseconds." << std::endl;
-//  std::cout << "The total error insertion time is currently " << ETimer::total_error_time.count() << " seconds." << std::endl;
-  std::cout << "The minimum error insertion time is currently " << ETimer::min_error_time.count() << " nanoseconds." << std::endl;
-  std::cout << "The maximum error insertion time is currently " << ETimer::max_error_time.count() << " nanoseconds." << std::endl;
-  std::cout << "The average error insertion time is currently " << ETimer::average_error_time.count() << " nanoseconds." << std::endl;
+  std::cout << "The total number of errors inserted is " << ErrorInject::error_counter << " errors." << std::endl;
   ETimer::global_time_mutex.unlock();
 
 }

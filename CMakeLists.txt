@@ -13,7 +13,7 @@ add_library(Kokkos::resilience ALIAS resilience)
 
 
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
-option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
+option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" OFF)
 
 if (KR_ALL_WARNINGS)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
