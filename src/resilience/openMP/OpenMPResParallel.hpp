@@ -72,7 +72,26 @@ namespace KokkosResilience{
     return success;
   }
 
+  inline void inject_error_duplicates() {
+
+    if (KokkosResilience::global_error_settings->error_rate){
+      //Per kernel, seed the first inject index	    
+      KokkosResilience::ErrorInject::global_next_inject = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInject::random_gen);	      ;
+
+      // Inject geometrically distributed error into all duplicates
+      // Go over the Subscriber map, inject into all the CombinerBase elements
+      for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+        combiner.second->inject_error();
+      }
+    }
+    else{
+      std::cout << "Error finding error_rate. Were global error settings enabled?\n";
+    }
+  }
+
 } // namespace KokkosResilience
+
+
 
 /*--------------------------------------------------------------------------*/
 /************************* ERROR INSERTION TEST CODE ************************/
@@ -185,6 +204,13 @@ class ParallelFor< FunctorType
       closure1.execute();
       closure2.execute();
 
+
+      const auto start{std::chrono::steady_clock::now()};
+      KokkosResilience::inject_error_duplicates();
+      const auto stop{std::chrono::steady_clock::now()};
+      KokkosResilience::ETimer::elapsed_seconds = KokkosResilience::ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ETimer::total_error_time = KokkosResilience::ETimer::total_error_time + KokkosResilience::ETimer::elapsed_seconds;
+
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
       //KokkosResilience::print_duplicates_map();
@@ -210,6 +236,12 @@ class ParallelFor< FunctorType
       closure0.execute();
       closure1.execute();
 
+      const auto start{std::chrono::steady_clock::now()};
+      KokkosResilience::inject_error_duplicates();
+      const auto stop{std::chrono::steady_clock::now()};
+      KokkosResilience::ETimer::elapsed_seconds = KokkosResilience::ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ETimer::total_error_time = KokkosResilience::ETimer::total_error_time + KokkosResilience::ETimer::elapsed_seconds;
+      
       // Combine the duplicate views, majority vote not triggered due to CMAKE macro
       success = KokkosResilience::combine_resilient_duplicates();
 
@@ -221,6 +253,13 @@ class ParallelFor< FunctorType
         KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
         Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
+
+        const auto start{std::chrono::steady_clock::now()};
+        KokkosResilience::inject_error_duplicates();
+        const auto stop{std::chrono::steady_clock::now()};
+        KokkosResilience::ETimer::elapsed_seconds = KokkosResilience::ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+        KokkosResilience::ETimer::total_error_time = KokkosResilience::ETimer::total_error_time + KokkosResilience::ETimer::elapsed_seconds;
+
         success = KokkosResilience::combine_resilient_duplicates();
         KokkosResilience::clear_duplicates_map();
         KokkosResilience::ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
@@ -236,6 +275,12 @@ class ParallelFor< FunctorType
       Impl::ParallelFor< decltype(wrapper_functor) , surrogate_policy, Kokkos::OpenMP > closure( wrapper_functor , wrapper_policy );
 
       closure.execute();
+
+      const auto start{std::chrono::steady_clock::now()};
+      KokkosResilience::inject_error_duplicates();
+      const auto stop{std::chrono::steady_clock::now()};
+      KokkosResilience::ETimer::elapsed_seconds = KokkosResilience::ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ETimer::total_error_time = KokkosResilience::ETimer::total_error_time + KokkosResilience::ETimer::elapsed_seconds;
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
