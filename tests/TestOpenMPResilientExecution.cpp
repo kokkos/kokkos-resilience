@@ -50,8 +50,8 @@
 #include <omp.h>
 #include <cstdio>
 
-#define N 20
-#define N_2 10
+#define N 100
+#define N_2 50
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -104,9 +104,10 @@ TEST(TestResOpenMP, TestKokkosFor)
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
 {
+  std::cout <<"segfault after globalsetttings\n";
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
 
-  KokkosResilience::global_error_settings = KokkosResilience::Error(12345, 0.01);
-
+  std::cout <<"segfault after view allocation\n";
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
   ViewVectorDoubleSubscriber x( "x", N );
@@ -119,10 +120,7 @@ TEST(TestResOpenMP, TestResilientForDouble)
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  
-  
-//Kokkos::Profiling::pushRegion("GTestResilientForDoubleFor");
- 
+  std::cout <<"segfault after parallel for start\n";
   Kokkos::parallel_for("GTestResilientDoubleFor", range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
@@ -131,7 +129,6 @@ TEST(TestResOpenMP, TestResilientForDouble)
   KokkosResilience::print_total_error_time();
   double time = timer.seconds();
   std::cout << "GTestResilientForDoubleFor (needs a better name) time is: " << time << " s" << std::endl;
-//Kokkos::Profiling::popRegion();
 
   KokkosResilience::clear_duplicates_cache();
 
@@ -146,7 +143,6 @@ TEST(TestResOpenMP, TestResilientForDouble)
   KokkosResilience::global_error_settings.reset();
 
 }
-/*
 // gTest runs parallel_for with resilient Kokkos integer assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForInteger)
@@ -217,10 +213,6 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N_2), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = 1;
-    //if (i==1) {
-      //std::cout << "Threads:" << omp_get_num_threads();
-      //std::cout << std::endl;
-    //}
   });
 
   Kokkos::parallel_for( range_policy (N_2, N), KOKKOS_LAMBDA ( const int i) {
@@ -346,11 +338,10 @@ TEST(TestResOpenMP, TestResilient2D)
   }
   ASSERT_EQ(counter(0), N*N);
 }
-*/
+
 /**********************************
  *********PARALLEL REDUCES*********
  **********************************/
-/*
 // gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
 TEST(TestResOpenMP, TestKokkosReduceDouble)
 {
@@ -427,40 +418,3 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
 }
 #endif
 
-#if 0
-
-// Random Number Test
-TEST(TestResOpenMP, TestRandomKokkos)
-{
-
-  Kokkos::Random_XorShift64_Pool<> random_pool(12345);
- 
-  Kokkos::parallel_for(
-    "Tooling", N,
-    KOKKOS_LAMBDA(int i) {
-      auto generator = random_pool.get_state();
-     
-      double x = generator.drand(0.,1.);
-      double y = generator.drand(0.,1.);  
-     
-      if(x >= 0.01)
-        printf("In iteration %d, %f greater than threshold 0.01\n",i,x);
-
-      if(y >= 0.01)
-        printf("In iteration %d, %f greater than threshold 0.01\n",i,y);
-    
-      if(x < 0.01)
-        printf("In iteration %d, %f less than threshold 0.01, error inserted\n",i,x);
-
-      if(y < 0.01)
-        printf("In iteration %d, %f less than threshold 0.01, error inserted\n",i,y);
-
-      random_pool.free_state(generator);
-
-      });
-
-  printf("Here Ends the Test\n");
-
-}
-#endif
-*/
