@@ -221,7 +221,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #ifdef KR_ENABLE_DMR
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
-
       //Main Combiner begin, dmr failover has tripped into TMR
       for (int j = 0; j < 2; j ++) {
         if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
@@ -230,7 +229,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       }
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), copy[1](std::forward<Args>(its)...))){
         original(std::forward<Args>(its)...) = static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...));  // just need 2 that are the same
-        return;
+	return;
       }
       //No match found, all three executions return different number
       success(0) = false;
@@ -240,11 +239,11 @@ struct CombineDuplicates: public CombineDuplicatesBase
     else{
       //DMR combiner begin with no failover
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
-        return;
+	return;
       }
       success(0) = false;
     }
-#endif
+#else
     //Main Combiner Begin
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
@@ -257,6 +256,36 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     //No match found, all three executions return different number
     success(0) = false;
+#endif
+  }
+
+  void oneD_tmr_inject(){
+    //Sequential, on original.size
+    if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
+    {
+      ErrorInject::global_next_inject = ErrorInject::global_next_inject - original.size();
+    }
+
+    size_t next_inject = ErrorInject::global_next_inject;
+
+    for (int j = 0; j<=2; j++){
+      while (next_inject < original.size())
+      {
+        if (j==0){//Inject in the original if j is 0
+          original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
+          ErrorInject::error_counter++;
+        }
+        else{//Else inject in one of the other two copies, copy[0] or copy[1]
+          copy[j-1](next_inject) = 2 * static_cast<typename View::value_type>(copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
+          ErrorInject::error_counter++;
+        }
+        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+
+      }
+      if(original.size() != 1){
+      next_inject = (next_inject) - (original.size());
+      }
+    }
   }
 
   void inject_error() override
@@ -267,66 +296,48 @@ struct CombineDuplicates: public CombineDuplicatesBase
       return;
       
     }else{
-      //Sequential, on original.size
-      if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
-      {
-        ErrorInject::global_next_inject = ErrorInject::global_next_inject - original.size();
-      }
-
-      size_t next_inject = ErrorInject::global_next_inject;
 
 #ifdef KR_ENABLE_DMR
+      //Implies dmr_failover_to_tmr has tripped    
       if(duplicate_count == 2 ){
-	goto main_tmr_inject;
+	//goto main_tmr_inject;
+	oneD_tmr_inject();
       }
-      else{
+      else{//The actual dmr error inject with only 1 copy
+        if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
+        {
+          ErrorInject::global_next_inject = ErrorInject::global_next_inject - original.size();
+        }
+
+        size_t next_inject = ErrorInject::global_next_inject;
 	for (int j = 0; j<2; j++){
           while (next_inject < original.size())
           {
-            if (j==0){
+            if (j==0){//Insert error into original
+		    //std::cout <<"Injecting an error at " <<next_inject<< " in the original"<< std::endl;	    
               original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
               ErrorInject::error_counter++;
             }
-            else{
-              copy[j-1](next_inject) = 2 * static_cast<typename View::value_type>(copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
+            else{//Insert error into only copy
+		    //std::cout <<"Injecting an error at " <<next_inject<< " in copy [0]"<< std::endl;
+              copy[0](next_inject) = 2 * static_cast<typename View::value_type>(copy[0](next_inject) + 2 * ErrorInject::random_gen());
               ErrorInject::error_counter++;
             }
             next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-
           }
           if(original.size() != 1){
           next_inject = (next_inject) - (original.size());
           }
-      
         }
       }
 
+#else
+	oneD_tmr_inject();
 #endif
-main_tmr_inject:      
-      for (int j = 0; j<3; j++){
-        while (next_inject < original.size())
-        { 
-          if (j==0){
-            //std::cout << "****!An error was inserted in the original at index " << next_inject << std::endl;
-            original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
-	    ErrorInject::error_counter++;
-          }  
-          else{
-	    //std::cout << "****!An error was inserted in copy[" << j - 1 << "] at index " << next_inject << std::endl;
-            copy[j-1](next_inject) = 2 * static_cast<typename View::value_type>(copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
-	    ErrorInject::error_counter++;
-          }
-          next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+    }//end rank == 1
+  }// end error inject
 
-        }
-	if(original.size() != 1){
-	  next_inject = (next_inject) - (original.size());
-        }
-      }
-    }
-  }
-
-};
+};// end Combiner
 
 } // namespace KokkosResilience
 
@@ -358,7 +369,7 @@ struct ResilientDuplicatesSubscriber {
   get_duplicate_for( const View &original) {
     bool inserted = false;
     auto pos = duplicates_cache.find(original.data());
-
+    
     // True if got to end of cache and view wasn't found
     if (pos == duplicates_cache.end()) {
       // Insert view into cache map and flag
@@ -370,24 +381,35 @@ struct ResilientDuplicatesSubscriber {
     }
 
     auto &res = *static_cast< CombineDuplicates<View> * >( pos->second.get());
-
     // If inserted in the cache map then create copies and reinitialize
+
+#if 0    
+#ifdef KR_ENABLE_DMR
+
+     // DMR variant initialization of copies
+     // only 1 initially, 2 on fail
+     if (dmr_failover_to_tmr && res.copy[1].data()==nullptr){
+      // Create second copy
+        set_duplicate_view(res.copy[1], original, 1);
+      }
+#endif
+#endif
+
     if (inserted) {
       res.original = original;
 
 #ifdef KR_ENABLE_DMR
-
-      // DMR variant initialization of copies
-      // only 1 initially, 2 on fail
       if (dmr_failover_to_tmr){
         // Create second copy
         set_duplicate_view(res.copy[1], original, 1);
-      }
-      else{
-        // Create first copy
-        set_duplicate_view(res.copy[0], original, 0);
-      }
+      }else{
 
+	      //TODO: for dmr want this to be in main inserted if
+	      //and uncomment if 0
+      // only 1 initially, 2 on fail
+      // Create first copy for DMR
+      set_duplicate_view(res.copy[0], original, 0);
+      }
 #else
 
       // Reinitialize self to be like other (same dimensions, etc)
@@ -404,7 +426,6 @@ struct ResilientDuplicatesSubscriber {
   template<typename View>
   KOKKOS_INLINE_FUNCTION
   static void set_duplicate_view(View &duplicate, const View &original, int duplicate_count) {
-
     std::stringstream label_ss;
     label_ss << original.label() << duplicate_count;
     duplicate = View(label_ss.str(), original.layout());
@@ -423,7 +444,6 @@ struct ResilientDuplicatesSubscriber {
   {
     // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
     if (in_resilient_parallel_loop) {
-
       // This won't be triggered if the entry already exists
       auto *combiner = get_duplicate_for(other);
       auto res = duplicates_map.emplace(std::piecewise_construct,
