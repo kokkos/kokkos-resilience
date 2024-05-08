@@ -72,6 +72,14 @@ namespace KokkosResilience{
     return success;
   }
 
+} // namespace KokkosResilience
+
+/*--------------------------------------------------------------------------*/
+/************************* ERROR INSERTION TEST CODE ************************/
+/*--------------------------------------------------------------------------*/
+
+namespace KokkosResilience{
+
   inline void inject_error_duplicates() {
 
     if (KokkosResilience::global_error_settings->error_rate){
@@ -91,23 +99,6 @@ namespace KokkosResilience{
 
 } // namespace KokkosResilience
 
-
-
-/*--------------------------------------------------------------------------*/
-/************************* ERROR INSERTION TEST CODE ************************/
-/*--------------------------------------------------------------------------*/
-/*
-namespace KokkosResilience{
-
-inline insert_error_duplicates(){
-// Goes over the Subscriber duplicate map (not cache map), inserting an error randomly
-  for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-    combiner.second->insert_error();
-  }
-}
-
-} // namespace KokkosResilience
-*/
 /*--------------------------------------------------------------------------*/
 /************************ RESILIENT PARALLEL FORS ***************************/
 /*--------------------------------------------------------------------------*/
@@ -155,7 +146,7 @@ class ParallelFor< FunctorType
 
     while(success==0 && repeats > 0){
       surrogate_policy wrapper_policy;
-
+      //std::cout << "Test print if triggered repeat from too many errors.\n";
 #ifdef KR_ENABLE_TMR
       wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
       // Trigger Subscriber constructors
@@ -213,7 +204,6 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
-      //KokkosResilience::print_duplicates_map();
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 
@@ -249,7 +239,7 @@ class ParallelFor< FunctorType
       {
         KokkosResilience::ResilientDuplicatesSubscriber::dmr_failover_to_tmr = true;
         KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
-        auto m_functor_1 = m_functor;
+	auto m_functor_1 = m_functor;
         KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
         Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
@@ -264,7 +254,6 @@ class ParallelFor< FunctorType
         KokkosResilience::clear_duplicates_map();
         KokkosResilience::ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
       }
-
       KokkosResilience::clear_duplicates_map();
 #endif
 #ifdef KR_ENABLE_WRAPPER
@@ -287,7 +276,6 @@ class ParallelFor< FunctorType
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 #endif
-
       repeats--;
 
     }// while (!success & repeats left)
