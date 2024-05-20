@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
            ("n,nsteps", "Number of timesteps", cxxopts::value<std::size_t>()->default_value("600"))
            ("p,precision", "Min precision", cxxopts::value<double>()->default_value("0.00001"))
            ("c,checkpoint-interval", "Checkpoint interval", cxxopts::value<int>()->default_value("100"))
-           ("config", "Config file", cxxopts::value<std::string>())
+           ("config", "Config file", cxxopts::value<std::string>()->default_value("config.json"))
            ("views", "Number of Kokkos Views", cxxopts::value<std::size_t>()->default_value("1"))
            ("scale", "Weak or strong scaling", cxxopts::value<std::string>()->default_value("weak"))
            ;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
          nbLines = (M / nbProcs) + 3;
       }
 
-      std::vector<Kokkos::View<double*>> MyViews(num_views);
+      std::vector<KokkosResilience::View<double*>> MyViews(num_views);
       for( std::size_t i = 0 ; i < num_views; ++i )
       {
          Kokkos::resize( MyViews[i], M*nbLines);

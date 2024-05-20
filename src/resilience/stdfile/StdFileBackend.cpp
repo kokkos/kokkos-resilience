@@ -87,6 +87,8 @@ void StdFileBackend::checkpoint(
       char *bytes     = static_cast<char *>(v->data());
       std::size_t len = v->span() * v->data_type_size();
 
+      std::cout << "writing " << len << " bytes to " << filename << " for view " << v->label() << '\n';
+
       file.write(bytes, len);
     }
 #ifdef KR_ENABLE_TRACING

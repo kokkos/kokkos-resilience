@@ -58,9 +58,9 @@ main( int argc, char **argv )
     auto ctx = KokkosResilience::make_context( "checkpoint.data", "config_file.json" );
 
     int  dim0 = 5, dim1 = 5;
-    auto view = Kokkos::View< double ** >( "test_view", dim0, dim1 );
+    auto view = KokkosResilience::View< double ** >( "test_view", dim0, dim1 );
 
-    KokkosResilience::checkpoint( *ctx, "test_checkpoint", 0, [view, dim0, dim1]() {
+    KokkosResilience::checkpoint( *ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( dim0, KOKKOS_LAMBDA( int i ) {
         for ( int j = 0; j < dim1; ++j )
           view( i, j ) = 3.0;

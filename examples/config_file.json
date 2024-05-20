@@ -6,7 +6,7 @@
     }
   },
   "filter": {
-    "type": "time",
+    "type": "iteration",
     "interval": 10
   }
 }
