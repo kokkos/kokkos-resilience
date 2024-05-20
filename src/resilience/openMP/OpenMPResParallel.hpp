@@ -99,10 +99,6 @@ class ParallelFor< FunctorType
 
  public:
   inline void execute() const {
-
-    if (KokkosResilience::ResOpenMP::in_parallel())
-      Kokkos::abort("Cannot call resilient parallel_for inside a parallel construct.");
-
     //! The execution() function in this class performs an OpenMP execution of parallel for with
     //! triple modular redundancy. Non-constant views equipped with the triggering subscribers are
     //! duplicated and three concurrent executions divided equally between the available pool
