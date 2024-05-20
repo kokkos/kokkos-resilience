@@ -75,7 +75,7 @@ public:
   ResCudaSpace & operator = ( ResCudaSpace && rhs ) = default ;
   ResCudaSpace & operator = ( const ResCudaSpace & rhs ) = default ;
   ~ResCudaSpace() = default ;
-  
+
   static void clear_duplicates_list();
 
   static std::map<std::string, Kokkos::Experimental::DuplicateTracker * > duplicate_map;
@@ -446,7 +446,7 @@ namespace KokkosResilience {
        if ( iwork <  cf.get_len() )
           cf.exec(iwork);
   }
- 
+
 } // namespace KokkosResilience
 
 
