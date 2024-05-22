@@ -155,7 +155,6 @@ class ParallelFor< FunctorType
       // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
       repeats--;
-      std::cout << "success: " << success << " repeats: " << repeats << '\n';
 
     }// while (!success & repeats left)
 
