@@ -197,7 +197,11 @@ namespace KokkosResilience
     void restart( const std::string &label, int version,
                   const std::vector< KokkosResilience::ViewHolder > &views );
 
-    void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
+    void register_hashes(const std::vector<KokkosResilience::ViewHolder> &) {
+    }  // Do nothing
+
+   private:
+    ContextBase *m_context;
   };
 }
 
