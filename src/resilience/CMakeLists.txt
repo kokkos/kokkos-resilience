@@ -6,6 +6,7 @@ if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
                  ${CMAKE_CURRENT_LIST_DIR}/Cref.cpp
                  )
   add_subdirectory(backend)
+  add_subdirectory(registration)
   add_subdirectory(context)
 endif()
 
