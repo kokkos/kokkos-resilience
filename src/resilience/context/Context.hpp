@@ -50,18 +50,18 @@
 #include <memory>
 #include <functional>
 #include <chrono>
-#include "Config.hpp"
-#include "Cref.hpp"
+#include "resilience/config/Config.hpp"
+#include "resilience/Cref.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
-#include "view_hooks/ViewHolder.hpp"
-#ifdef KR_ENABLE_MPI_BACKENDS
+#include "resilience/view_hooks/ViewHolder.hpp"
+#ifdef KR_ENABLE_MPI_CONTEXT
 #include <mpi.h>
 #endif
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING
-#include "util/Trace.hpp"
+#include "resilience/util/Trace.hpp"
 #endif
 
 namespace KokkosResilience
@@ -112,11 +112,9 @@ namespace KokkosResilience
   };
 
   std::unique_ptr< ContextBase > make_context( const std::string &config );
-#ifdef KR_ENABLE_MPI_BACKENDS
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
-#endif
-#ifdef KR_ENABLE_STDFILE
   std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
+#ifdef KR_ENABLE_MPI_CONTEXT
+  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
 #endif
 }
 

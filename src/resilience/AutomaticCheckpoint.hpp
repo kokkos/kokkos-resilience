@@ -53,7 +53,7 @@
 #include "view_hooks/DynamicViewHooks.hpp"
 
 #include "Cref.hpp"
-#include "CheckpointFilter.hpp"
+#include "context/CheckpointFilter.hpp"
 
 // Tracing support
 #ifdef KR_ENABLE_TRACING

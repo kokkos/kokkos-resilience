@@ -42,8 +42,8 @@
 #include "TestCommon.hpp"
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
-#include <resilience/openMP/ResHostSpace.hpp>
-#include <resilience/openMP/ResOpenMP.hpp>
+#include <resilience/exec_space/openMP/ResHostSpace.hpp>
+#include <resilience/exec_space/openMP/ResOpenMP.hpp>
 
 #include <thread>
 #include <vector>

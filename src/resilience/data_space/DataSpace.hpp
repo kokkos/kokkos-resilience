@@ -38,22 +38,15 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP
-#define INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP
+#ifndef INC_RESILIENCE_DATA_SPACE_SPACES_HPP
+#define INC_RESILIENCE_DATA_SPACE_SPACES_HPP
 
-#include <Kokkos_Macros.hpp>
-#if defined(KOKKOS_ENABLE_OPENMP)
+#ifdef KR_ENABLE_DATA_SPACES
+   #include "resilience/stdio/StdFileSpace.hpp"
 
-#include "OpenMPResSubscriber.hpp"
+   #ifdef KR_ENABLE_HDF5
+      #include "hdf5/HDF5Space.hpp"
+   #endif
+#endif
 
-namespace KokkosResilience {
-
-bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
-
-std::unordered_map< ResilientDuplicatesSubscriber::key_type, CombineDuplicatesBase * > ResilientDuplicatesSubscriber::duplicates_map;
-std::unordered_map< ResilientDuplicatesSubscriber::key_type, std::unique_ptr< CombineDuplicatesBase > > ResilientDuplicatesSubscriber::duplicates_cache;
-
-}
-
-#endif //defined(KOKKOS_ENABLE_OPENMP)
-#endif //INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP
+#endif  // INC_RESILIENCE_DATA_SPACE_SPACES_HPP

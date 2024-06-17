@@ -38,15 +38,17 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_MANUALCHECKPOINT_HPP
-#define INC_RESILIENCE_MANUALCHECKPOINT_HPP
 
-#ifdef KR_ENABLE_MANUAL_CHECKPOINT
-   #include "resilience/stdio/StdFileSpace.hpp"
 
-   #ifdef KR_ENABLE_HDF5
-      #include "hdf5/HDF5Space.hpp"
-   #endif
+#ifdef KR_ENABLE_CUDA_EXEC_SPACE
+#include "cuda/ResCuda.hpp"
+#include "cuda/ResCudaSpace.hpp"
+#include "cuda/CudaResParallel.hpp"
 #endif
 
-#endif  // INC_RESILIENCE_MANUALCHECKPOINT_HPP
+#ifdef KR_ENABLE_OPENMP_EXEC_SPACE
+#include "openMP/ResOpenMP.hpp"
+#include "openMP/OpenMPResParallel.hpp"
+#include "openMP/OpenMPResSubscriber.hpp"
+#include "openMP/ResHostSpace.hpp"
+#endif

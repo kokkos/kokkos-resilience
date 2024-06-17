@@ -5,11 +5,12 @@ include(CMakeFindDependencyMacro)
 
 include("${CMAKE_CURRENT_LIST_DIR}/resilienceTargets.cmake")
 
-set(KR_ENABLE_HDF5 @KR_ENABLE_HDF5@)
-set(KR_ENABLE_VELOC @KR_ENABLE_VELOC@)
-set(KR_ENABLE_EXEC_SPACES @KR_ENABLE_EXEC_SPACES@)
-set(KR_ENABLE_CUDA_EXEC_SPACE @KR_ENABLE_CUDA_EXEC_SPACE@)
-set(KR_ENABLE_OPENMP_EXEC_SPACE @KR_ENABLE_OPENMP_EXEC_SPACE@)
+#All options defined with kr_option are exposed to linking targets' CMakeLists
+set(KR_EXPOSED_OPTIONS @KR_EXPOSED_OPTIONS@)
+set(KR_EXPOSED_OPTION_VALUES @KR_EXPOSED_OPTION_VALUES@)
+foreach (OPT in ZIP_LISTS KR_EXPOSED_OPTIONS KR_EXPOSED_OPTION_VALUES)
+   set(${OPT_1} ${OPT_2})
+endforeach()
 
 # VeloC needs to add a cmake config...
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/Modules/")
@@ -17,13 +18,12 @@ message(STATUS "Module path: ${CMAKE_MODULE_PATH}")
 
 find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
 
-if (@KR_ENABLE_VELOC@)
+if (KR_ENABLE_VELOC_BACKEND)
    set(veloc_DIR @veloc_DIR@)
-   set(KR_VELOC_BAREBONE @KR_VELOC_BAREBONE@)
    find_dependency(veloc REQUIRED)
 endif()
 
-if (@KR_ENABLE_HDF5@)
+if (KR_ENABLE_HDF5_DATA_SPACE)
    set(HDF5_DIR @HDF5_DIR@)
    find_dependency(HDF5 REQUIRED)
 endif()
