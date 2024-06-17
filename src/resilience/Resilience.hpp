@@ -45,23 +45,10 @@
 
 #include <resilience/config/Config.hpp>
 
-#include "Context.hpp"
-#include "ManualCheckpoint.hpp"
-
-#ifdef KR_ENABLE_VELOC
-#include "veloc/VelocBackend.hpp"
-#include "AutomaticCheckpoint.hpp"
-#endif
-
-#ifdef KR_ENABLE_STDFILE
-#include "stdfile/StdFileBackend.hpp"
-#include "AutomaticCheckpoint.hpp"
-#endif
-
-#ifdef KR_ENABLE_CUDA_EXEC_SPACE
-#include "cuda/ResCuda.hpp"
-#include "cuda/ResCudaSpace.hpp"
-#include "cuda/CudaResParallel.hpp"
+#ifdef KR_ENABLE_AUTOMATIC_CHECKPOINTING
+#include "resilience/context/Context.hpp"
+#include "resilience/backend/Backend.hpp"
+#include "resilience/AutomaticCheckpoint.hpp"
 #endif
 
 namespace KokkosResilience {
@@ -74,5 +61,13 @@ void default_unrecoverable_data_corruption_handler(std::size_t retries);
 void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
 unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
 }  // namespace KokkosResilience
+
+#ifdef KR_ENABLE_EXEC_SPACES
+#include "resilience/exec_space/ExecSpace.hpp"
+#endif
+
+#ifdef KR_ENABLE_DATA_SPACES
+#include "resilience/data_space/DataSpace.hpp"
+#endif
 
 #endif  // INC_RESILIENCE_RESILIENCE_HPP
