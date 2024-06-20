@@ -38,3 +38,29 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+
+#include "resilience/Resilience.hpp"
+
+namespace KokkosResilience {
+
+void default_unrecoverable_data_corruption_handler(std::size_t) {
+  Kokkos::abort(
+      "Resilience majority voting failed because each execution obtained a "
+      "differing value.");
+}
+
+namespace {
+unrecoverable_data_corruption_handler g_unrecoverable_data_corruption_handler =
+    default_unrecoverable_data_corruption_handler;
+}
+
+void set_unrecoverable_data_corruption_handler(
+    unrecoverable_data_corruption_handler handler) {
+  g_unrecoverable_data_corruption_handler = handler;
+}
+
+unrecoverable_data_corruption_handler&
+get_unrecoverable_data_corruption_handler() {
+  return g_unrecoverable_data_corruption_handler;
+}
+}  // namespace KokkosResilience

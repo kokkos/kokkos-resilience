@@ -168,15 +168,18 @@ TEST(TestResOpenMP, TestResilientForInsertError)
 
   counter(0) = 0;
 
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  bool failed_recovery = false;
+  KokkosResilience::set_unrecoverable_data_corruption_handler(
+      [&failed_recovery](std::size_t) { failed_recovery = true; });
 
   // Assigning each y(i) threadId, should cause a failure in the resilient execution except in single-thread case.
-  EXPECT_DEATH(
-    Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
-      y(i) = omp_get_thread_num();
-      Kokkos::atomic_increment(&counter(0));
-    });
-  ,"Aborted in parallel_for, resilience majority voting failed because each execution obtained a differing value.");
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( int i) {
+    y(i) = counter(0);
+    Kokkos::atomic_increment(&counter(0));
+  });
+  KokkosResilience::clear_duplicates_cache();
+  KokkosResilience::set_unrecoverable_data_corruption_handler(&KokkosResilience::default_unrecoverable_data_corruption_handler);
+  ASSERT_TRUE(failed_recovery);
 }
 
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
