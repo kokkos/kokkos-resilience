@@ -14,11 +14,7 @@
           "type": "BOOL",
           "value": "OFF"
         },
-        "KR_ENABLE_VELOC": {
-          "type": "BOOL",
-          "value": "ON"
-        },
-        "KR_ENABLE_STDFILE": {
+        "KR_ENABLE_VELOC_BACKEND": {
           "type": "BOOL",
           "value": "ON"
         }
