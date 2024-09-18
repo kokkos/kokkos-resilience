@@ -431,34 +431,29 @@ struct ResilientDuplicatesSubscriber {
     duplicate = View(label_ss.str(), original.layout());
   }
 
-  // A template argument V (view), a template itself, having at least one parameter
-  // the first one (T), to determine between the const/non-const copy constructor in overload
-  // Class because C++14
-  template<template<typename, typename ...> class V, typename T, typename... Args>
-  static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
-    // If View is constant do nothing, not triggering the rest of the subscriber.
-  }
-
-  template< template< typename, typename ...> class V, typename T, typename... Args>
-  static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
+  template<typename View>
+  static void copy_constructed( View &self, const View &other)
   {
-    // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
-    if (in_resilient_parallel_loop) {
-      // This won't be triggered if the entry already exists
-      auto *combiner = get_duplicate_for(other);
-      auto res = duplicates_map.emplace(std::piecewise_construct,
-                                        std::forward_as_tuple(other.data()),
-                                        std::forward_as_tuple(combiner));
-      auto &c = dynamic_cast< CombineDuplicates< V<T*, Args...> > & > (*res.first->second);
+    if constexpr( std::is_same_v< typename View::non_const_data_type, typename View::data_type > )
+    {
+      // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
+      if (in_resilient_parallel_loop) {
+        // This won't be triggered if the entry already exists
+        auto *combiner = get_duplicate_for(other);
+        auto res = duplicates_map.emplace(std::piecewise_construct,
+                                          std::forward_as_tuple(other.data()),
+                                          std::forward_as_tuple(combiner));
+        auto &c = dynamic_cast< CombineDuplicates< View > & > (*res.first->second);
 
-      // The first copy constructor in a parallel_for for the given view
-      if (res.second) {
-        c.duplicate_count = 0;
+        // The first copy constructor in a parallel_for for the given view
+        if (res.second) {
+          c.duplicate_count = 0;
+        }
+
+        self = c.copy[c.duplicate_count++];
+        // Copy all data, every time
+        Kokkos::deep_copy(self, other);
       }
-
-      self = c.copy[c.duplicate_count++];
-      // Copy all data, every time
-      Kokkos::deep_copy(self, other);
     }
   }
 
