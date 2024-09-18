@@ -38,39 +38,20 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_RESILIENCE_HPP
-#define INC_RESILIENCE_RESILIENCE_HPP
+#ifndef INC_RESILIENCE_ERRORHANDLER_HPP
+#define INC_RESILIENCE_ERRORHANDLER_HPP
 
 #include <functional>
 
-#include <resilience/config/Config.hpp>
+namespace KokkosResilience {
+/**
+ * A function that will be invoked with the total number of retries if the
+ * runtime encounters an unrecoverable data corruption.
+ */
+using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
+void default_unrecoverable_data_corruption_handler(std::size_t retries);
+void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
+unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
+}  // namespace KokkosResilience
 
-#include "Context.hpp"
-#include "ManualCheckpoint.hpp"
-
-#ifdef KR_ENABLE_VELOC
-#include "veloc/VelocBackend.hpp"
-#include "AutomaticCheckpoint.hpp"
-#endif
-
-#ifdef KR_ENABLE_STDFILE
-#include "stdfile/StdFileBackend.hpp"
-#include "AutomaticCheckpoint.hpp"
-#endif
-
-#ifdef KR_ENABLE_CUDA_EXEC_SPACE
-#include "cuda/ResCuda.hpp"
-#include "cuda/ResCudaSpace.hpp"
-#include "cuda/CudaResParallel.hpp"
-#endif
-
-#ifdef KR_ENABLE_OPENMP_EXEC_SPACE
-#include "openMP/ResOpenMP.hpp"
-#include "openMP/ResHostSpace.hpp"
-#include "openMP/OpenMPResParallel.hpp"
-#include "openMP/OpenMPResSubscriber.hpp"
-#endif
-
-#include "ErrorHandler.hpp"
-
-#endif  // INC_RESILIENCE_RESILIENCE_HPP
+#endif  // INC_RESILIENCE_ERRORHANDLER_HPP
