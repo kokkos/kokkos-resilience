@@ -43,7 +43,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
-#include "resilience/Resilience.hpp"
+#include "../ErrorHandler.hpp"
 #if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <omp.h>
@@ -330,10 +330,6 @@ class ParallelFor<FunctorType,
 
  public:
   inline void execute() const {
-
-    if (KokkosResilience::ResOpenMP::in_parallel())
-      Kokkos::abort("Cannot call resilient parallel_for inside a parallel construct.");
-
     int repeats = 5;
     bool success = 0;
     while(success==0 && repeats > 0){
