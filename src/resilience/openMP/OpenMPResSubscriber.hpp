@@ -157,6 +157,7 @@ struct CombineDuplicatesBase
 {
   // Virtual bool to return success flag
   virtual ~CombineDuplicatesBase() = default;
+  virtual void clear() = 0;
   virtual bool execute() = 0;
   virtual void inject_error() = 0;
 };
@@ -182,6 +183,12 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // The rank of the view is known at compile-time, and there
   // is 1 subscriber per view. Therefore it is not templated on the 
   // instantiation of the original, but on the View itself 
+
+  void clear() override
+  {
+    copy[0] = View ();
+    copy[1] = View ();
+  }
 
   bool execute() override
   { 
@@ -221,7 +228,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // Looping over duplicates to check for equality
   template<typename... Args> //template parameter pack
   KOKKOS_FUNCTION
-  void operator ()(Args&&... its) const { //function parameter pack
+  void operator ()(Args&&... its) const{ //function parameter pack
 
   //std::cout << "Test Print: Entered the combiner.\n\n";
 
@@ -562,11 +569,17 @@ void print_total_error_time() {
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_map() {
+
   KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map.clear();
 }
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_cache() {
+  
+  // Go over the Subscriber map, deallocate copies contained in the CombinerBase elements
+  for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_cache) {
+    combiner.second->clear();
+  }
   KokkosResilience::ResilientDuplicatesSubscriber::duplicates_cache.clear();
 }
 
