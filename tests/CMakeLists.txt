@@ -12,8 +12,8 @@ add_executable(resilience_tests
 #              TestResilience.cpp
 #               TestLambdaCapture.cpp
 #               TestHooks.cpp
-	        TestOpenMPResilientExecution.cpp
-#		TestMiniMD.cpp
+#	        TestOpenMPResilientExecution.cpp
+		TestMiniMD.cpp
 #               TestDynamicViewHooks.cpp
                )
 

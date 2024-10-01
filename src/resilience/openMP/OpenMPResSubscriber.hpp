@@ -197,7 +197,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
     else {
       if constexpr(rank > 1){
-         
+	
+     	//std::cout << "Rank is " << rank << " and this should be a multi-d p-for.\n";	      
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
 
         Kokkos::parallel_for(mdrange, *this);
@@ -217,6 +218,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
   template<typename... Args> //template parameter pack
   KOKKOS_FUNCTION
   void operator ()(Args&&... its) const { //function parameter pack
+
+  //std::cout << "Test Print: Entered the combiner.\n\n";
 
 #ifdef KR_ENABLE_DMR
     //Indicates dmr_failover_to_tmr tripped
@@ -268,15 +271,15 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
     size_t next_inject = ErrorInject::global_next_inject;
 
-    for (int j = 0; j<=2; j++){
+    for (int j=0; j<=2; j++){
       while (next_inject < original.size())
       {
         if (j==0){//Inject in the original if j is 0
-          original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
+          original(next_inject) = static_cast<typename View::value_type>(2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
           ErrorInject::error_counter++;
         }
         else{//Else inject in one of the other two copies, copy[0] or copy[1]
-          copy[j-1](next_inject) = 2 * static_cast<typename View::value_type>(copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
+          copy[j-1](next_inject) = static_cast<typename View::value_type>(2 * copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
           ErrorInject::error_counter++;
         }
         next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
@@ -288,12 +291,49 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
   }
 
+  void MultiDimTMRInject(){
+#if 0    
+    size_t total_extent = 1;
+    for (int i = 0; i <= original.rank(); i++){
+      total_extent = total_extent * original.extent(i);
+    }   
+    
+    //Ranked on if sum of extents match global_next_inject
+    if ((total_extent != 1) && (ErrorInject::global_next_inject > total_extent))
+    {
+      ErrorInject::global_next_inject = ErrorInject::global_next_inject - total_extent;
+    }
+
+    size_t next_inject = ErrorInject::global_next_inject;
+
+    for (int j = 0; j<=2; j++){
+      while (next_inject < total_extent)
+      {
+        if (j==0){//Inject in the original if j is 0
+          original(next_inject) = static_cast<typename View::value_type>( 2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
+          ErrorInject::error_counter++;
+        }
+        else{//Else inject in one of the other two copies, copy[0] or copy[1]
+          copy[j-1](next_inject) = static_cast<typename View::value_type>( 2 * copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
+          ErrorInject::error_counter++;
+        }
+        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+
+      }
+      if(original.size() != 1){
+      next_inject = (next_inject) - (original.size());
+      }
+    }
+#endif
+    return;
+  }
+
   void inject_error() override
   {
     if constexpr(rank > 1){
 
       //Worry about injecting errors here later (in extent(0) )
-      return;
+      MultiDimTMRInject();
       
     }else{
 
@@ -315,12 +355,12 @@ struct CombineDuplicates: public CombineDuplicatesBase
           {
             if (j==0){//Insert error into original
 		    //std::cout <<"Injecting an error at " <<next_inject<< " in the original"<< std::endl;	    
-              original(next_inject) = 2 * static_cast<typename View::value_type>(original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
+              original(next_inject) = static_cast<typename View::value_type>(2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
               ErrorInject::error_counter++;
             }
             else{//Insert error into only copy
 		    //std::cout <<"Injecting an error at " <<next_inject<< " in copy [0]"<< std::endl;
-              copy[0](next_inject) = 2 * static_cast<typename View::value_type>(copy[0](next_inject) + 2 * ErrorInject::random_gen());
+              copy[0](next_inject) = static_cast<typename View::value_type>(2 * copy[0](next_inject) + 2 * ErrorInject::random_gen());
               ErrorInject::error_counter++;
             }
             next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
@@ -383,6 +423,17 @@ struct ResilientDuplicatesSubscriber {
     auto &res = *static_cast< CombineDuplicates<View> * >( pos->second.get());
     // If inserted in the cache map then create copies and reinitialize
 
+//TODO: There may be some subtle issues with this in DMR since it only checks copy[0] and it won't trigger on the second copy, which would still need resizing. Consider a solution
+    bool extents_resized = false;
+    for (size_t i = 0; i < View::rank; ++i)
+    {   
+      if (original.extent(i) != res.copy[0].extent(i) )
+      {   
+        extents_resized = true;
+        break;
+      }   
+    } 
+
 #if 0    
 #ifdef KR_ENABLE_DMR
 
@@ -395,7 +446,7 @@ struct ResilientDuplicatesSubscriber {
 #endif
 #endif
 
-    if (inserted) {
+    if (inserted || extents_resized) {
       res.original = original;
 
 #ifdef KR_ENABLE_DMR
@@ -431,9 +482,24 @@ struct ResilientDuplicatesSubscriber {
     duplicate = View(label_ss.str(), original.layout());
   }
 
+/*
+  // A template argument V (view), a template itself, having at least one parameter
+  // the first one (T), to determine between the const/non-const copy constructor in overload
+  // Class because C++14
+  template<template<typename, typename ...> class V, typename T, typename... Args>
+  static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
+    // If View is constant do nothing, not triggering the rest of the subscriber.
+  }
+
+  template< template< typename, typename ...> class V, typename T, typename... Args>
+  static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
+  {
+*/
+
   template<typename View>
   static void copy_constructed( View &self, const View &other)
   {
+    //if constexpr ( !std::is_const_v< typename V::value_type > )
     if constexpr( std::is_same_v< typename View::non_const_data_type, typename View::data_type > )
     {
       // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
@@ -443,7 +509,8 @@ struct ResilientDuplicatesSubscriber {
         auto res = duplicates_map.emplace(std::piecewise_construct,
                                           std::forward_as_tuple(other.data()),
                                           std::forward_as_tuple(combiner));
-        auto &c = dynamic_cast< CombineDuplicates< View > & > (*res.first->second);
+        //auto &c = dynamic_cast< CombineDuplicates< V<T*, Args...> > & > (*res.first->    second);
+    	auto &c = dynamic_cast< CombineDuplicates< View > & > (*res.first->second);
 
         // The first copy constructor in a parallel_for for the given view
         if (res.second) {
