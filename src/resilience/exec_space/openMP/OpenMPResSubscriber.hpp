@@ -174,7 +174,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
   View copy[2];
   
   //This hack for a bool was replacable in the CUDA version and may be a c++ <17 artifact
-  Kokkos::View <bool*> success{"success", 1};
+  //Attempt to replace hack due to yucky error
+  //Kokkos::View <bool*> success{"success", 1};
+  mutable bool success = 1;
 
   static constexpr size_t rank = View::rank();
   // The rank of the view is known at compile-time, and there
@@ -182,8 +184,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // instantiation of the original, but on the View itself 
 
   bool execute() override
-  {
-    success(0) = true;
+  { 
+    //success(0) = true;
+    success = true;
 
 #ifdef KR_ENABLE_DMR
     if (duplicate_count < 1){
@@ -211,7 +214,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
         //Kokkos::fence();
       }
     }
-    return success(0);
+    //return success(0);
+    return success;
   }
 
   // Looping over duplicates to check for equality
@@ -235,7 +239,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
 	return;
       }
       //No match found, all three executions return different number
-      success(0) = false;
+      //success(0) = false;
+      success = false;
     }
     // DMR has not failed over, only 1 copy exists
     // Slight correction: 2 copies instantiated, 1 initialized
@@ -244,7 +249,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
 	return;
       }
-      success(0) = false;
+      //success(0) = false;
+      success = false;
     }
 #else
     //Main Combiner Begin
@@ -258,7 +264,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
       return;
     }
     //No match found, all three executions return different number
-    success(0) = false;
+    //success(0) = false;
+    success = false;
 #endif
   }
 
