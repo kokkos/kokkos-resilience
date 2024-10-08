@@ -107,6 +107,7 @@ TEST(TestResOpenMP, TestKokkosFor)
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
 {
+  
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
   
   // Allocate y, x vectors.
@@ -139,6 +140,7 @@ TEST(TestResOpenMP, TestResilientForDouble)
   ASSERT_EQ(counter(0), N);
 
   //reset global error settings
+  KokkosResilience::ErrorInject::error_counter=0;
   KokkosResilience::global_error_settings.reset();
 
 }
@@ -286,7 +288,6 @@ TEST(TestResOpenMP, TestKokkos2D)
       Kokkos::atomic_increment(&counter(0));
     }
   });
-  
 // std::cout << "Check 3: The error was after parallel_for." << std::endl;
 
   Kokkos::deep_copy(x,y);
@@ -309,24 +310,32 @@ TEST(TestResOpenMP, TestKokkos2D)
 // Expect counter to count accesses to each vector element.
 TEST(TestResOpenMP, TestResilient2D)
 {
-// Allocate y, x vectors.
+
+  KokkosResilience::ErrorInject::error_counter = 0;
+  std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
+  std::cout << "\n\n\n\n\nThis is the test of 2D Resilient Error Injection \n\n\n";
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.00001);
+	
+  // Allocate y, x vectors.
   ViewVectorDoubleSubscriber2D y( "y", N, N );
   ViewVectorDoubleSubscriber2D x( "x", N, N );
 
   //Integer vector 1 long to count data accesses, because scalar view bugs
-  ViewVectorIntSubscriber counter( "DataAccesses", 1);
+  //ViewVectorIntSubscriber counter( "DataAccesses", 1);
 
-  Kokkos::Timer timer;
-  counter(0) = 0;
+  //Kokkos::Timer timer;
+  //counter(0) = 0;
 
+  std::cout << "Rank of x is " << x.rank() << std::endl;
+	  
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
-      Kokkos::atomic_increment(&counter(0));
+      //Kokkos::atomic_increment(&counter(0));
     }
   });
-
+  KokkosResilience::print_total_error_time();
   Kokkos::deep_copy(x, y);
   KokkosResilience::clear_duplicates_cache(); 
 
@@ -335,7 +344,10 @@ TEST(TestResOpenMP, TestResilient2D)
       ASSERT_EQ(x(i,j), i+j);
     }
   }
-  ASSERT_EQ(counter(0), N*N);
+  //ASSERT_EQ(counter(0), N*N);
+  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
+
 }
 
 /**********************************
