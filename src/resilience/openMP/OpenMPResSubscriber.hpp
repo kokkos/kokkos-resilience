@@ -87,6 +87,7 @@ explicit Error(double rate) : error_rate(rate), geometric(rate){}
 
 double error_rate;
 std::geometric_distribution<> geometric{error_rate};
+
 };
 
 inline std::optional<Error> global_error_settings;
@@ -284,7 +285,13 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
 
     size_t next_inject = ErrorInject::global_next_inject;
+#if 0
+    double temp = global_error_settings->error_rate;
+    std::cout << "Error::error_rate is " << temp << std::endl;
 
+    std::cout << "ErrorInject::error_counter is " << ErrorInject::error_counter << std::endl;
+    std::cout << "next_inject is " << next_inject << std::endl;
+#endif
     for (int j=0; j<=2; j++){
       while (next_inject < original.size())
       {
@@ -305,50 +312,103 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
   }
 
-  void MultiDimTMRInject(){
-#if 0    
-    size_t total_extent = 1;
-    for (int i = 0; i <= original.rank(); i++){
-      total_extent = total_extent * original.extent(i);
-    }   
-    
-    //Ranked on if sum of extents match global_next_inject
-    if ((total_extent != 1) && (ErrorInject::global_next_inject > total_extent))
+  void TwoDimTMRInject(){
+//#if 0    
+    //This error injection works with 2D views, subtracts total extent from global_next_inject
+    size_t total_extent = original.extent(0) * original.extent(1);
+    if (total_extent !=1 && (ErrorInject::global_next_inject > total_extent))
     {
       ErrorInject::global_next_inject = ErrorInject::global_next_inject - total_extent;
     }
 
     size_t next_inject = ErrorInject::global_next_inject;
-
-    for (int j = 0; j<=2; j++){
+#if 0    
+    double temp = global_error_settings->error_rate;
+    std::cout << "Error::error_rate is " << temp << std::endl;
+    
+    std::cout << "ErrorInject::error_counter is " << ErrorInject::error_counter << std::endl;
+    std::cout << "original.extent(0) is " << original.extent(0) << std::endl;
+    std::cout << "original.extent(1) is " << original.extent(1) << std::endl;
+    std::cout << "total_extent is " << total_extent << std::endl;
+    std::cout << "next_inject is " << next_inject << std::endl;
+#endif
+#if 0
+    //Completely closed off print loop. DELETE!
+    for (int j=0; j<=2; j++){
       while (next_inject < total_extent)
       {
-        if (j==0){//Inject in the original if j is 0
-          original(next_inject) = static_cast<typename View::value_type>( 2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
-          ErrorInject::error_counter++;
-        }
-        else{//Else inject in one of the other two copies, copy[0] or copy[1]
-          copy[j-1](next_inject) = static_cast<typename View::value_type>( 2 * copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
-          ErrorInject::error_counter++;
-        }
-        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+	std::cout << "The value at next_inject translates to array(" << floor(next_inject/original.extent(0)) << "," 
+		  << next_inject - (original.extent(0) * floor(next_inject/original.extent(0))) << ") = "
+		  << static_cast<typename View::value_type>(original((int)floor(next_inject/original.extent(0)),next_inject - (original.extent(0) * (int)floor(next_inject/original.extent(0)))))
+		  << "." << std::endl; 
 
+	ErrorInject::error_counter++;
+	next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+	std::cout << "next_inject is " << next_inject << std::endl;
       }
-      if(original.size() != 1){
-      next_inject = (next_inject) - (original.size());
+      if(total_extent != 1){
+        next_inject = next_inject - total_extent;
       }
     }
 #endif
-    return;
+
+
+//#if 0
+    for (int j = 0; j<=2; j++){
+      while (next_inject < total_extent)
+      {
+#if 0
+		  std::cout << "The value at next_inject translates to array(" << floor(next_inject/original.extent(0)) << "," 
+                  << next_inject - (original.extent(0) * floor(next_inject/original.extent(0))) << ") = "
+                  << static_cast<typename View::value_type>(original((int)floor(next_inject/original.extent(0)),next_inject - (original.extent(0) * (int)floor(next_inject/original.extent(0)))))
+                  << "." << std::endl; 
+#endif
+        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+        //std::cout << "next_inject is " << next_inject << std::endl;
+      
+	      
+        if (j==0){//Inject in the original if j is 0
+          original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
+		  = static_cast<typename View::value_type>( 
+		                2 * original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
+				+ 2 * ErrorInject::random_gen());//generate using ()
+          ErrorInject::error_counter++;
+        }
+        else{//Else inject in one of the other two copies, copy[0] or copy[1]
+          copy[j-1]((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
+		  = static_cast<typename View::value_type>( 
+		            2 * copy[j-1]((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
+			    + 2 * ErrorInject::random_gen());
+          ErrorInject::error_counter++;
+        }
+        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
+        //std::cout << "next_inject is " << next_inject << std::endl;
+      }
+      if(total_extent != 1){
+        next_inject = next_inject - total_extent;
+      }
+    }
+//#endif
   }
 
   void inject_error() override
   {
-    if constexpr(rank > 1){
-
-      //Worry about injecting errors here later (in extent(0) )
-      MultiDimTMRInject();
-      
+	  
+    //std::cout << "We got into the error injector and rank is: " << rank << "\n";
+    if constexpr(rank == 2){
+#ifdef KR_ENABLE_DMR
+      //Implies dmr_failover_to_tmr
+      if(duplicate_count == 2) {
+        //goto main tmr inject
+	TwoDimTMRInject();
+      }
+      else{//Actual DMR error injection with only 1 copy
+      }//End DMR error injection
+#else
+      //Working not perfect
+      //std::cout << "We got into the 2d error injector section\n";
+      TwoDimTMRInject();
+#endif 
     }else{
 
 #ifdef KR_ENABLE_DMR

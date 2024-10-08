@@ -350,7 +350,7 @@ TEST(TestResOpenMP, TestMiniMDKernel)
   Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > z( "z", N );
 
   size_t rank = x.rank();
-  std::cout << "The rank of View x is rank: " << rank << "\n";
+  //std::cout << "The rank of View x is rank: " << rank << "\n";
 
   Kokkos::Timer timer;
 
@@ -381,6 +381,64 @@ TEST(TestResOpenMP, TestMiniMDKernel)
   std::cout << std::endl <<std::endl;
 
 }
+
+//Test MiniMD Exact Kernel Behavior with Resilience
+TEST(TestResOpenMP, TestMiniMDKernelResilient)
+{
+  std::cout << "\n\n";
+  KokkosResilience::ErrorInject::error_counter = 0;
+  std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
+  std::cout << "This is the test of minMD 2D Resilient Error Injection \n\n\n";
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.005);
+
+  // Allocate 2D y, x vectors.
+  Kokkos::View<double*[2],Kokkos::LayoutRight, MemSpace,
+               Kokkos::Experimental::SubscribableViewHooks<
+               KokkosResilience::ResilientDuplicatesSubscriber >> x( "x", N );
+  Kokkos::View<double*[2],Kokkos::LayoutRight, MemSpace,
+               Kokkos::Experimental::SubscribableViewHooks<
+               KokkosResilience::ResilientDuplicatesSubscriber >> y( "y", N );
+  Kokkos::View<double*[2],Kokkos::LayoutRight, MemSpace,
+               Kokkos::Experimental::SubscribableViewHooks<
+               KokkosResilience::ResilientDuplicatesSubscriber >> z( "z", N );
+
+  size_t rank = x.rank();
+  //std::cout << "The rank of View x is rank: " << rank << "\n";
+
+  Kokkos::Timer timer;
+
+  //Initialize x vector RESIIENT kernel WITH ERRORS
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+     x ( i,0 ) = 1;
+  });
+
+  int j = 0;
+
+  while (j<5){
+    //Test MiniMD Kernel Behavior with RESILIENT kernel, RESILEINT views WITH ERRORS (cont prev count)
+    Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+      y ( i, 0 ) += test_const * x ( i, 0 );
+      z ( i, 0 ) += test_const * y ( i, 0 );
+    });
+    j++;
+  }
+
+  std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively." << std::endl;
+
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(y(i,0), 5*test_const );
+    ASSERT_EQ(z(i,0), 15*test_const*test_const );
+  }
+
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::clear_duplicates_cache();
+  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
+
+  std::cout << std::endl <<std::endl;
+
+}
+
 
 //Test RandomAccess
 TEST(TestResOpenMP, TestRandomAccess)
