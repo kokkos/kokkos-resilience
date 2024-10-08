@@ -126,6 +126,43 @@ class ParallelFor< FunctorType
 
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
+  auto MakeWrapper (int64_t work_size, int64_t offset){
+    if constexpr (std::is_void_v<WorkTag>){
+      auto wrapper_functor = [&](auto i){
+        if (i < work_size)
+        {
+          m_functor (i + offset);
+        }
+        else if (( work_size <= i) && (i < (2 * work_size)))
+        {
+          m_functor_0 (i + offset - work_size);
+        }
+        else
+        {
+          m_functor_1 (i + offset - ( 2 * work_size));
+        }
+      };
+      return wrapper_functor;
+    }else if constexpr (!std::is_void_v<WorkTag>)
+    {
+      auto wrapper_functor = [&](WorkTag work_tag, auto i){
+        if (i < work_size)
+        {
+          m_functor (work_tag, i + offset);
+        }
+        else if (( work_size <= i) && (i < (2 * work_size)))
+        {
+          m_functor_0 (work_tag, i + offset - work_size);
+        }
+        else
+        {
+          m_functor_1 (work_tag, i + offset - ( 2 * work_size));
+        }
+      };
+      return wrapper_functor;
+    }
+  }
+
  public:
   inline void execute() const {
     //! The execution() function in this class performs an OpenMP execution of parallel for with
@@ -164,7 +201,9 @@ class ParallelFor< FunctorType
       auto m_functor_1 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      auto wrapper_functor = [&](auto i){
+      auto wrapper_functor = MakeWrapper (work_size, offset);
+
+/*      auto wrapper_functor = [&](m_worktag ,auto i){
         if (i < work_size)
         {
           m_functor (i + offset);
@@ -178,6 +217,8 @@ class ParallelFor< FunctorType
           m_functor_1 (i + offset - ( 2 * work_size));
         }
       };
+*/
+      
 #endif
 
 #ifdef KR_ENABLE_TMR
