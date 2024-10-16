@@ -82,10 +82,6 @@ class ResOpenMP : public Kokkos::OpenMP {
 
 /*------------------------------------*/
 
-    // Print configuration information to the given output stream.
-    //static void print_configuration(std::ostream&, const bool verbose = false);
-    //void print_configuration(std::ostream& os, bool verbose = false) const;
-
     static const char* name();
 
 }; //template class ResOpenMP execution space

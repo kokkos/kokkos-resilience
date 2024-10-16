@@ -175,15 +175,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // Note: 2 copies allocated even in DMR
   View copy[2];
   
-  //This hack for a bool was replacable in the CUDA version and may be a c++ <17 artifact
-  //Attempt to replace hack due to yucky error
-  //Kokkos::View <bool*> success{"success", 1};
   mutable bool success = 1;
 
   static constexpr size_t rank = View::rank();
-  // The rank of the view is known at compile-time, and there
-  // is 1 subscriber per view. Therefore it is not templated on the 
-  // instantiation of the original, but on the View itself 
 
   void clear() override
   {
@@ -193,7 +187,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   bool execute() override
   { 
-    //success(0) = true;
     success = true;
 
 #ifdef KR_ENABLE_DMR
@@ -219,10 +212,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
       }else{
 
 	Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
-        //Kokkos::fence();
       }
     }
-    //return success(0);
     return success;
   }
 
@@ -236,7 +227,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #ifdef KR_ENABLE_DMR
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
-      //Main Combiner begin, dmr failover has tripped into TMR
+      //Main combiner begin, dmr failover has tripped into TMR
       for (int j = 0; j < 2; j ++) {
         if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
           return;
@@ -247,21 +238,18 @@ struct CombineDuplicates: public CombineDuplicatesBase
 	return;
       }
       //No match found, all three executions return different number
-      //success(0) = false;
       success = false;
     }
-    // DMR has not failed over, only 1 copy exists
-    // Slight correction: 2 copies instantiated, 1 initialized
+    // DMR has not failed over, 2 copies instantiated, 1 initialized
     else{
       //DMR combiner begin with no failover
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
 	return;
       }
-      //success(0) = false;
       success = false;
     }
 #else
-    //Main Combiner Begin
+    //Main combiner begin
     for (int j = 0; j < 2; j ++) {
       if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
         return;
@@ -272,7 +260,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
       return;
     }
     //No match found, all three executions return different number
-    //success(0) = false;
     success = false;
 #endif
   }
@@ -332,26 +319,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     std::cout << "total_extent is " << total_extent << std::endl;
     std::cout << "next_inject is " << next_inject << std::endl;
 #endif
-#if 0
-    //Completely closed off print loop. DELETE!
-    for (int j=0; j<=2; j++){
-      while (next_inject < total_extent)
-      {
-	std::cout << "The value at next_inject translates to array(" << floor(next_inject/original.extent(0)) << "," 
-		  << next_inject - (original.extent(0) * floor(next_inject/original.extent(0))) << ") = "
-		  << static_cast<typename View::value_type>(original((int)floor(next_inject/original.extent(0)),next_inject - (original.extent(0) * (int)floor(next_inject/original.extent(0)))))
-		  << "." << std::endl; 
-
-	ErrorInject::error_counter++;
-	next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-	std::cout << "next_inject is " << next_inject << std::endl;
-      }
-      if(total_extent != 1){
-        next_inject = next_inject - total_extent;
-      }
-    }
-#endif
-
 
 //#if 0
     for (int j = 0; j<=2; j++){
@@ -365,7 +332,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #endif
         next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
         //std::cout << "next_inject is " << next_inject << std::endl;
-      
 	      
         if (j==0){//Inject in the original if j is 0
           original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
@@ -399,14 +365,11 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #ifdef KR_ENABLE_DMR
       //Implies dmr_failover_to_tmr
       if(duplicate_count == 2) {
-        //goto main tmr inject
 	TwoDimTMRInject();
       }
       else{//Actual DMR error injection with only 1 copy
       }//End DMR error injection
 #else
-      //Working not perfect
-      //std::cout << "We got into the 2d error injector section\n";
       TwoDimTMRInject();
 #endif 
     }else{
@@ -414,7 +377,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #ifdef KR_ENABLE_DMR
       //Implies dmr_failover_to_tmr has tripped    
       if(duplicate_count == 2 ){
-	//goto main_tmr_inject;
 	oneD_tmr_inject();
       }
       else{//The actual dmr error inject with only 1 copy
@@ -556,24 +518,9 @@ struct ResilientDuplicatesSubscriber {
     duplicate = View(label_ss.str(), original.layout());
   }
 
-/*
-  // A template argument V (view), a template itself, having at least one parameter
-  // the first one (T), to determine between the const/non-const copy constructor in overload
-  // Class because C++14
-  template<template<typename, typename ...> class V, typename T, typename... Args>
-  static void copy_constructed( V < const T *, Args...> &self, const V < const T *, Args...> &other) {
-    // If View is constant do nothing, not triggering the rest of the subscriber.
-  }
-
-  template< template< typename, typename ...> class V, typename T, typename... Args>
-  static void copy_constructed( V < T *, Args... > &self, const V < T *, Args... > &other)
-  {
-*/
-
   template<typename View>
   static void copy_constructed( View &self, const View &other)
   {
-    //if constexpr ( !std::is_const_v< typename V::value_type > )
     if constexpr( std::is_same_v< typename View::non_const_data_type, typename View::data_type > )
     {
       // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
@@ -583,7 +530,6 @@ struct ResilientDuplicatesSubscriber {
         auto res = duplicates_map.emplace(std::piecewise_construct,
                                           std::forward_as_tuple(other.data()),
                                           std::forward_as_tuple(combiner));
-        //auto &c = dynamic_cast< CombineDuplicates< V<T*, Args...> > & > (*res.first->    second);
     	auto &c = dynamic_cast< CombineDuplicates< View > & > (*res.first->second);
 
         // The first copy constructor in a parallel_for for the given view
@@ -611,16 +557,9 @@ struct ResilientDuplicatesSubscriber {
 
 KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
-  //std::lock_guard<std::mutex> lock(ETimer::global_time_mutex);
 
   ETimer::global_time_mutex.lock();
-
-  //actual time (in seconds) of duration d = d.count() * D::period::num / D::period::den
-  //D::period::num = 1
-  //D::period::den = 1000000000
-  //Selected because tick rate of stable_clock
   //auto time = ETimer::total_error_time.count() / 1000000000;
-  //const auto time = std::chrono::duration_cast<std::chrono::seconds>(ETimer::total_error_time);
   std::cout << "The value of ETimer::total_error_time.count() is " << ETimer::total_error_time.count() << " nanoseconds." << std::endl;
   std::cout << "The total number of errors inserted is " << ErrorInject::error_counter << " errors." << std::endl;
   ETimer::global_time_mutex.unlock();
