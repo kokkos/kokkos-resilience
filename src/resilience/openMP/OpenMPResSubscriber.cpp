@@ -52,10 +52,6 @@ bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 #ifdef KR_ENABLE_DMR
 bool ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
 #endif
-
-//std::unordered_map< ResilientDuplicatesSubscriber::key_type, CombineDuplicatesBase * > ResilientDuplicatesSubscriber::duplicates_map;
-//std::unordered_map< ResilientDuplicatesSubscriber::key_type, std::unique_ptr< CombineDuplicatesBase > > ResilientDuplicatesSubscriber::duplicates_cache;
-
 }
 
 #endif //defined(KOKKOS_ENABLE_OPENMP)
