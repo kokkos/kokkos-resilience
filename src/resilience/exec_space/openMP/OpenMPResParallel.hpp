@@ -82,7 +82,7 @@ namespace KokkosResilience{
 
   inline void inject_error_duplicates() {
 
-    if (KokkosResilience::global_error_settings->error_rate){
+    if (KokkosResilience::global_error_settings){
       //Per kernel, seed the first inject index	    
       KokkosResilience::ErrorInject::global_next_inject = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInject::random_gen);	      ;
 
@@ -114,11 +114,11 @@ class ParallelFor< FunctorType
  private:
   using Policy       = Kokkos::RangePolicy<Traits...>;
   using WorkTag      = typename Policy::work_tag;
-//MiniMD
   using LaunchBounds = typename Policy::launch_bounds;
   using Member       = typename Policy::member_type;
 
-  const FunctorType &  m_functor;
+  //const FunctorType &  m_functor;
+  const FunctorType m_functor;
   const Policy m_policy;
 
   ParallelFor() = delete ;
@@ -126,8 +126,9 @@ class ParallelFor< FunctorType
 
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
-  auto MakeWrapper (int64_t work_size, int64_t offset){
+  auto MakeWrapper (int64_t work_size, int64_t offset, const FunctorType &m_functor_0, const FunctorType &m_functor_1) const{
     if constexpr (std::is_void_v<WorkTag>){
+      std::cout << "In MakeWrapper void WorkTag branch." << std::endl;
       auto wrapper_functor = [&](auto i){
         if (i < work_size)
         {
@@ -144,7 +145,8 @@ class ParallelFor< FunctorType
       };
       return wrapper_functor;
     }else if constexpr (!std::is_void_v<WorkTag>)
-    {
+    { 
+      std::cout << "In MakeWrapper WorkTag branch." << std::endl;	    
       auto wrapper_functor = [&](WorkTag work_tag, auto i){
         if (i < work_size)
         {
@@ -166,14 +168,15 @@ class ParallelFor< FunctorType
  public:
   inline void execute() const {
     //! The execution() function in this class performs an OpenMP execution of parallel for with
-    //! triple modular redundancy. Non-constant views equipped with the triggering subscribers are
+    //! modular redundancy. Non-constant views equipped with the triggering subscribers are
     //! duplicated and three concurrent executions divided equally between the available pool
     //! of OpenMP threads proceed. Duplicate views are combined back into a single view by calling
-    //! a combiner to majority vote on the correct values. This process is repeated until
+    //! a combiner to majority vote on the correct values. This process is optionally repeated until
     //! a value is voted correct or a given number of attempts is exceeded.
     //! There are some subtleties regarding which views are copied per kernel in the default subscriber
     //! See KokkosResilience::ResilienctDuplicatesSubscriber::duplicates_cache for details
 
+    //TODO: Cmake option reexecution_max off or number, enable spare view in the subscriber
     const int max_repeats = 5;
     int repeats = max_repeats; //! This integer represents the maximum number of attempts to reach consensus allowed.
     bool success = 0; //! This bool indicates that all views successfully reached a consensus.
@@ -201,7 +204,8 @@ class ParallelFor< FunctorType
       auto m_functor_1 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      auto wrapper_functor = MakeWrapper (work_size, offset);
+      std::cout << "Right before MakeWrapper" <<std::endl;
+      auto wrapper_functor = MakeWrapper (work_size, offset, m_functor_0, m_functor_1);
 
 /*      auto wrapper_functor = [&](m_worktag ,auto i){
         if (i < work_size)
@@ -296,9 +300,9 @@ class ParallelFor< FunctorType
 #endif
 #ifdef KR_ENABLE_WRAPPER
 
-      // TMR with scheduling
-      // Feed in three-times as long range policy (wrapper-policy)
-      // With wrapped functor, so that the iterations are bound to the duplicated functors/views
+      // TMR with kernel fusion
+      // TODO: separate into fusion cmake option, enabled on dmr or tmr
+      // Functor is fused, with iterations bound to duplicated functors in 3x range
       Impl::ParallelFor< decltype(wrapper_functor) , surrogate_policy, Kokkos::OpenMP > closure( wrapper_functor , wrapper_policy );
 
       closure.execute();
@@ -311,7 +315,6 @@ class ParallelFor< FunctorType
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
-      // Does not clear the cache map, user must clear cache map before Kokkos::finalize()
       KokkosResilience::clear_duplicates_map();
 #endif
       repeats--;
@@ -319,7 +322,8 @@ class ParallelFor< FunctorType
     }// while (!success & repeats left)
 
     if(success==0 && repeats == 0){
-      // Abort if 5 repeKokkos::abort(ated tries at executing failed to find acceptable match
+      // Abort if max-reexecutions exceeded
+      // TODO: cmake option
       auto &handler = KokkosResilience::get_unrecoverable_data_corruption_handler();
       handler(max_repeats);
     }
@@ -350,10 +354,6 @@ class ParallelFor<FunctorType,
   using Policy        = typename MDRangePolicy::impl_range_policy;
   using WorkTag       = typename MDRangePolicy::work_tag;
 
-  //TODO: MiniMD may need Launchbounds
-
-  using Member = typename Policy::member_type;
-
   using index_type   = typename Policy::index_type;
   using iterate_type = typename Kokkos::Impl::HostIterateTile<
       MDRangePolicy, FunctorType, typename MDRangePolicy::work_tag, void>;
@@ -366,7 +366,6 @@ class ParallelFor<FunctorType,
   ParallelFor() = delete ;
   ParallelFor & operator = ( const ParallelFor & ) = delete ;
   
-  // TODO: MiniMD may require added LaunchBounds
   using surrogate_policy = Kokkos::MDRangePolicy < Kokkos::OpenMP, WorkTag>;
 
  public:
@@ -420,19 +419,7 @@ class ParallelFor<FunctorType,
 namespace Kokkos {
 namespace Impl {
 
-//TODO:: This comment invalidated by rework of Kokkos with CombinedFunctorReducerType??
-// Will eventually need enable_if to partially specialize on the different reducer types
-// This specialization is for view type only, but written as only instantiation for now
-
 // Range policy implementation
-#if 0
-template <class FunctorType, class ReducerType, class... Traits>
-class ParallelReduce< FunctorType
-                    , Kokkos::RangePolicy< Traits... >
-                    , ReducerType
-                    , KokkosResilience::ResOpenMP>{
-#endif
-
 template <class CombinedFunctorReducerType, class... Traits>
 class ParallelReduce< CombinedFunctorReducerType
 		    , Kokkos::RangePolicy< Traits... >
