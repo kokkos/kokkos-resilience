@@ -117,8 +117,7 @@ class ParallelFor< FunctorType
   using LaunchBounds = typename Policy::launch_bounds;
   using Member       = typename Policy::member_type;
 
-  //const FunctorType &  m_functor;
-  const FunctorType m_functor;
+  const FunctorType &  m_functor;
   const Policy m_policy;
 
   ParallelFor() = delete ;
@@ -126,6 +125,7 @@ class ParallelFor< FunctorType
 
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
+#ifdef KR_ENABLE_WRAPPER
   auto MakeWrapper (int64_t work_size, int64_t offset, const FunctorType &m_functor_0, const FunctorType &m_functor_1) const{
     if constexpr (std::is_void_v<WorkTag>){
       std::cout << "In MakeWrapper void WorkTag branch." << std::endl;
@@ -164,6 +164,7 @@ class ParallelFor< FunctorType
       return wrapper_functor;
     }
   }
+#endif
 
  public:
   inline void execute() const {
@@ -239,7 +240,7 @@ class ParallelFor< FunctorType
 
 
       const auto start{std::chrono::steady_clock::now()};
-      KokkosResilience::inject_error_duplicates();
+      //KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
       KokkosResilience::ETimer::elapsed_seconds = KokkosResilience::ETimer::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
       KokkosResilience::ETimer::total_error_time = KokkosResilience::ETimer::total_error_time + KokkosResilience::ETimer::elapsed_seconds;
