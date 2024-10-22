@@ -28,4 +28,4 @@ jobs:
           DOCKER_IMAGE_TAG: ${{ steps.vars.outputs.docker_tag }}
         run: |
           docker load --input /tmp/kokkos-resilience-deps.tar
-          docker-compose run build-deps-kr-ubuntu
+          docker compose run build-deps-kr-ubuntu
