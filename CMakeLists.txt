@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.17)
 project(kokkos-resilience VERSION 0.1.0)
 
+#OLD bheavior is deprecated by definition and may be removed in future
+cmake_policy(SET CMP0144 OLD)
+
 INCLUDE(GNUInstallDirs)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
@@ -10,7 +13,7 @@ add_library(Kokkos::resilience ALIAS resilience)
 
 
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
-option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
+option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" OFF)
 
 if (KR_ALL_WARNINGS)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -123,6 +126,7 @@ if (KR_ENABLE_CUDA_EXEC_SPACE)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_OPENMP_EXEC_SPACE)
   message(STATUS "OpenMP resilient execution spaces are enabled")
 endif()
 
@@ -137,6 +141,22 @@ export(TARGETS resilience
        NAMESPACE Kokkos::
        FILE resilienceTargets.cmake
        )
+
+if (Kokkos_ENABLE_Cuda)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
+endif()
+
+if (KR_ENABLE_WRAPPER)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_WRAPPER)
+endif()
+
+if (KR_ENABLE_TMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_TMR)
+endif()
+
+if (KR_ENABLE_DMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_DMR)
+endif()
 
 # Set up find_package config and version file
 # Allow same major version compatibility
