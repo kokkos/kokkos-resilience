@@ -89,15 +89,12 @@ TEST(TestResOpenMP, TestKokkosFor)
   ViewVectorType y2( "y", N );
   ViewVectorType x2( "x", N );
 
-  Kokkos::Timer timer;
   // Initialize y vector on host using parallel_for
-
-//Kokkos::Profiling::pushRegion("GTestParallelDoubleFor");
   Kokkos::parallel_for("GTestParallelDoubleFor",
-      range_policy2(0, N), KOKKOS_LAMBDA(int i) { y2(i) = i; });
-//Kokkos::Profiling::popRegion();
+    range_policy2(0, N), KOKKOS_LAMBDA(int i) { y2(i) = i; });
 
   Kokkos::deep_copy(x2, y2);
+  
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x2(i), i);
   }
@@ -117,8 +114,6 @@ TEST(TestResOpenMP, TestResilientForDouble)
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   ViewVectorIntSubscriber counter( "DataAccesses", 1);
 
-  Kokkos::Timer timer;
-
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
@@ -126,24 +121,22 @@ TEST(TestResOpenMP, TestResilientForDouble)
     y ( i ) = i;
     Kokkos::atomic_increment(&counter(0));
   });
-  
-  KokkosResilience::print_total_error_time();
-  double time = timer.seconds();
-  std::cout << "GTestResilientForDoubleFor time is: " << time << " s" << std::endl;
-
-  KokkosResilience::clear_duplicates_cache();
-  Kokkos::deep_copy(x, y);
-  for ( int i = 0; i < N; i++) {
-    ASSERT_EQ(x(i), i);
-  }
-
-  ASSERT_EQ(counter(0), N);
 
   //reset global error settings
   KokkosResilience::ErrorInject::error_counter=0;
   KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::clear_duplicates_cache();
+  
+  Kokkos::deep_copy(x, y);
+  
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(x(i), i);
+  }
+  ASSERT_EQ(counter(0), N);
 
 }
+
 // gTest runs parallel_for with resilient Kokkos integer assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForInteger)
@@ -155,8 +148,6 @@ TEST(TestResOpenMP, TestResilientForInteger)
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   ViewVectorIntSubscriber  counter( "DataAccesses", 1);
 
-  Kokkos::Timer timer;
-
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
@@ -164,20 +155,19 @@ TEST(TestResOpenMP, TestResilientForInteger)
     y ( i ) = i;
     Kokkos::atomic_increment(&counter(0));
   });
-
+  
+  KokkosResilience::clear_duplicates_cache();
+  
   Kokkos::deep_copy(x, y);
+  
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
-  KokkosResilience::clear_duplicates_cache();
-
   ASSERT_EQ(counter(0), N);
 }
 
-// gTest attempts to trigger all 3 executions generating different data.
-// Requires non-multipe of 3 OMP threads to generate error.
-// Should repeat user-specified number of times (in context file) and then abort.
-TEST(TestResOpenMP, TestResilientForInsertError)
+// Test handler for unrecoverable data corruption
+TEST(TestResOpenMP, TestErrorHandler)
 {
 
   ViewVectorIntSubscriber counter ( "DataAccesses", 1);
@@ -231,7 +221,6 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
       ASSERT_EQ (x(i), 500);
     }
   }
-
 }
 
 // Test runs parallel_for with a const view. Expect const view to trigger const view subscriber, a no-op
@@ -273,14 +262,8 @@ TEST(TestResOpenMP, TestKokkos2D)
   //Kokkos::View<int, Kokkos::HostSpace> counter;  
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);  
 
-  //std::cout << "Check 1: The error was after declarations/definitions." << std::endl;
-
-  Kokkos::Timer timer;
   counter(0) = 0;
  
-  //std::cout << "Check 2: The error was after counter access." << std::endl;
-  //std::cout << "Kokkos integer counter " << counter(0) << std::endl << std::endl;
-
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
@@ -288,11 +271,8 @@ TEST(TestResOpenMP, TestKokkos2D)
       Kokkos::atomic_increment(&counter(0));
     }
   });
-// std::cout << "Check 3: The error was after parallel_for." << std::endl;
 
   Kokkos::deep_copy(x,y);
-  
-//  std::cout << "Check 4: The error was after deepcopy." << std::endl;
   
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
@@ -312,42 +292,31 @@ TEST(TestResOpenMP, TestResilient2D)
 {
 
   KokkosResilience::ErrorInject::error_counter = 0;
-  std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
-  std::cout << "\n\n\n\n\nThis is the test of 2D Resilient Error Injection \n\n\n";
-  KokkosResilience::global_error_settings = KokkosResilience::Error(0.00001);
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
 	
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber2D y( "y", N, N );
   ViewVectorDoubleSubscriber2D x( "x", N, N );
 
-  //Integer vector 1 long to count data accesses, because scalar view bugs
-  //ViewVectorIntSubscriber counter( "DataAccesses", 1);
-
-  //Kokkos::Timer timer;
-  //counter(0) = 0;
-
-  std::cout << "Rank of x is " << x.rank() << std::endl;
-	  
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
-      //Kokkos::atomic_increment(&counter(0));
     }
   });
+
+  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
   KokkosResilience::print_total_error_time();
-  Kokkos::deep_copy(x, y);
   KokkosResilience::clear_duplicates_cache(); 
+
+  Kokkos::deep_copy(x, y);
 
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
       ASSERT_EQ(x(i,j), i+j);
     }
   }
-  //ASSERT_EQ(counter(0), N*N);
-  KokkosResilience::ErrorInject::error_counter=0;
-  KokkosResilience::global_error_settings.reset();
-
 }
 
 /**********************************
@@ -356,12 +325,9 @@ TEST(TestResOpenMP, TestResilient2D)
 // gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
 TEST(TestResOpenMP, TestKokkosReduceDouble)
 {
-  std::cout << "Kokkos parallel_reduce dot product test." << std::endl;
 
   ViewVectorType y ( "y", N );
   ViewVectorType x ( "x", N );
-
-  Kokkos::Timer timer;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
@@ -376,31 +342,16 @@ TEST(TestResOpenMP, TestKokkosReduceDouble)
     update += x ( i ) * y ( i );
   }, dot_product);
 
-  double time = timer.seconds();
-
-  KokkosResilience::clear_duplicates_cache();
-
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports parallel_reduce completed in time " << time << "." << std::endl;
-  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-
   ASSERT_EQ(dot_product, N);
 
 }
-//#if 0 
 
 // gTest runs parallel_reduce with resilient Kokkos to get a dot product.
 TEST(TestResOpenMP, TestResilientReduceDouble)
 {
-  std::cout << "Kokkos resilient parallel_reduce dot product test." << std::endl;
-
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
   ViewVectorDoubleSubscriber x( "x", N );
-
-  Kokkos::Timer timer;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
@@ -414,18 +365,6 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
     update += x ( i ) * y ( i );
   }, dot_product);
 
-  double time = timer.seconds();
-
-  
-
-  std::cout << "GTEST: Thread " << omp_get_thread_num() << " reports parallel_reduce completed in time " << time << "." << std::endl;
-  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-
   ASSERT_EQ(dot_product, N);
   KokkosResilience::clear_duplicates_cache();
 }
-//#endif
-
