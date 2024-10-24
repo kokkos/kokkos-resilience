@@ -40,7 +40,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.20.3" https://github.com/spack/spack.git
+RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 https://github.com/spack/spack.git && cd spack && git checkout 1b0631b69edbc99a9527c1d6b9a913a49e3b1523
 ADD ./ci/packages.yaml /opt/spack/etc/spack/packages.yaml
 RUN . /opt/spack/share/spack/setup-env.sh && spack compiler find
 RUN . /opt/spack/share/spack/setup-env.sh && spack external find --not-buildable && spack external list
