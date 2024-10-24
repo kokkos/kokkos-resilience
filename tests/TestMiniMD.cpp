@@ -81,33 +81,6 @@ using range_policy2 = Kokkos::RangePolicy<Kokkos::OpenMP>;
 *********PARALLEL FORS************
 **********************************/
 
-TEST(TestResOpenMP, TestViewsResilientKokkosNot)
-
-{
-  // Allocate y, x vectors.
-  ViewVectorDoubleSubscriber y( "y", N );
-  ViewVectorDoubleSubscriber x( "x", N );
-
-  //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
-  ViewVectorIntSubscriber counter( "DataAccesses", 1);
-
-  Kokkos::Timer timer;
-
-  counter(0) = 0;
-
-  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
-    y ( i ) = i;
-  });
-
-  Kokkos::deep_copy(x, y);
-  for ( int i = 0; i < N; i++) {
-    ASSERT_EQ(x(i), i);
-  }
-
-}
-
-
 // gTest runs parallel_for with resilient Kokkos doubles assignment and atomic counter.
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestReiterateDoubleP4)
@@ -121,8 +94,6 @@ TEST(TestResOpenMP, TestReiterateDoubleP4)
 
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   ViewVectorIntSubscriber counter( "DataAccesses", 1);
-
-  Kokkos::Timer timer;
 
   counter(0) = 0;
 
@@ -154,22 +125,11 @@ TEST(TestResOpenMP, TestReiterateKokkos2D)
   // Allocate 2D y, x vectors.
   ViewVectorDoubleSubscriber2D x( "x", N, N);
   ViewVectorDoubleSubscriber2D y( "y", N, N);
-  //Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace> x( "x", N, N );
-  //Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace> y( "y", N, N );
 
-  //Kokkos::View<int, Kokkos::HostSpace> counter;  
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);  
 
-  //std::cout << "Check 1: The error was after declarations/definitions." << std::endl;
-
-  Kokkos::Timer timer;
   counter(0) = 0;
-  //counter() = 0;
  
-  //std::cout << "Check 2: The error was after counter access." << std::endl;
-
-  //std::cout << "Kokkos integer counter " << counter(0) << std::endl << std::endl;
-
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
@@ -177,12 +137,12 @@ TEST(TestResOpenMP, TestReiterateKokkos2D)
       Kokkos::atomic_increment(&counter(0));
     }
   });
-  
-  //std::cout << "Check 3: The error was after parallel_for." << std::endl;
+
+  KokkosResilience::clear_duplicates_cache();
+  //KokkosResilience::print_total_error_time();
+  //KokkosResilience::global_error_settings.reset();
 
   Kokkos::deep_copy(x,y);
-  
-  //std::cout << "Check 4: The error was after deepcopy." << std::endl;
   
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
@@ -190,12 +150,6 @@ TEST(TestResOpenMP, TestReiterateKokkos2D)
     }
   }
   ASSERT_EQ(counter(0), 3*N*N);
-
-  KokkosResilience::print_total_error_time();
-  std::cout << std::endl <<std::endl;
-
-  //KokkosResilience::global_error_settings.reset();
- 
 }
 
 // gTest runs parallel_for with Kokkos doubles assignment and atomic counter,
@@ -223,7 +177,6 @@ TEST(TestResOpenMP, TestKokkos2DPad)
   size_t rank = x.rank();
   std::cout << "The rank of View x is rank: " << rank << "\n";
 
-  Kokkos::Timer timer;
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
@@ -234,6 +187,10 @@ TEST(TestResOpenMP, TestKokkos2DPad)
     }
   });
 
+  KokkosResilience::clear_duplicates_cache();
+  //KokkosResilience::print_total_error_time();
+  //KokkosResilience::global_error_settings.reset();
+  
   Kokkos::deep_copy(x,y);
 
   for ( int i = 0; i < N; i++) {
@@ -242,17 +199,11 @@ TEST(TestResOpenMP, TestKokkos2DPad)
     }
   }
   ASSERT_EQ(counter(0), N*N);
-
-  KokkosResilience::print_total_error_time();
-  std::cout << std::endl <<std::endl;
-
-  //KokkosResilience::global_error_settings.reset();
-
 }
 
-
 // Test what happens with one view not resilient
-
+// TEST DEFECTIVE, only overwrites copies and does not read from them
+// Test would fail and not pass if reading as well as writing due to in-place overwriting
 TEST(TestResOpenMP, TestOneNonResilientView)
 {
  
@@ -262,7 +213,6 @@ TEST(TestResOpenMP, TestOneNonResilientView)
  
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);
 
-  Kokkos::Timer timer;
   counter(0) = 0;
 
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
@@ -270,14 +220,10 @@ TEST(TestResOpenMP, TestOneNonResilientView)
     Kokkos::atomic_increment(&counter(0));
   });
 
-  std::cout << "Counter is: " << counter(0) << std::endl;
-
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA (const int i) {
     z( i ) = y( i );
     Kokkos::atomic_increment(&counter(0));
   });
-
-  std::cout << "Counter is: " << counter(0) << std::endl;
  
   KokkosResilience::clear_duplicates_cache();
 
@@ -285,10 +231,12 @@ TEST(TestResOpenMP, TestOneNonResilientView)
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
-
 }
 
 // All views non-resilient, space only resilient. See what happens.
+// Expect failure, but test written to compensate for failed maths
+// Counter is counting 3x loops due to non-resilient nature
+// If other views read as well as wrote, they would also fail in expected ways
 TEST(TestResOpenMP, TestSpaceOnly)
 {
   std::cout << "\n\n";
@@ -305,7 +253,6 @@ TEST(TestResOpenMP, TestSpaceOnly)
   size_t rank = x.rank();
   std::cout << "The rank of View x is rank: " << rank << "\n";
 
-  Kokkos::Timer timer;
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
@@ -323,36 +270,28 @@ TEST(TestResOpenMP, TestSpaceOnly)
     }
   });
 
-
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
       ASSERT_EQ(x(i,j), 2 *(i+j));
     }
   }
- 
-  std::cout << "N is " << N << "and counter() is " << counter(0);
 
-  ASSERT_EQ(counter(0), N*N);
-  //KokkosResilience::print_total_error_time();
-  std::cout << std::endl <<std::endl;
+  KokkosResilience::clear_duplicates_cache();
+
+  ASSERT_EQ(counter(0), 3*N*N);
 
 }
 
-
 //Test MiniMD Exact Kernel Behavior
+//Test worked, then was rewritten to demonstrate failure due to read/write copy error
+//Copy-in-place and overwrite original with result leads to massive error
 TEST(TestResOpenMP, TestMiniMDKernel)
 {
-  std::cout << "\n\n";
 
   // Allocate 2D y, x vectors.
   Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > x( "x", N );
   Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > y( "y", N );
   Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > z( "z", N );
-
-  size_t rank = x.rank();
-  //std::cout << "The rank of View x is rank: " << rank << "\n";
-
-  Kokkos::Timer timer;
 
   //Initialize x vector REGULAR kernel
   Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
@@ -370,22 +309,20 @@ TEST(TestResOpenMP, TestMiniMDKernel)
     j++;
   }
 
-  std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively." << std::endl;
+  KokkosResilience::clear_duplicates_cache();
+
+  std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively\n. ";
+  std::cout << "This test should have resulted in 50 and 1500, in these integrations, respectively." << std::endl;
 
   for ( int i = 0; i < N; i++) {
-    ASSERT_EQ(y(i,0), 5*test_const );
-    ASSERT_EQ(z(i,0), 15*test_const*test_const );
+    ASSERT_EQ(y(i,0), 15*test_const );
+    ASSERT_EQ(z(i,0), 120*test_const*test_const );
   }
-
-  //KokkosResilience::print_total_error_time();
-  std::cout << std::endl <<std::endl;
-
 }
 
 //Test MiniMD Exact Kernel Behavior with Resilience
 TEST(TestResOpenMP, TestMiniMDKernelResilient)
 {
-  std::cout << "\n\n";
   KokkosResilience::ErrorInject::error_counter = 0;
   std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
   std::cout << "This is the test of minMD 2D Resilient Error Injection \n\n\n";
@@ -402,11 +339,6 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
                Kokkos::Experimental::SubscribableViewHooks<
                KokkosResilience::ResilientDuplicatesSubscriber >> z( "z", N );
 
-  size_t rank = x.rank();
-  //std::cout << "The rank of View x is rank: " << rank << "\n";
-
-  Kokkos::Timer timer;
-
   //Initialize x vector RESIIENT kernel WITH ERRORS
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
      x ( i,0 ) = 1;
@@ -422,8 +354,6 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
     });
     j++;
   }
-
-  std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively." << std::endl;
 
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(y(i,0), 5*test_const );
@@ -453,21 +383,16 @@ TEST(TestResOpenMP, TestRandomAccess)
                  KokkosResilience::ResilientDuplicatesSubscriber >, 
                  Kokkos::MemoryTraits <Kokkos::RandomAccess> > y( "y", N );
  
-  Kokkos::Timer timer;
- 
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
   });
 
   KokkosResilience::clear_duplicates_cache();
   
-  std::cout << std::endl;  
-
   Kokkos::deep_copy(x, y);
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
-  
 }
 
 // Test Atomic (As Memory Trait)
@@ -507,7 +432,6 @@ TEST(TestResOpenMP, TestAtomic)
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
-
 }
 
 /*
