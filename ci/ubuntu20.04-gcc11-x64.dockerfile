@@ -55,7 +55,7 @@ RUN cd /opt/spack-environment \
 RUN cd /opt/spack-environment \
   && . /opt/spack/share/spack/setup-env.sh \
   && spack env activate . \
-  && spack install --fail-fast \
+  && spack install --show-log-on-error --fail-fast \
   && spack gc -y
 
 # We need to build a specific branch of VeloC until https://github.com/ECP-VeloC/VELOC/pull/43 is resolved
