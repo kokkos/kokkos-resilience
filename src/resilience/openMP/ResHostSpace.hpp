@@ -39,7 +39,6 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-// Header guard, format: directory_directory_filename
 #ifndef INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
 #define INC_RESILIENCE_OPENMP_RESHOSTSPACE_HPP
 
@@ -48,9 +47,9 @@
 #include <iosfwd>
 #include <typeinfo>
 
-// Resilience
 #include <Kokkos_Core.hpp>
-#include <typeinfo>
+#include <Kokkos_Macros.hpp>
+
 #include <map>
 
 /*--------------------------------------------------------------------------*/
@@ -184,7 +183,6 @@ SharedAllocationRecord(
       const size_t                                    arg_alloc_size,
       const RecordBase::function_type    arg_dealloc = & deallocate)
   :SharedAllocationRecord< Kokkos::HostSpace, void >(exec_space, arg_space,arg_label,arg_alloc_size,arg_dealloc){}
-
 
   SharedAllocationRecord(
       const KokkosResilience::ResHostSpace               & arg_space,

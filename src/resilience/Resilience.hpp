@@ -64,15 +64,13 @@
 #include "cuda/CudaResParallel.hpp"
 #endif
 
-namespace KokkosResilience {
-/**
- * A function that will be invoked with the total number of retries if the
- * runtime encounters an unrecoverable data corruption.
- */
-using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
-void default_unrecoverable_data_corruption_handler(std::size_t retries);
-void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
-unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
-}  // namespace KokkosResilience
+#ifdef KR_ENABLE_OPENMP_EXEC_SPACE
+#include "openMP/ResOpenMP.hpp"
+#include "openMP/ResHostSpace.hpp"
+#include "openMP/OpenMPResParallel.hpp"
+#include "openMP/OpenMPResSubscriber.hpp"
+#endif
+
+#include "ErrorHandler.hpp"
 
 #endif  // INC_RESILIENCE_RESILIENCE_HPP
