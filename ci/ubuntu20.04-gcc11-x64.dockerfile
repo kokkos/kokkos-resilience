@@ -1,4 +1,5 @@
-FROM ubuntu:20.04
+ARG BASE=ubuntu:20.04
+FROM $BASE
 
 RUN apt-get update \
   && DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -40,7 +41,11 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 https://github.com/spack/spack.git && cd spack && git checkout 1b0631b69edbc99a9527c1d6b9a913a49e3b1523
+RUN mkdir -p /opt/spack && cd /opt/spack && \
+  git init && \
+  git remote add origin https://github.com/spack/spack.git && \
+  git fetch origin 6f948eb847c46a9caea852d3ffffd9cd4575dacc && \
+  git checkout FETCH_HEAD
 ADD ./ci/packages.yaml /opt/spack/etc/spack/packages.yaml
 RUN . /opt/spack/share/spack/setup-env.sh && spack compiler find
 RUN . /opt/spack/share/spack/setup-env.sh && spack external find --not-buildable && spack external list
@@ -55,7 +60,7 @@ RUN cd /opt/spack-environment \
 RUN cd /opt/spack-environment \
   && . /opt/spack/share/spack/setup-env.sh \
   && spack env activate . \
-  && spack install --fail-fast \
+  && spack install --show-log-on-error --fail-fast \
   && spack gc -y
 
 # We need to build a specific branch of VeloC until https://github.com/ECP-VeloC/VELOC/pull/43 is resolved
