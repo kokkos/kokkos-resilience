@@ -1,4 +1,5 @@
-FROM ubuntu:20.04
+ARG BASE=ubuntu:20.04
+FROM $BASE
 
 RUN apt-get update \
   && DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -43,7 +44,7 @@ RUN apt-get update \
 RUN mkdir -p /opt/spack && cd /opt/spack && \
   git init && \
   git remote add origin https://github.com/spack/spack.git && \
-  git fetch origin 0a4563fd0253c829fb14fd576ad0368954028d5d && \
+  git fetch origin 6f948eb847c46a9caea852d3ffffd9cd4575dacc && \
   git checkout FETCH_HEAD
 ADD ./ci/packages.yaml /opt/spack/etc/spack/packages.yaml
 RUN . /opt/spack/share/spack/setup-env.sh && spack compiler find
