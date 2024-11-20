@@ -52,7 +52,7 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Cuda.hpp>
 
-#include "../Resilience.hpp"
+#include "resilience/Resilience.hpp"
 #include "ResCudaSpace.hpp"
 
 #include <Cuda/Kokkos_Cuda_Instance.hpp>

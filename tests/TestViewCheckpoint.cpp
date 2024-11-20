@@ -41,7 +41,6 @@
 #include <gtest/gtest.h>
 #include "TestCommon.hpp"
 #include <Kokkos_Core.hpp>
-#define KOKKOS_ENABLE_MANUAL_CHECKPOINT
 #include <resilience/Resilience.hpp>
 
 #ifdef KR_ENABLE_HDF5_PARALLEL
