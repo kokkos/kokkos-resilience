@@ -40,10 +40,10 @@
  */
 #include "TestCommon.hpp"
 
-#include <resilience/stdfile/StdFileBackend.hpp>
+#include <resilience/backend/StdFileBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/StdFileContext.hpp>
-#include <resilience/filesystem/Filesystem.hpp>
+#include <resilience/context/StdFileContext.hpp>
+#include <resilience/util/filesystem/Filesystem.hpp>
 
 #include <string>
 
