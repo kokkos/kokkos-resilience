@@ -20,8 +20,7 @@ RUN apt-get update \
 
 # Cmake ppa
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-RUN export OS_SHORTNAME=$(lsb_release -a | grep -i "codename:" | grep -o "\w\+$")
-RUN echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $OS_SHORTNAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+RUN echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -a | grep -i "codename:" | grep -o "\w\+$") main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
 
 # gcc ppa
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
