@@ -8,7 +8,6 @@ spack:
     - matrix:
       - [$packages]
       - [$%compilers]
-      - [arch=linux-ubuntu20.04-x86_64_v3]
   concretizer:
     unify: false
   config:
