@@ -1,4 +1,4 @@
-name: Ubuntu 20.04 gcc 11 x64
+name: Ubuntu 22.04 gcc 11 x64
 
 on: [push, workflow_dispatch]
 
@@ -19,7 +19,8 @@ jobs:
           push: false
           tags: kokkos-resilience-deps:${{ steps.vars.outputs.docker_tag }}
           context: .
-          file: ./ci/ubuntu20.04-gcc11-x64.dockerfile
+          file: ./ci/ubuntu-gcc11-x64.dockerfile
+          build-args: BASE=ubuntu:22.04
           cache-from: type=gha
           cache-to: type=gha,mode=max
           outputs: type=docker,dest=/tmp/kokkos-resilience-deps.tar
