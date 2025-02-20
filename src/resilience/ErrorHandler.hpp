@@ -38,13 +38,20 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include <Kokkos_Core.hpp>
-#include "DynamicViewHooks.hpp"
+#ifndef INC_RESILIENCE_ERRORHANDLER_HPP
+#define INC_RESILIENCE_ERRORHANDLER_HPP
+
+#include <functional>
 
 namespace KokkosResilience {
-DynamicViewHooks::callback_overload_set DynamicViewHooks::copy_constructor_set;
-DynamicViewHooks::callback_overload_set DynamicViewHooks::copy_assignment_set;
-DynamicViewHooks::callback_overload_set DynamicViewHooks::move_constructor_set;
-DynamicViewHooks::callback_overload_set DynamicViewHooks::move_assignment_set;
-thread_local bool DynamicViewHooks::reentrant = false;
+/**
+ * A function that will be invoked with the total number of retries if the
+ * runtime encounters an unrecoverable data corruption.
+ */
+using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
+void default_unrecoverable_data_corruption_handler(std::size_t retries);
+void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
+unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
 }  // namespace KokkosResilience
+
+#endif  // INC_RESILIENCE_ERRORHANDLER_HPP
