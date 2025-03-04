@@ -1,12 +1,36 @@
 cmake_minimum_required(VERSION 3.17)
 project(kokkos-resilience VERSION 0.1.0)
 
+include(CMakeDependentOption)
+
 INCLUDE(GNUInstallDirs)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 add_library(resilience)
 add_library(Kokkos::resilience ALIAS resilience)
+
+#Expose a variable to linking CMakeLists and as a compile definition.
+set(KR_EXPOSED_OPTIONS "")
+macro(KR_EXPOSE_OPTION OPT)
+  list(APPEND KR_EXPOSED_OPTIONS "${OPT}")
+
+  if (${OPT})
+    target_compile_definitions(resilience PUBLIC ${OPT})
+  endif()
+endmacro()
+
+#Helper for making and exposing a basic option with optional dependencies
+#If dependencies are listed, this option is false unless dependencies are met
+macro(KR_OPTION OPT DESC DEFAULT)
+  set(DEPS "${ARGN}") #DEPS gets all extra arguments
+  if (DEPS)
+    cmake_dependent_option(${OPT} "${DESC}" ${DEFAULT} "${DEPS}" OFF)
+  else()
+    option(${OPT} "${DESC}" ${DEFAULT})
+  endif()
+  KR_EXPOSE_OPTION(${OPT})
+endmacro()
 
 
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
@@ -31,106 +55,78 @@ target_include_directories(resilience PUBLIC
                            )
 
 find_package(Kokkos 4.0 REQUIRED)
+find_package(Boost REQUIRED)
 
 set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
+target_link_libraries(resilience PUBLIC Kokkos::kokkos Boost::boost)
 
-target_link_libraries(resilience PUBLIC Kokkos::kokkos)
+#Make individual variables for available Kokkos devices
+foreach(DEVICE ${Kokkos_DEVICES})
+  set(KR_${DEVICE}_DEVICE_ENABLED TRUE)
+  mark_as_advanced(KR_${DEVICE}_DEVICE_ENABLED)
+endforeach()
 
-option(KR_ENABLE_VELOC "use VeloC backend for automatic checkpointing" ON)
-option(KR_ENABLE_STDFILE "use StdFile backend for automatic checkpointing" ON)
+#Library options
+kr_option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
+option(KR_ENABLE_TESTS "Enable tests in the build" ON)
+option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
 
-include(CMakeDependentOption)
+#Automatic checkpointing options
+kr_option(KR_ENABLE_AUTOMATIC_CHECKPOINTING "Compile automatic checkpointing contexts and backends" ON)
+#Consistency contexts
+kr_option(KR_ENABLE_MPI_CONTEXT "Compile MPI checkpointing context" ON KR_ENABLE_AUTOMATIC_CHECKPOINTING)
+#Backends
+kr_option(KR_ENABLE_VELOC_BACKEND "Compile VeloC checkpointing backend" ON KR_ENABLE_MPI_CONTEXT)
+kr_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF KR_ENABLE_VELOC)
 
-cmake_dependent_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF "KR_ENABLE_VELOC" OFF)
+#Data space options
+kr_option(KR_ENABLE_DATA_SPACES "Enable Kokkos memory spaces for manual view checkpointing" OFF)
+kr_option(KR_ENABLE_STDFILE_DATA_SPACE "Enable stdfile-based data space" ON KR_ENABLE_DATA_SPACES)
+kr_option(KR_ENABLE_HDF5_DATA_SPACE "Enable HDF5-based data space" OFF KR_ENABLE_DATA_SPACES)
+kr_option(KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF KR_ENABLE_HDF5_DATA_SPACE)
+
+#Exec space options
+kr_option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
+kr_option(KR_ENABLE_CUDA_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED")
+kr_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient OpenMP execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED")
+
 
 # VeloC backend
-if (KR_ENABLE_VELOC)
+if (KR_ENABLE_VELOC_BACKEND)
   find_package(veloc REQUIRED)
   target_link_libraries(resilience PUBLIC veloc::client)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_VELOC)
-  set(KR_ENABLE_MPI_BACKENDS ON)
-
-  if (KR_VELOC_BAREBONE)
-    target_compile_definitions(resilience PRIVATE KR_VELOC_BAREBONE)
-  endif()
 endif()
 
-# StdFile backend
-if (KR_ENABLE_STDFILE)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_STDFILE)
-endif()
-
-if (KR_ENABLE_MPI_BACKENDS)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_MPI_BACKENDS)
-endif()
-
-# Library options
-option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
-if (KR_ENABLE_TRACING)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_TRACING)
-endif()
-
-option( KR_ENABLE_STDIO "use stdio for manual checkpoint" OFF )
-option( KR_ENABLE_HDF5 "add HDF5 support" OFF )
-option( KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF )
-
-if (KR_ENABLE_STDIO)
-  set(KR_ENABLE_MANUAL_CHECKPOINT ON)
-endif()
-
-if (KR_ENABLE_HDF5_PARALLEL)
-  set(KR_ENABLE_HDF5 ON)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5_PARALLEL)
-  set(KR_ENABLE_MANUAL_CHECKPOINT ON)
-endif()
-
-if (KR_ENABLE_HDF5)
+if (KR_ENABLE_HDF5_DATA_SPACE)
    find_package(HDF5 REQUIRED)
    target_link_libraries(resilience PUBLIC HDF5::HDF5)
-   target_compile_definitions(resilience PUBLIC KR_ENABLE_HDF5)
-   set(KR_ENABLE_MANUAL_CHECKPOINT ON)
-endif()
-
-if (KR_ENABLE_MANUAL_CHECKPOINT)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_MANUAL_CHECKPOINT)
 endif()
 
 # MPI requirement
-if (KR_ENABLE_VELOC OR KR_ENABLE_HDF5_PARALLEL)
+if (KR_ENABLE_MPI_CONTEXT OR KR_ENABLE_HDF5_PARALLEL)
    find_package(MPI REQUIRED)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 endif()
 
-# Devices
-list(FIND Kokkos_DEVICES "CUDA" _kokkos_cuda_found)
-if (_kokkos_cuda_found GREATER -1)
-  set(KR_CUDA_DEVICE_ENABLED TRUE)
-  mark_as_advanced(KR_CUDA_DEVICE_ENABLED)
-endif()
-list(FIND Kokkos_DEVICES "OPENMP" _kokkos_omp_found)
-if (_kokkos_omp_found GREATER -1)
-  set(KR_OPENMP_DEVICE_ENABLED TRUE)
-  mark_as_advanced(KR_OPENMP_DEVICE_ENABLED)
-endif()
-
-option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
-cmake_dependent_option(KR_ENABLE_CUDA_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED" OFF)
-cmake_dependent_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED" OFF)
 
 if (KR_ENABLE_CUDA_EXEC_SPACE)
   message(STATUS "CUDA resilient execution spaces are enabled")
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA_EXEC_SPACE)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
   message(STATUS "OpenMP resilient execution spaces are enabled")
 endif()
 
-find_package(Boost REQUIRED)
-
-target_link_libraries(resilience PUBLIC Boost::boost)
 
 add_subdirectory(src)
+
+
+#Set variable values to expose to resilienceConfig.cmake
+set(KR_EXPOSED_OPTION_VALUES "")
+foreach (OPT ${KR_EXPOSED_OPTIONS})
+  list(APPEND KR_EXPOSED_OPTION_VALUES ${${OPT}})
+endforeach()
+
 
 # Export targets for in-tree linking
 export(TARGETS resilience
@@ -171,22 +167,8 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/resilienceConfig.cmake
 
 install(DIRECTORY src/resilience DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 
-if (KR_ENABLE_HDF5)
-  install(FILES
-          ${CMAKE_MODULE_PATH}/FindHDF5.cmake
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/resilience/Modules )
-
-  # Need to install/export HDF5 find module for downstream dependencies
-  configure_file(cmake/Modules/FindHDF5.cmake Modules/FindHDF5.cmake COPYONLY)
-endif()
-
-configure_file(src/resilience/config/Config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/resilience/config/Config.hpp DESTINATION include/resilience/config)
 
 # Add subdirectories for examples and tests if they are enabled
-option(KR_ENABLE_TESTS "Enable tests in the build" ON)
-option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
-
 add_subdirectory(tpl)
 
 if (KR_ENABLE_TESTS)

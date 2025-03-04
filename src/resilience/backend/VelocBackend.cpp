@@ -45,11 +45,11 @@
 #include <veloc.h>
 #include <cassert>
 
-#include "../MPIContext.hpp"
-#include "../AutomaticCheckpoint.hpp"
+#include <resilience/context/MPIContext.hpp>
+#include <resilience/AutomaticCheckpoint.hpp>
 
 #ifdef KR_ENABLE_TRACING
-   #include "../util/Trace.hpp"
+   #include <Resilience/util/Trace.hpp>
 #endif
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )

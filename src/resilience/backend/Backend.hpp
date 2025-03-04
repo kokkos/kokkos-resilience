@@ -38,15 +38,9 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_KOKKOS_RESILIENCE_UTILITY_HPP
-#define INC_KOKKOS_RESILIENCE_UTILITY_HPP
 
-namespace KokkosResilience
-{
-  struct in_place_t
-  {
-    explicit in_place_t() = default;
-  };
-}
+#include "StdFileBackend.hpp"
 
-#endif  // INC_KOKKOS_RESILIENCE_UTILITY_HPP
+#ifdef KR_ENABLE_VELOC_BACKEND
+#include "VelocBackend.hpp"
+#endif

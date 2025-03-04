@@ -44,10 +44,14 @@
 #include <utility>
 #include <vector>
 #include <memory>
-#include "Utility.hpp"
 
 namespace KokkosResilience
 {
+  struct in_place_t
+  {
+    explicit in_place_t() = default;
+  };
+
   template< typename T >
   class Ref
   {

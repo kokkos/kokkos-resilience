@@ -40,10 +40,10 @@
  */
 #include "TestCommon.hpp"
 
-#include <resilience/veloc/VelocBackend.hpp>
+#include <resilience/backend/VelocBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/MPIContext.hpp>
-#include <resilience/filesystem/Filesystem.hpp>
+#include <resilience/context/MPIContext.hpp>
+#include <resilience/util/filesystem/Filesystem.hpp>
 
 #include <string>
 

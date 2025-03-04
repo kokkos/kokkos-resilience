@@ -1,39 +1,24 @@
-target_sources(resilience PRIVATE
-               ${CMAKE_CURRENT_LIST_DIR}/Resilience.cpp
-               ${CMAKE_CURRENT_LIST_DIR}/AutomaticCheckpoint.cpp
-               ${CMAKE_CURRENT_LIST_DIR}/Context.cpp
-               ${CMAKE_CURRENT_LIST_DIR}/Config.cpp
-               ${CMAKE_CURRENT_LIST_DIR}/Cref.cpp
-               ${CMAKE_CURRENT_LIST_DIR}/ResilientRef.cpp
-               )
+target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/Resilience.cpp)
 
-if (KR_ENABLE_MPI_BACKENDS)
-  target_sources(resilience PRIVATE MPIContext.cpp)
+if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
+  target_sources(resilience PRIVATE 
+                 ${CMAKE_CURRENT_LIST_DIR}/config/Config.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/Cref.cpp
+                 )
+  add_subdirectory(backend)
+  add_subdirectory(context)
 endif()
 
-add_subdirectory(filesystem)
-add_subdirectory(stdio)
-
-if (KR_ENABLE_VELOC)
-  add_subdirectory(veloc)
+if (KR_ENABLE_EXEC_SPACES)
+  add_subdirectory(exec_space)
 endif()
 
-if (KR_ENABLE_STDFILE)
-  target_sources(resilience PRIVATE StdFileContext.cpp)
-  add_subdirectory(stdfile)
+if (KR_ENABLE_AUTOMATIC_CHECKPOINTING OR KR_ENABLE_EXEC_SPACES)
+  add_subdirectory(view_hooks)
 endif()
 
-if (KR_ENABLE_HDF5)
-  add_subdirectory(hdf5)
+if (KR_ENABLE_DATA_SPACES)
+  add_subdirectory(data_space)
 endif()
 
-add_subdirectory(view_hooks)
-
-if (KR_ENABLE_CUDA_EXEC_SPACE)
-  add_subdirectory(cuda)
-endif()
-
-if (KR_ENABLE_OPENMP_EXEC_SPACE)
-  add_subdirectory(openMP)
-endif()
-
+add_subdirectory(util)

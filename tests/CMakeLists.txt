@@ -15,24 +15,24 @@ add_executable(resilience_tests
                TestDynamicViewHooks.cpp
                )
 
-if (KR_ENABLE_VELOC)
+if (KR_ENABLE_VELOC_BACKEND)
   target_sources(resilience_tests PRIVATE
       TestVelocMemoryBackend.cpp)
   target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
 endif()
 
-if (KR_ENABLE_STDFILE)
+if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
       TestStdFileBackend.cpp)
 endif()
 
-if (KR_ENABLE_STDIO)
+if (KR_ENABLE_STDFILE_DATA_SPACE)
   target_sources(resilience_tests PRIVATE
                  TestViewCheckpoint.cpp
                  )
 endif()
 
-if (KR_ENABLE_HDF5)
+if (KR_ENABLE_HDF5_DATA_SPACE)
   target_sources(resilience_tests PRIVATE
                  TestHDF5Configuration.cpp
                  )
