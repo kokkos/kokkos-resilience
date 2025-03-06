@@ -44,7 +44,7 @@
 
 #include "Registration.hpp"
 #include "resilience/view_hooks/ViewHolder.hpp"
-#include "resilience/context/ContextBase.hpp"
+#include "resilience/context/Context.hpp"
 
 namespace KokkosResilience::Detail {
 struct ViewHolderRegistration : public RegistrationBase {
@@ -104,21 +104,23 @@ private:
 
   ContextBase& m_ctx;
 };
-}
 
-namespace KokkosResilience {
-  template<typename Traits> //Unused
-  struct create_registration<const KokkosResilience::ViewHolder, Traits>{
-    using RegT = Detail::ViewHolderRegistration;
-    std::shared_ptr<RegT> reg;
+template<>
+struct SpecializedRegistration<const KokkosResilience::ViewHolder>{
+  static constexpr bool exists = true;
 
-    create_registration(ContextBase& ctx, const KokkosResilience::ViewHolder& view, std::string unused = "") 
-        : reg(std::make_shared<RegT>(ctx, view)) {};
+  using RegT = Detail::ViewHolderRegistration;
+  std::shared_ptr<RegT> reg;
 
-    auto get() {
-      return std::move(reg);
-    }
-  };
+  SpecializedRegistration(ContextBase& ctx, const KokkosResilience::ViewHolder& view) 
+      : reg(std::make_shared<RegT>(ctx, view)) {};
+  SpecializedRegistration(ContextBase& ctx, const KokkosResilience::ViewHolder& view, std::string unused) 
+      : SpecializedRegistration(ctx, view) {};
+
+  std::shared_ptr<RegistrationBase> get() {
+    return reg;
+  }
+};
 }
 
 #endif

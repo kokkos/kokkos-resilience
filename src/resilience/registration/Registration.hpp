@@ -39,14 +39,17 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef _INC_RESILIENCE_REGISTRATION_IMPL_HPP
-#define _INC_RESILIENCE_REGISTRATION_IMPL_HPP
+#ifndef _INC_RESILIENCE_REGISTRATION_HPP
+#define _INC_RESILIENCE_REGISTRATION_HPP
 
 #include <string>
 #include <functional>
 #include <cmath>
 #include <climits>
 #include <memory>
+#include <iostream>
+
+#include "resilience/context/Context.hpp"
 
 namespace KokkosResilience
 { 
@@ -62,11 +65,13 @@ namespace KokkosResilience
     size_t label_hash(const std::string& label);
 
     struct RegistrationBase {
-      explicit RegistrationBase(const std::string member_name) : 
-          name(sanitized_label(member_name)) { }
+      explicit RegistrationBase(const std::string member_name);
 
       RegistrationBase() = delete;
       virtual ~RegistrationBase() = default;
+
+      const bool serialize(std::ostream& out);
+      const bool deserialize(std::istream& in);
 
       virtual const serializer_t serializer() const = 0;
       virtual const deserializer_t deserializer() const = 0;
@@ -83,48 +88,55 @@ namespace KokkosResilience
     //checkpoint region should also use.
     template<typename T>
     struct RegInfo {
-      RegInfo(T& member, const std::string label) : member(member), label(label) {};
+      RegInfo(T& m_member, const std::string m_label);
       T& member;
       const std::string label;
     };
+
+    //Enables overrides for the default SimpleRegistration
+    template<typename T, typename enable = void*>
+    struct SpecializedRegistration;
   }
 
-  
-  //A struct convertible to Registration, use as if function returning Registration.
-  //Generally, register as: create_registration(ContextBase* ctx, T& member, const std::string& label);
-  //But see various registration headers for any specializations based on member type
-  template<typename T, typename Traits = std::tuple<>, typename enable = void*>
-  struct create_registration;
+  struct Registration {
+    Registration(std::shared_ptr<Detail::RegistrationBase> m_base) 
+      : base(m_base) {}
 
-  //Make registration using custom (de)serialize functions
-  Registration custom_registration(serializer_t&& s_fun, deserializer_t&& d_fun, const std::string label);
+    //Typical constructor
+    template<typename T>
+    Registration(ContextBase& ctx, T& member, const std::string& label);
 
-  struct Registration : public std::shared_ptr<Detail::RegistrationBase> {
-    template<typename RegType>
-    Registration(std::shared_ptr<RegType> base) 
-      : std::shared_ptr<Detail::RegistrationBase>(std::move(base)) {}
+    //For members we can infer labels for
+    template<typename T>
+    Registration(ContextBase& ctx, T& member);
+    
+    template<typename T>
+    Registration(ContextBase& ctx, Detail::RegInfo<T>& reg_info); 
 
-    //Auto-convert create_registration structs into Registrations
-    template<typename... T>
-    Registration(create_registration<T...> reg) 
-      : Registration(reg.get()) {};
+    //Create using custom (de)serialize functions
+    Registration(serializer_t&& s_fun, deserializer_t&& d_fun, const std::string& label);
 
     const size_t hash() const;
     const bool operator==(const Registration& other) const;
+    Detail::RegistrationBase& operator*() const {
+      return *base.get();
+    }
+    Detail::RegistrationBase* operator->() const {
+      return base.get();
+    }
+    Detail::RegistrationBase* get() const {
+      return base.get();
+    }
+
+  private:
+    std::shared_ptr<Detail::RegistrationBase> base;
   };
 } //namespace KokkosResilience
 
-namespace std {
-  template<>
-  struct hash<KokkosResilience::Registration>{
-    size_t operator()(const KokkosResilience::Registration& registration) const {
-      return registration.hash();
-    }
-  };
-}
 
-#include "./Simple.hpp"
-#include "./ViewHolder.hpp"
-#include "./Custom.hpp"
+#include "Registration.impl.hpp"
+#include "Simple.hpp"
+#include "ViewHolder.hpp"
+#include "Custom.hpp"
 
 #endif //_INC_RESILIENCE_REGISTRATION_HPP

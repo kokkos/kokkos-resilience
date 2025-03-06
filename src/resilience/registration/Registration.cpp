@@ -12,11 +12,7 @@ namespace KokkosResilience {
       return label;
     }
 
-    const bool RegistrationBase::operator==(const RegistrationBase& other) const {
-        return this->name == other.name;
-    }
-
-    virtual const size_t RegistrationBase::hash() const {
+    size_t label_hash(const std::string& name) {
       const size_t base = 7;
       size_t hash = 0;
       for(size_t i = 0; i < name.length(); i++){
@@ -26,14 +22,41 @@ namespace KokkosResilience {
       }
       return static_cast<size_t>(hash%INT_MAX);
     }
+   
+    RegistrationBase::RegistrationBase(const std::string member_name) :
+      name(sanitized_label(member_name)) {
+    }
+
+    const bool RegistrationBase::operator==(const RegistrationBase& other) const {
+        return this->name == other.name;
+    }
+
+    const size_t RegistrationBase::hash() const {
+      return label_hash(name);
+    }
+
+    const bool RegistrationBase::serialize(std::ostream& out){
+      return this->serializer()(out);
+    }
+
+    const bool RegistrationBase::deserialize(std::istream& in){
+      return this->deserializer()(in);
+    }
   }
   
+  Registration::Registration(
+      serializer_t&& s_fun,
+      deserializer_t&& d_fun,
+      const std::string& label
+  ) : Registration(std::make_shared<Detail::CustomRegistration>(std::move(s_fun), std::move(d_fun), label))
+  { }
+
   const size_t Registration::hash() const {
-    return (*this)->hash();
+    return base->hash();
   }
 
   const bool Registration::operator==(const Registration& other) const {
-    return *(this->get()) == *(other.get()); 
+    return *base.get() == *other.base.get(); 
   }
   
 }

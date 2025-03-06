@@ -44,6 +44,7 @@
 #include <fstream>
 #include <veloc.h>
 #include <cassert>
+#include <unordered_set>
 
 #include <resilience/context/MPIContext.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
@@ -79,47 +80,44 @@ namespace KokkosResilience
   }
 
   VeloCMemoryBackend::VeloCMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
-      : m_context(&ctx), m_last_id(0) {
+      : m_context(&ctx), m_mpi_comm(mpi_comm) {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    VELOC_SAFE_CALL( VELOC_Init( mpi_comm, vconf.c_str() ) );
+    veloc_client = veloc::get_client(m_mpi_comm, vconf.c_str());
   }
 
   VeloCMemoryBackend::~VeloCMemoryBackend()
   {
-    VELOC_Checkpoint_wait();
-    VELOC_Finalize( false );
+    veloc_client->checkpoint_wait();
   }
 
   void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< KokkosResilience::ViewHolder > &_views )
+                                       std::unordered_set<Registration> &members )
   {
-    bool status = true;
+    VELOC_SAFE_CALL(veloc_client->checkpoint_wait());
 
-    // Check if we need to copy any views to backing store
-    for ( auto &&view : _views )
-    {
-      std::string label = get_canonical_label( view->label() );
+    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
 
-      if ( !view->span_is_contiguous() || !view->is_host_space() )
-      {
-        auto pos = m_registry.find( label );
-        if ( pos != m_registry.end())
-        {
-          view->deep_copy_to_buffer( pos->second.buff.data() );
-          assert( pos->second.buff.size() == view->data_type_size() * view->span() );
-        }
-      }
-    }
+    VELOC_SAFE_CALL( 
+        veloc_client->checkpoint_mem(VELOC_CKPT_SOME, hash_set(members))
+    );
 
-    VELOC_SAFE_CALL( VELOC_Checkpoint_wait() );
-
-    VELOC_SAFE_CALL( VELOC_Checkpoint_begin( label.c_str(), version ) );
-
-    VELOC_SAFE_CALL( VELOC_Checkpoint_mem() );
-
-    VELOC_SAFE_CALL( VELOC_Checkpoint_end( status ));
+    bool success = true;
+    VELOC_SAFE_CALL( veloc_client->checkpoint_end(success) ); 
 
     m_latest_version[label] = version;
+  }
+    
+  std::set<int> VeloCMemoryBackend::hash_set(std::unordered_set<Registration> &members){
+    std::set<int> ids;
+    std::transform(members.begin(), members.end(), std::inserter(ids, ids.begin()), 
+        [this](const Registration& member) -> int {
+          auto iter = m_alias_map.find(member->name);
+          if (iter == m_alias_map.end())
+            return static_cast<int>(member->hash());
+          else 
+            return iter->second;
+        });
+    return ids;
   }
 
   bool
@@ -132,12 +130,11 @@ namespace KokkosResilience
   int
   VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
   {
-    auto lab = get_canonical_label( label );
-    auto latest_iter = m_latest_version.find( lab );
+    auto latest_iter = m_latest_version.find( label );
     if ( latest_iter == m_latest_version.end() )
     {
-      auto test = VELOC_Restart_test(lab.c_str(), 0);
-      m_latest_version[lab] = test;
+      auto test = veloc_client->restart_test(label, 0);
+      m_latest_version[label] = test;
       return test;
     } else {
      return latest_iter->second;
@@ -146,161 +143,64 @@ namespace KokkosResilience
 
   void
   VeloCMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< KokkosResilience::ViewHolder > &_views )
+                               std::unordered_set<Registration> &members )
   {
-    auto lab = get_canonical_label( label );
-    VELOC_SAFE_CALL( VELOC_Restart_begin( lab.c_str(), version ));
+    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
+
+    VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, hash_set(members)) );
 
     bool status = true;
-
-    VELOC_SAFE_CALL( VELOC_Recover_mem() );
-
-    VELOC_SAFE_CALL( VELOC_Restart_end( status ) );
-
-    // Check if we need to copy any views from the backing store back to the view
-    for ( auto &&view : _views )
-    {
-      auto vl = get_canonical_label( view->label() );
-      if ( !view->span_is_contiguous() || !view->is_host_space() )
-      {
-        auto pos = m_registry.find( vl );
-        if ( pos != m_registry.end() )
-        {
-          assert( pos->second.buff.size() == view->data_type_size() * view->span() );
-          view->deep_copy_from_buffer( pos->second.buff.data() );
-        }
-      }
-    }
+    VELOC_SAFE_CALL( veloc_client->restart_end( status ) );
   }
 
   void
   VeloCMemoryBackend::reset()
   {
-    for ( auto &&vr : m_registry )
-    {
-      VELOC_Mem_unprotect( vr.second.id );
-    }
-
-    m_registry.clear();
+    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(m_mpi_comm, vconf);
 
     m_latest_version.clear();
     m_alias_map.clear();
   }
 
   void
-  VeloCMemoryBackend::register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
-                                       const std::vector< Detail::CrefImpl > &crefs  )
+  VeloCMemoryBackend::register_hashes( std::unordered_set<Registration> &members )
   {
-    // Clear protected bits
-    for ( auto &&p : m_registry )
-    {
-      p.second.protect = false;
-    }
-
-    for ( auto &&view : views )
-    {
-      if ( !view->data() )  // uninitialized view
+    for ( auto && member : members ) {
+      if(m_alias_map.count(member->name) != 0)
         continue;
 
-      std::string label = get_canonical_label( view->label() );
-      auto iter = m_registry.find( label );
-
-      // Attempt to find the view in our registry
-      if ( iter == m_registry.end() )
-      {
-        // Calculate id using hash of view label
-        int id = ++m_last_id; // Prefix since we will consider id 0 to be no-id
-        iter = m_registry.emplace( std::piecewise_construct,
-                                        std::forward_as_tuple( label ),
-                                        std::forward_as_tuple( id ) ).first;
-        iter->second.element_size = view->data_type_size();
-        iter->second.size = view->span();
-
-        if ( !view->is_host_space() || !view->span_is_contiguous() )
-        {
-          // Can't reference memory directly, allocate memory for a watch buffer
-          iter->second.buff.assign( iter->second.size * iter->second.element_size, 0x00 );
-          iter->second.ptr = iter->second.buff.data();
-        } else {
-          iter->second.ptr = view->data();
-        }
-      }
-
-      // iter now pointing to our entry
-      iter->second.protect = true;
-    }
-
-    // Register crefs
-    for ( auto &&cref : crefs )
-    {
-      if ( !cref.ptr )  // uninitialized view
-        continue;
-      // If we haven't already register, register with VeloC
-      auto iter = m_registry.find( cref.name );
-      if ( iter == m_registry.end())
-      {
-        int id = ++m_last_id; // Prefix since we will consider id 0 to be no-id
-        iter = m_registry.emplace( std::piecewise_construct,
-            std::forward_as_tuple( cref.name ),
-            std::forward_as_tuple( id ) ).first;
-
-        iter->second.ptr = cref.ptr;
-        iter->second.size = cref.num;
-        iter->second.element_size = cref.sz;
-      }
-
-      iter->second.protect = true;
-    }
-
-    // Register everything protected, unregister anything unprotected
-    for ( auto &&p : m_registry )
-    {
-      if ( p.second.protect )
-      {
-        if ( !p.second.registered )
-        {
-          std::cout << "Protecting memory id " << p.second.id << " with label " << p.first << '\n';
-          VELOC_SAFE_CALL( VELOC_Mem_protect( p.second.id, p.second.ptr, p.second.size, p.second.element_size ) );
-          p.second.registered = true;
-        }
-      } else { //deregister
-        if ( p.second.registered )
-        {
-          std::cout << "Unprotecting memory id " << p.second.id << " with label " << p.first << '\n';
-          VELOC_Mem_unprotect( p.second.id );
-          p.second.registered = false;
-        }
-      }
+      // Not a "safe" call, since we don't care if this was 
+      //   or wasn't already registered
+      veloc_client->mem_unprotect(
+            static_cast<int>(member.hash())
+      );
+      VELOC_SAFE_CALL(veloc_client->mem_protect(
+            static_cast<int>(member.hash()),
+            member->serializer(),
+            member->deserializer()
+      ));
     }
   }
 
   void
   VeloCMemoryBackend::register_alias( const std::string &original, const std::string &alias )
   {
-    m_alias_map[alias] = original;
-  }
-
-  std::string
-  VeloCMemoryBackend::get_canonical_label( const std::string &_label ) const noexcept
-  {
-    // Possible the view has an alias. If so, make sure that is registered instead
-    auto pos = m_alias_map.find( _label );
-    if ( m_alias_map.end() != pos )
-    {
-      return pos->second;
-    } else {
-      return _label;
-    }
+    m_alias_map[Detail::sanitized_label(alias)] = static_cast<int>(
+        Detail::label_hash(Detail::sanitized_label(original))
+    );
   }
 
   void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views )
+  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version,
+      std::unordered_set<Registration> &members )
   {
     // No-op, don't do anything
   }
 
   void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version, const std::vector<KokkosResilience::ViewHolder> &views)
+  VeloCRegisterOnlyBackend::restart(const std::string &label, int version,
+      std::unordered_set<Registration> &members)
   {
     // No-op, don't do anything
   }
@@ -318,7 +218,7 @@ namespace KokkosResilience
 
   void
   VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                const std::vector< KokkosResilience::ViewHolder > &views )
+                                std::unordered_set<Registration> &members )
   {
     // Wait for previous checkpoint to finish
     VELOC_SAFE_CALL( VELOC_Checkpoint_wait());
@@ -339,12 +239,10 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
       auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "write" );
 #endif
-      for ( auto &&v : views )
+      for ( auto &&member : members )
       {
-        char        *bytes = static_cast< char * >( v->data());
-        std::size_t len    = v->span() * v->data_type_size();
-
-        vfile.write( bytes, len );
+        status = member->serialize(vfile);
+        if(!status) break;
       }
 #ifdef KR_ENABLE_TRACING
       write_trace.end();
@@ -373,7 +271,7 @@ namespace KokkosResilience
   }
 
   void VeloCFileBackend::restart( const std::string &label, int version,
-                                  const std::vector< KokkosResilience::ViewHolder > &views )
+                                  std::unordered_set<Registration> &members )
   {
     VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
 
@@ -391,12 +289,10 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_TRACING
       auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "read" );
 #endif
-      for ( auto &&v : views )
+      for ( auto &&member : members )
       {
-        char        *bytes = static_cast< char * >( v->data());
-        std::size_t len    = v->span() * v->data_type_size();
-
-        vfile.read( bytes, len );
+        status = member->deserialize(vfile);
+        if(!status) break;
       }
 #ifdef KR_ENABLE_TRACING
       read_trace.end();
