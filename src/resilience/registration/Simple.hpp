@@ -4,19 +4,19 @@ namespace KokkosResilience::Detail {
   template <typename MemberType>
   struct SimpleRegistration : public RegistrationBase {
     SimpleRegistration() = delete;
-    SimpleRegistration(MemberType& member, const std::string label) 
-        : RegistrationBase(name), m_member(member) {}
+    SimpleRegistration(MemberType& m_member, const std::string m_name) 
+        : RegistrationBase(m_name), member(m_member) {}
 
     const serializer_t serializer() const override{
       return [&, this](std::ostream& stream){
-        stream.write((const char*)&m_member, sizeof(this->m_member));
+        stream.write((const char*)&member, sizeof(this->member));
         return stream.good();
       };
     }
 
     const deserializer_t deserializer() const override{
       return [&, this](std::istream& stream){
-        stream.read((char*)&m_member, sizeof(m_member));
+        stream.read((char*)&member, sizeof(member));
         return stream.good();
       };
     }
@@ -30,24 +30,10 @@ namespace KokkosResilience::Detail {
         return false;
       }
 
-      return &m_member == &(other->m_member);
+      return &member == &(other->member);
     }
 
   private:
-    MemberType& m_member;
-  };
-}
-
-namespace KokkosResilience {
-  template<typename Unused, typename T>
-  struct create_registration<T, Unused> {
-    std::shared_ptr<Detail::SimpleRegistration<T>> reg;
-
-    create_registration(ContextBase& ctx, T& member, std::string label)
-        : reg(member, label) {};
-
-    auto get() {
-      return std::move(reg);
-    }
+    MemberType& member;
   };
 }

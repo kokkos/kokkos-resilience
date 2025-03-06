@@ -53,7 +53,6 @@ auto get_view_list( F &&_fun )
 
   auto f = _fun;
 
-  KokkosResilience::Detail::Cref::check_ref_list = nullptr;
   KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
 
   f();
