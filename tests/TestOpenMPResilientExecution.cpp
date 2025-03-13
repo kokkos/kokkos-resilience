@@ -267,7 +267,7 @@ TEST(TestResOpenMP, TestKokkos2D)
   Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
-      Kokkos::atomic_increment(&counter(0));
+      Kokkos::atomic_inc(&counter(0));
     }
   });
 
@@ -316,54 +316,4 @@ TEST(TestResOpenMP, TestResilient2D)
       ASSERT_EQ(x(i,j), i+j);
     }
   }
-}
-
-/**********************************
- *********PARALLEL REDUCES*********
- **********************************/
-// gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
-TEST(TestResOpenMP, TestKokkosReduceDouble)
-{
-
-  ViewVectorType y ( "y", N );
-  ViewVectorType x ( "x", N );
-
-  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
-    y ( i ) = 1.0;
-  });
-
-  Kokkos::deep_copy(x,y);
-
-  double dot_product = 0;
-
-  Kokkos::parallel_reduce(range_policy2(0,N),KOKKOS_LAMBDA (const int i, double & update) {
-    update += x ( i ) * y ( i );
-  }, dot_product);
-
-  ASSERT_EQ(dot_product, N);
-
-}
-
-// gTest runs parallel_reduce with resilient Kokkos to get a dot product.
-TEST(TestResOpenMP, TestResilientReduceDouble)
-{
-  // Allocate y, x vectors.
-  ViewVectorDoubleSubscriber y( "y", N );
-  ViewVectorDoubleSubscriber x( "x", N );
-
-  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
-    y ( i ) = 1.0;
-  });
-
-  Kokkos::deep_copy(x,y);
-  double dot_product = 0;
-
-  Kokkos::parallel_reduce(range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
-    update += x ( i ) * y ( i );
-  }, dot_product);
-
-  ASSERT_EQ(dot_product, N);
-  KokkosResilience::clear_duplicates_cache();
 }

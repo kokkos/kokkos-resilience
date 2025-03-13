@@ -100,8 +100,8 @@ inline static size_t global_next_inject = 0;
 
 struct ETimer{
 //Error timer settings zero-initialized
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> elapsed_seconds{};
-inline static std::chrono::duration<long int, std::ratio<1, 1000000000>> total_error_time{};
+inline static std::chrono::duration<long int, std::nano> elapsed_seconds{};
+inline static std::chrono::duration<long int, std::nano> total_error_time{};
 inline static std::mutex global_time_mutex;
 };
 
