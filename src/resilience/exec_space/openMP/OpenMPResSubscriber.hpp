@@ -98,7 +98,7 @@ inline static std::mt19937 random_gen{0};
 inline static size_t global_next_inject = 0;
 };
 
-struct ETimer{
+struct ErrorTimerSettings{
 //Error timer settings zero-initialized
 inline static std::chrono::duration<long int, std::nano> elapsed_seconds{};
 inline static std::chrono::duration<long int, std::nano> total_error_time{};
@@ -558,11 +558,11 @@ struct ResilientDuplicatesSubscriber {
 KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
 
-  ETimer::global_time_mutex.lock();
-  //auto time = ETimer::total_error_time.count() / 1000000000;
-  std::cout << "The value of ETimer::total_error_time.count() is " << ETimer::total_error_time.count() << " nanoseconds." << std::endl;
+  ErrorTimerSettings::global_time_mutex.lock();
+  //auto time = ErrorTimerSettings::total_error_time.count() / 1000000000;
+  std::cout << "The value of ErrorTimerSettings::total_error_time.count() is " << ErrorTimerSettings::total_error_time.count() << " nanoseconds." << std::endl;
   std::cout << "The total number of errors inserted is " << ErrorInject::error_counter << " errors." << std::endl;
-  ETimer::global_time_mutex.unlock();
+  ErrorTimerSettings::global_time_mutex.unlock();
 
 }
 
