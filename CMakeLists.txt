@@ -34,7 +34,7 @@ endmacro()
 
 
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
-option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" OFF)
+option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
 
 if (KR_ALL_WARNINGS)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -128,10 +128,6 @@ export(TARGETS resilience
        NAMESPACE Kokkos::
        FILE resilienceTargets.cmake
        )
-
-if (Kokkos_ENABLE_Cuda)
-  target_compile_definitions(resilience PUBLIC KR_ENABLE_CUDA)
-endif()
 
 if (KR_ENABLE_WRAPPER)
   target_compile_definitions(resilience PUBLIC KR_ENABLE_WRAPPER)

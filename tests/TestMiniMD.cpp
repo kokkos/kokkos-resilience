@@ -100,7 +100,7 @@ TEST(TestResOpenMP, TestReiterateDoubleP4)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    Kokkos::atomic_increment(&counter(0));
+    Kokkos::atomic_inc(&counter(0));
   });
 
   KokkosResilience::clear_duplicates_cache();
@@ -134,7 +134,7 @@ TEST(TestResOpenMP, TestReiterateKokkos2D)
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
-      Kokkos::atomic_increment(&counter(0));
+      Kokkos::atomic_inc(&counter(0));
     }
   });
 
@@ -217,12 +217,12 @@ TEST(TestResOpenMP, TestOneNonResilientView)
 
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    Kokkos::atomic_increment(&counter(0));
+    Kokkos::atomic_inc(&counter(0));
   });
 
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA (const int i) {
     z( i ) = y( i );
-    Kokkos::atomic_increment(&counter(0));
+    Kokkos::atomic_inc(&counter(0));
   });
  
   KokkosResilience::clear_duplicates_cache();
@@ -419,7 +419,7 @@ TEST(TestResOpenMP, TestAtomic)
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     counter(0)++;
-    Kokkos::atomic_increment(&counter2(0));
+    Kokkos::atomic_inc(&counter2(0));
   });
 
   std::cout << "Counter (resilient, atomic declared) is: " << counter(0) << std::endl;
