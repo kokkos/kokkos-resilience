@@ -39,7 +39,7 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 #include "StdFileContext.hpp"
-#include "stdfile/StdFileBackend.hpp"
+#include "../backend/StdFileBackend.hpp"
 
 #include <functional>
 #include <memory>

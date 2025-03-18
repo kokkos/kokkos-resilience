@@ -46,8 +46,8 @@
 #endif
 
 #include <Kokkos_Core.hpp>
-#include <resilience/Context.hpp>
-#include <resilience/stdfile/StdFileBackend.hpp>
+#include <resilience/context/Context.hpp>
+#include <resilience/backend/StdFileBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
 
 int

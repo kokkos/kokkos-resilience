@@ -38,7 +38,6 @@ if (KR_ENABLE_VELOC)
     add_example(ping_pong SOURCES ping_pong.cpp RESOURCES config.json veloc_test.cfg)
 endif()
 
-if (KR_ENABLE_STDFILE)
-    add_example(simple_file_checkpoint SOURCES SimpleFileCheckpoint.cpp
-        RESOURCES config_file.json file_test.cfg)
-endif()
+add_example(simple_file_checkpoint SOURCES SimpleFileCheckpoint.cpp
+    RESOURCES config_file.json file_test.cfg)
+
