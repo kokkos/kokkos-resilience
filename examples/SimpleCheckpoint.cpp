@@ -46,8 +46,8 @@
 
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
-#include <resilience/Context.hpp>
-#include <resilience/veloc/VelocBackend.hpp>
+#include <resilience/context/Context.hpp>
+#include <resilience/backend/VelocBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
 
 int
