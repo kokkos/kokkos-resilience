@@ -49,7 +49,7 @@ namespace KokkosResilience {
 template <typename Backend>
 class MPIContext : public ContextBase {
 public:
- explicit MPIContext(MPI_Comm comm, Config &cfg)
+ explicit MPIContext(MPI_Comm comm, const Config &cfg)
      : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
 
  MPIContext(const MPIContext &)     = delete;

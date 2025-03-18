@@ -2,7 +2,8 @@
   "backend": "stdfile",
   "backends": {
     "stdfile": {
-      "config": "file_test.cfg"
+      "config": "file_test.cfg",
+      "file": "checkpoint.data"
     }
   },
   "filter": {

@@ -112,9 +112,10 @@ namespace KokkosResilience
   };
 
   std::unique_ptr< ContextBase > make_context( const std::string &config );
-  std::unique_ptr< ContextBase > make_context( const std::string &filename, const std::string &config );
+  std::unique_ptr< ContextBase > make_context( const Config &config );
 #ifdef KR_ENABLE_MPI_CONTEXT
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &config );
+  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &cfg );
+  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const Config &cfg );
 #endif
 }
 
