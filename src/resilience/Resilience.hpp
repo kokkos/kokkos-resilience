@@ -52,10 +52,10 @@
 #endif
 
 #ifdef KR_ENABLE_OPENMP_EXEC_SPACE
-#include "openMP/ResOpenMP.hpp"
-#include "openMP/ResHostSpace.hpp"
-#include "openMP/OpenMPResParallel.hpp"
-#include "openMP/OpenMPResSubscriber.hpp"
+#include "resilience/exec_space/openMP/ResOpenMP.hpp"
+#include "resilience/exec_space/openMP/ResHostSpace.hpp"
+#include "resilience/exec_space/openMP/OpenMPResParallel.hpp"
+#include "resilience/exec_space/openMP/OpenMPResSubscriber.hpp"
 #endif
 
 #include "ErrorHandler.hpp"
