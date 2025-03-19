@@ -43,7 +43,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
-#include "../ErrorHandler.hpp"
+#include "../../ErrorHandler.hpp"
 #if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <omp.h>
