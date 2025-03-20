@@ -87,7 +87,6 @@ kr_option(KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF KR_ENABLE_H
 
 #Exec space options
 kr_option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
-kr_option(KR_ENABLE_CUDA_EXEC_SPACE "enable the resilient CUDA execution space" ON "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED")
 kr_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient OpenMP execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED")
 
 
@@ -106,11 +105,6 @@ endif()
 if (KR_ENABLE_MPI_CONTEXT OR KR_ENABLE_HDF5_PARALLEL)
    find_package(MPI REQUIRED)
    target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
-endif()
-
-
-if (KR_ENABLE_CUDA_EXEC_SPACE)
-  message(STATUS "CUDA resilient execution spaces are enabled")
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)

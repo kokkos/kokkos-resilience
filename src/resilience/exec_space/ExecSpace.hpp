@@ -39,10 +39,6 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-
-#ifdef KR_ENABLE_CUDA_EXEC_SPACE
-#endif
-
 #ifdef KR_ENABLE_OPENMP_EXEC_SPACE
 #include "openMP/ResOpenMP.hpp"
 #include "openMP/OpenMPResParallel.hpp"
