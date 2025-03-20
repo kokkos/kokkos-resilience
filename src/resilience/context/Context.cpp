@@ -42,6 +42,10 @@
 #include <fstream>
 #include <chrono>
 #include <stdexcept>
+#include "StdFileContext.hpp"
+#include "MPIContext.hpp"
+#include "../backend/StdFileBackend.hpp"
+#include "resilience/backend/VelocBackend.hpp"
 
 namespace KokkosResilience
 {
@@ -70,7 +74,48 @@ namespace KokkosResilience
   std::unique_ptr< ContextBase >
   make_context( const std::string &config )
   {
-    auto cfg = Config{ config };
-    return std::unique_ptr< ContextBase >{};
+    return make_context( Config{ config } );
   }
+
+  std::unique_ptr< ContextBase >
+  make_context( const Config &cfg )
+  {
+    using fun_type = std::function<std::unique_ptr<ContextBase>()>;
+    static std::unordered_map<std::string, fun_type> backends = {
+        {"stdfile", [&]() -> std::unique_ptr<ContextBase> {
+           return std::make_unique<StdFileContext<StdFileBackend> >(cfg);
+         }}};
+  
+    auto pos = backends.find(cfg["backend"].as<std::string>());
+    if (pos == backends.end()) return {};
+  
+    return pos->second();
+  }
+
+#ifdef KR_ENABLE_MPI_CONTEXT
+  std::unique_ptr< ContextBase >
+  make_context( MPI_Comm comm, const std::string &config )
+  {
+    return make_context( comm, Config{ config } );
+  }
+
+  std::unique_ptr< ContextBase >
+  make_context( MPI_Comm comm, const Config &cfg )
+  {
+    using fun_type = std::function<std::unique_ptr<ContextBase>()>;
+    static std::unordered_map<std::string, fun_type> backends = {
+        {"veloc", [&]() -> std::unique_ptr<ContextBase> {
+          return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
+        }},
+        {"veloc-noop", [&]() -> std::unique_ptr<ContextBase> {
+          return std::make_unique<MPIContext<VeloCRegisterOnlyBackend> >(comm, cfg);
+        }}
+      };
+
+    auto pos = backends.find(cfg["backend"].as<std::string>());
+    if (pos == backends.end()) return {};
+
+    return pos->second();
+  }
+#endif
 }
