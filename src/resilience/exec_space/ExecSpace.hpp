@@ -41,9 +41,6 @@
 
 
 #ifdef KR_ENABLE_CUDA_EXEC_SPACE
-#include "cuda/ResCuda.hpp"
-#include "cuda/ResCudaSpace.hpp"
-#include "cuda/CudaResParallel.hpp"
 #endif
 
 #ifdef KR_ENABLE_OPENMP_EXEC_SPACE

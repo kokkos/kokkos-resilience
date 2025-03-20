@@ -111,7 +111,7 @@ TEST(TestResOpenMP, TestResilientForDouble)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    Kokkos::atomic_increment(&counter(0));
+    Kokkos::atomic_inc(&counter(0));
   });
 
   KokkosResilience::clear_duplicates_cache();
@@ -142,7 +142,7 @@ TEST(TestResOpenMP, TestResilientForInteger)
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
-    Kokkos::atomic_increment(&counter(0));
+    Kokkos::atomic_inc(&counter(0));
   });
 
   Kokkos::deep_copy(x, y);
@@ -175,7 +175,7 @@ TEST(TestResOpenMP, TestResilientForInsertError)
   // Assigning each y(i) threadId, should cause a failure in the resilient execution except in single-thread case.
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( int i) {
     y(i) = counter(0);
-    Kokkos::atomic_increment(&counter(0));
+    Kokkos::atomic_inc(&counter(0));
   });
   KokkosResilience::clear_duplicates_cache();
   KokkosResilience::set_unrecoverable_data_corruption_handler(&KokkosResilience::default_unrecoverable_data_corruption_handler);
