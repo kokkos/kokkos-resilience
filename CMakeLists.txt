@@ -108,6 +108,7 @@ if (KR_ENABLE_MPI_CONTEXT OR KR_ENABLE_HDF5_PARALLEL)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_OPENMP_EXEC_SPACE)
   message(STATUS "OpenMP resilient execution spaces are enabled")
 endif()
 
@@ -127,6 +128,18 @@ export(TARGETS resilience
        NAMESPACE Kokkos::
        FILE resilienceTargets.cmake
        )
+
+if (KR_ENABLE_WRAPPER)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_WRAPPER)
+endif()
+
+if (KR_ENABLE_TMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_TMR)
+endif()
+
+if (KR_ENABLE_DMR)
+  target_compile_definitions(resilience PUBLIC KR_ENABLE_DMR)
+endif()
 
 # Set up find_package config and version file
 # Allow same major version compatibility

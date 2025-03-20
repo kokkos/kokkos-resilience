@@ -50,17 +50,21 @@
 #include <omp.h>
 #include <cstdio>
 
-#define N 20
-#define N_2 10
+#define N 1000
+#define N_2 500
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
 //Resilient
 using range_policy = Kokkos::RangePolicy<ExecSpace>;
+using MD_range_policy = Kokkos::MDRangePolicy<ExecSpace>;
 using ViewVectorIntSubscriber = Kokkos::View< int* , Kokkos::LayoutRight, MemSpace,
         Kokkos::Experimental::SubscribableViewHooks<
                 KokkosResilience::ResilientDuplicatesSubscriber > >;
 using ViewVectorDoubleSubscriber = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
+        Kokkos::Experimental::SubscribableViewHooks<
+                KokkosResilience::ResilientDuplicatesSubscriber > >;
+using ViewVectorDoubleSubscriber2D = Kokkos::View< double** , Kokkos::LayoutRight, MemSpace,
         Kokkos::Experimental::SubscribableViewHooks<
                 KokkosResilience::ResilientDuplicatesSubscriber > >;
 using ConstViewVectorDoubleSubscriber = Kokkos::View< const double*, Kokkos::LayoutRight, MemSpace,
@@ -78,16 +82,18 @@ using range_policy2 = Kokkos::RangePolicy<Kokkos::OpenMP>;
 // gTest runs parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResOpenMP, TestKokkosFor)
 {
+  std::cout << "N was set at: " << N << std::endl;
+
   // Allocate y, x vectors.
   ViewVectorType y2( "y", N );
   ViewVectorType x2( "x", N );
 
-  Kokkos::Timer timer;
   // Initialize y vector on host using parallel_for
-  Kokkos::parallel_for(
-      range_policy2(0, N), KOKKOS_LAMBDA(int i) { y2(i) = i; });
+  Kokkos::parallel_for("GTestParallelDoubleFor",
+    range_policy2(0, N), KOKKOS_LAMBDA(int i) { y2(i) = i; });
 
   Kokkos::deep_copy(x2, y2);
+  
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x2(i), i);
   }
@@ -97,6 +103,9 @@ TEST(TestResOpenMP, TestKokkosFor)
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForDouble)
 {
+  
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+  
   // Allocate y, x vectors.
   ViewVectorDoubleSubscriber y( "y", N );
   ViewVectorDoubleSubscriber x( "x", N );
@@ -104,24 +113,27 @@ TEST(TestResOpenMP, TestResilientForDouble)
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   ViewVectorIntSubscriber counter( "DataAccesses", 1);
 
-  Kokkos::Timer timer;
-
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for("GTestResilientDoubleFor", range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
 
+  //reset global error settings
+  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache();
-
+  
   Kokkos::deep_copy(x, y);
+  
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
-
   ASSERT_EQ(counter(0), N);
+
 }
 
 // gTest runs parallel_for with resilient Kokkos integer assignment and atomic counter.
@@ -135,8 +147,6 @@ TEST(TestResOpenMP, TestResilientForInteger)
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   ViewVectorIntSubscriber  counter( "DataAccesses", 1);
 
-  Kokkos::Timer timer;
-
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
@@ -144,20 +154,19 @@ TEST(TestResOpenMP, TestResilientForInteger)
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
-
+  
+  KokkosResilience::clear_duplicates_cache();
+  
   Kokkos::deep_copy(x, y);
+  
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
-  KokkosResilience::clear_duplicates_cache();
-
   ASSERT_EQ(counter(0), N);
 }
 
-// gTest attempts to trigger all 3 executions generating different data.
-// Requires non-multipe of 3 OMP threads to generate error.
-// Should repeat user-specified number of times (in context file) and then abort.
-TEST(TestResOpenMP, TestResilientForInsertError)
+// Test handler for unrecoverable data corruption
+TEST(TestResOpenMP, TestErrorHandler)
 {
 
   ViewVectorIntSubscriber counter ( "DataAccesses", 1);
@@ -211,7 +220,6 @@ TEST(TestResOpenMP, TestResilientNonZeroRange)
       ASSERT_EQ (x(i), 500);
     }
   }
-
 }
 
 // Test runs parallel_for with a const view. Expect const view to trigger const view subscriber, a no-op
@@ -238,4 +246,74 @@ TEST(TestResOpenMP, TestConstViewSubscriber)
     ASSERT_EQ(y(i), 2 * i);
   }
 
+}
+
+// KOKKOS MULTIDIMENSIONAL TEST
+// gTest runs parallel_for with Kokkos doubles assignment and atomic counter,
+// on a multidimensional view.
+// Expect counter to count iterations.
+TEST(TestResOpenMP, TestKokkos2D)
+{
+// Allocate 2D y, x vectors.
+  Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace> x( "x", N, N );
+  Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace> y( "y", N, N );
+
+  //Kokkos::View<int, Kokkos::HostSpace> counter;  
+  Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);  
+
+  counter(0) = 0;
+ 
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
+    for (int j = 0; j < N; j++){
+      y ( i,j ) = i+j;
+      Kokkos::atomic_inc(&counter(0));
+    }
+  });
+
+  Kokkos::deep_copy(x,y);
+  
+  for ( int i = 0; i < N; i++) {
+    for ( int j = 0; j < N; j++) {
+      ASSERT_EQ(x(i,j), i+j);
+    }
+  }
+  ASSERT_EQ(counter(0), N*N);
+ 
+  std::cout << std::endl <<std::endl;
+ 
+}
+
+// gTest runs parallel_for with resilient Kokkos doubles assignment
+// and atomic counter on a multidimensional view.
+// Expect counter to count accesses to each vector element.
+TEST(TestResOpenMP, TestResilient2D)
+{
+
+  KokkosResilience::ErrorInject::error_counter = 0;
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+	
+  // Allocate y, x vectors.
+  ViewVectorDoubleSubscriber2D y( "y", N, N );
+  ViewVectorDoubleSubscriber2D x( "x", N, N );
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    for (int j = 0; j < N; j++){
+      y ( i,j ) = i+j;
+    }
+  });
+
+  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::clear_duplicates_cache(); 
+
+  Kokkos::deep_copy(x, y);
+
+  for ( int i = 0; i < N; i++) {
+    for ( int j = 0; j < N; j++) {
+      ASSERT_EQ(x(i,j), i+j);
+    }
+  }
 }
