@@ -9,20 +9,20 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestLambdaCapture.cpp
                TestHooks.cpp
                TestDynamicViewHooks.cpp
                )
 
 if (KR_ENABLE_VELOC_BACKEND)
   target_sources(resilience_tests PRIVATE
-      TestVelocMemoryBackend.cpp)
+  		TestVelocMemoryBackend.cpp)
   target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
 endif()
 
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
-      TestStdFileBackend.cpp)
+     		 TestStdFileBackend.cpp)
+                 TestLambdaCapture.cpp
 endif()
 
 if (KR_ENABLE_STDFILE_DATA_SPACE)
