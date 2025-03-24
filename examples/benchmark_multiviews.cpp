@@ -45,7 +45,7 @@
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
 #include <random>
-#include <resilience/context/CheckpointFilter.hpp>
+
 #include <iostream>
 
 int main(int argc, char *argv[]) {

@@ -43,9 +43,13 @@
 #include <chrono>
 #include <stdexcept>
 #include "StdFileContext.hpp"
+#ifdef KR_ENABLE_MPI_CONTEXT
 #include "MPIContext.hpp"
+#endif
 #include "../backend/StdFileBackend.hpp"
+#ifdef KR_ENABLE_VELOC_BACKEND  
 #include "resilience/backend/VelocBackend.hpp"
+#endif
 
 namespace KokkosResilience
 {
@@ -104,12 +108,14 @@ namespace KokkosResilience
   {
     using fun_type = std::function<std::unique_ptr<ContextBase>()>;
     static std::unordered_map<std::string, fun_type> backends = {
+#ifdef KR_ENABLE_MPI_CONTEXT
         {"veloc", [&]() -> std::unique_ptr<ContextBase> {
           return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
         }},
         {"veloc-noop", [&]() -> std::unique_ptr<ContextBase> {
           return std::make_unique<MPIContext<VeloCRegisterOnlyBackend> >(comm, cfg);
         }}
+#endif
       };
 
     auto pos = backends.find(cfg["backend"].as<std::string>());

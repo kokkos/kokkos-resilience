@@ -46,9 +46,7 @@
 
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
-#include <resilience/context/Context.hpp>
-#include <resilience/backend/VelocBackend.hpp>
-#include <resilience/AutomaticCheckpoint.hpp>
+#include <resilience/Resilience.hpp>
 
 int
 main( int argc, char **argv )
