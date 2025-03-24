@@ -9,7 +9,6 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(resilience_tests
                TestMain.cpp
-               TestLambdaCapture.cpp
                TestHooks.cpp
                TestDynamicViewHooks.cpp
 	       TestOpenMPResilientExecution.cpp
@@ -24,7 +23,8 @@ endif()
 
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
-      TestStdFileBackend.cpp)
+                 TestLambdaCapture.cpp
+      	         TestStdFileBackend.cpp)
 endif()
 
 if (KR_ENABLE_STDFILE_DATA_SPACE)
