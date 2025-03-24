@@ -23,8 +23,8 @@ endif()
 
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
-     		 TestStdFileBackend.cpp
-                 TestLambdaCapture.cpp)
+                 TestLambdaCapture.cpp
+      	         TestStdFileBackend.cpp)
 endif()
 
 if (KR_ENABLE_STDFILE_DATA_SPACE)
