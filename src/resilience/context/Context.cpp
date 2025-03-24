@@ -108,7 +108,7 @@ namespace KokkosResilience
   {
     using fun_type = std::function<std::unique_ptr<ContextBase>()>;
     static std::unordered_map<std::string, fun_type> backends = {
-#ifdef KR_ENABLE_MPI_CONTEXT
+#ifdef KR_ENABLE_VELOC_BACKEND
         {"veloc", [&]() -> std::unique_ptr<ContextBase> {
           return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
         }},
