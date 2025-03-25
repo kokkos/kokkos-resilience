@@ -39,6 +39,7 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 #include "TestCommon.hpp"
+#include "resilience/context/Context.hpp"
 
 #include <resilience/backend/StdFileBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
@@ -59,7 +60,7 @@ public:
   template< typename Layout, typename Context >
   static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy )
   {
-    ctx.backend().reset();
+    ctx.reset();
     using memory_space = typename exec_space::memory_space;
 
     auto e = std::default_random_engine( 0 );
@@ -137,15 +138,16 @@ TYPED_TEST( TestStdFileBackend, veloc_mem )
   using namespace std::string_literals;
   KokkosResilience::Config cfg;
   cfg["backend"].set( "stdfile"s );
-  //cfg["backends"]["stdfile"]["config"].set( KR_TEST_DATADIR "/stdfile_test.cfg"s );
-  KokkosResilience::StdFileContext< KokkosResilience::StdFileBackend > ctx( KR_TEST_DATADIR "/stdfile/stdfile_test"s, cfg );
+  cfg["backends"]["stdfile"]["file"].set( KR_TEST_DATADIR "/stdfile/stdfile_test"s );
+
+  auto ctx = KokkosResilience::make_context( cfg );
 
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
   {
     for ( std::size_t dimy = 1; dimy < 5; ++dimy )
     {
-      TestFixture::template test_layout< Kokkos::LayoutRight >( ctx, dimx, dimy );
-      TestFixture::template test_layout< Kokkos::LayoutLeft >( ctx, dimx, dimy );
+      TestFixture::template test_layout< Kokkos::LayoutRight >( *ctx, dimx, dimy );
+      TestFixture::template test_layout< Kokkos::LayoutLeft >( *ctx, dimx, dimy );
     }
   }
 

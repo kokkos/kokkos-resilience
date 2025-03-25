@@ -46,16 +46,14 @@
 #endif
 
 #include <Kokkos_Core.hpp>
-#include <resilience/Context.hpp>
-#include <resilience/stdfile/StdFileBackend.hpp>
-#include <resilience/AutomaticCheckpoint.hpp>
+#include <resilience/Resilience.hpp>
 
 int
 main( int argc, char **argv )
 {
   Kokkos::initialize( argc, argv );
   {
-    auto ctx = KokkosResilience::make_context( "checkpoint.data", "config_file.json" );
+    auto ctx = KokkosResilience::make_context( "config_file.json" );
 
     int  dim0 = 5, dim1 = 5;
     auto view = KokkosResilience::View< double ** >( "test_view", dim0, dim1 );

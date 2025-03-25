@@ -50,8 +50,8 @@ namespace KokkosResilience {
 template <typename Backend>
 class StdFileContext : public ContextBase {
  public:
-  explicit StdFileContext(std::string const &filename, Config &cfg)
-      : ContextBase(cfg), m_filename(filename), m_backend(*this, filename) {}
+  explicit StdFileContext(const Config &cfg)
+      : ContextBase(cfg), m_filename(get_filename(cfg)), m_backend(*this, m_filename) {}
 
   StdFileContext(const StdFileContext &) = delete;
   StdFileContext(StdFileContext &&)      = default;
@@ -119,6 +119,11 @@ class StdFileContext : public ContextBase {
   }
 
  private:
+
+  static std::string get_filename(const Config &cfg) {
+    return cfg["backends"]["stdfile"]["file"].as<std::string>();
+  }
+
   std::string m_filename;
   Backend m_backend;
 };
