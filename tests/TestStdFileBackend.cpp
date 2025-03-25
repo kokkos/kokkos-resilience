@@ -82,25 +82,26 @@ public:
     Kokkos::deep_copy( main_view, host_mirror );
 
     Kokkos::fence();
-
+  
     KokkosResilience::remove_all( KR_TEST_DATADIR "/stdfile");
     KokkosResilience::create_directory( KR_TEST_DATADIR "/stdfile" );
-
+    
+    int manual_item = 100;
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
         for ( std::size_t j = 0; j < dimy; ++j )
           main_view( i, j ) -= 1.0;
       } );
-    } );
+    }, KR_CHECKPOINT(manual_item) );
 
-    // Clobber main_view, should be reloaded at checkpoint
+    // Clobber main_view and manual_item, should be reloaded at checkpoint
+    manual_item = 0;
     Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
       for ( std::size_t j = 0; j < dimy; ++j )
         main_view( i, j ) = 0.0;
     } );
 
     // Clobber host view just in case
-
     for ( std::size_t x = 0; x < dimx; ++x )
     {
       for ( std::size_t y = 0; y < dimy; ++y )
@@ -109,10 +110,11 @@ public:
       }
     }
 
+
     // The lambda shouldn't be executed, instead recovery should start
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [main_view]() {
       ASSERT_TRUE( false );
-    } );
+    }, KR_CHECKPOINT(manual_item) );
 
     Kokkos::fence();
 
@@ -120,6 +122,7 @@ public:
 
     e.seed( 0 );
 
+    ASSERT_EQ( manual_item, 100 );
     for ( std::size_t x = 0; x < dimx; ++x )
     {
       for ( std::size_t y = 0; y < dimy; ++y )
