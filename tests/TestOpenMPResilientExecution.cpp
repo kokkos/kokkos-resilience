@@ -180,14 +180,23 @@ TEST(TestResOpenMP, TestErrorHandler)
   bool failed_recovery = false;
   KokkosResilience::set_unrecoverable_data_corruption_handler(
       [&failed_recovery](std::size_t) { failed_recovery = true; });
-
-  // Assigning each y(i) threadId, should cause a failure in the resilient execution except in single-thread case.
+ 
+  KokkosResilience::ErrorInject::error_counter = 0;
+  //Set an extremely high error rate that the test cannot recover from
+  //Half of all values are errors
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.5);
+  
   Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( int i) {
     y(i) = counter(0);
     Kokkos::atomic_inc(&counter(0));
   });
+
+  KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache();
+
   KokkosResilience::set_unrecoverable_data_corruption_handler(&KokkosResilience::default_unrecoverable_data_corruption_handler);
+
   ASSERT_TRUE(failed_recovery);
 }
 

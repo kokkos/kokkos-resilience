@@ -60,7 +60,6 @@
 namespace KokkosResilience{
 
   inline bool combine_resilient_duplicates() {
-
     bool success = true;
     // Combines all duplicates
     // Go over the Subscriber map, execute all the CombinerBase elements
@@ -212,7 +211,7 @@ class ParallelFor< FunctorType
 
 
       const auto start{std::chrono::steady_clock::now()};
-      //KokkosResilience::inject_error_duplicates();
+      KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
       KokkosResilience::ErrorTimerSettings::elapsed_seconds = KokkosResilience::ErrorTimerSettings::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
       KokkosResilience::ErrorTimerSettings::total_error_time = KokkosResilience::ErrorTimerSettings::total_error_time + KokkosResilience::ErrorTimerSettings::elapsed_seconds;

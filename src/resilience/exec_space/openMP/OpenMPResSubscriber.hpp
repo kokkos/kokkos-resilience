@@ -175,7 +175,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // Note: 2 copies allocated even in DMR
   View copy[2];
   
-  mutable bool success = 1;
+  Kokkos::View <bool> success {"Combiner success"};
 
   static constexpr size_t rank = View::rank();
 
@@ -187,8 +187,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   bool execute() override
   { 
-    success = true;
-
+    success() = 1;
 #ifdef KR_ENABLE_DMR
     if (duplicate_count < 1){
       Kokkos::abort("Aborted in CombineDuplicates, no duplicate created");
@@ -202,7 +201,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     else {
       if constexpr(rank > 1){
 	
-     	//std::cout << "Rank is " << rank << " and this should be a multi-d p-for.\n";	      
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
 
         Kokkos::parallel_for(mdrange, *this);
@@ -214,15 +212,13 @@ struct CombineDuplicates: public CombineDuplicatesBase
 	Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
       }
     }
-    return success;
+    return success();
   }
 
   // Looping over duplicates to check for equality
   template<typename... Args> //template parameter pack
-  KOKKOS_FUNCTION
+  KOKKOS_INLINE_FUNCTION
   void operator ()(Args&&... its) const{ //function parameter pack
-
-  //std::cout << "Test Print: Entered the combiner.\n\n";
 
 #ifdef KR_ENABLE_DMR
     //Indicates dmr_failover_to_tmr tripped
@@ -238,7 +234,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 	return;
       }
       //No match found, all three executions return different number
-      success = false;
+      success() = false;
     }
     // DMR has not failed over, 2 copies instantiated, 1 initialized
     else{
@@ -246,7 +242,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       if (check_equality.compare(copy[0](std::forward<Args>(its)...), original(std::forward<Args>(its)...))){
 	return;
       }
-      success = false;
+      success() = false;
     }
 #else
     //Main combiner begin
@@ -260,7 +256,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       return;
     }
     //No match found, all three executions return different number
-    success = false;
+    success() = false;
 #endif
   }
 
