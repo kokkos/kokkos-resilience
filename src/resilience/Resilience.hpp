@@ -51,16 +51,7 @@
 #include "resilience/AutomaticCheckpoint.hpp"
 #endif
 
-namespace KokkosResilience {
-/**
- * A function that will be invoked with the total number of retries if the
- * runtime encounters an unrecoverable data corruption.
- */
-using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
-void default_unrecoverable_data_corruption_handler(std::size_t retries);
-void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
-unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
-}  // namespace KokkosResilience
+#include "ErrorHandler.hpp"
 
 #ifdef KR_ENABLE_EXEC_SPACES
 #include "resilience/exec_space/ExecSpace.hpp"

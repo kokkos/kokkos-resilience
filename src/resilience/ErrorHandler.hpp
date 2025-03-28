@@ -38,29 +38,20 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_ERRORHANDLER_HPP
+#define INC_RESILIENCE_ERRORHANDLER_HPP
 
-#include <gtest/gtest.h>
-#include <Kokkos_Core.hpp>
-#include <resilience/Resilience.hpp>
+#include <functional>
 
-int
-main( int argc, char **argv )
-{
-  ::testing::InitGoogleTest( &argc, argv );
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND)
-  MPI_Init( &argc, &argv );
-#endif
-  bool ret;
+namespace KokkosResilience {
+/**
+ * A function that will be invoked with the success flag if the
+ * runtime encounters an unrecoverable data corruption.
+ */
+using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
+void default_unrecoverable_data_corruption_handler(std::size_t success);
+void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
+unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
+}  // namespace KokkosResilience
 
-  Kokkos::initialize( argc, argv );
-  {
-  ret = RUN_ALL_TESTS();
-  }
-  Kokkos::finalize();
-
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND)
-  MPI_Finalize();
-#endif
-  
-  return ret;
-}
+#endif  // INC_RESILIENCE_ERRORHANDLER_HPP
