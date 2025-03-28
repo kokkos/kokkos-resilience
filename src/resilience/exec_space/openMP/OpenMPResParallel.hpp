@@ -43,7 +43,7 @@
 #define INC_RESILIENCE_OPENMP_OPENMPRESPARALLEL_HPP
 
 #include <Kokkos_Macros.hpp>
-#include "../../ErrorHandler.hpp"
+#include "resilience/ErrorHandler.hpp"
 #if defined(KOKKOS_ENABLE_OPENMP)
 
 #include <omp.h>
@@ -123,7 +123,7 @@ class ParallelFor< FunctorType
 #ifdef KR_ENABLE_WRAPPER
   auto MakeWrapper (int64_t work_size, int64_t offset, const FunctorType &m_functor_0, const FunctorType &m_functor_1) const{
     if constexpr (std::is_void_v<WorkTag>){
-      auto wrapper_functor = [&](auto i){
+      auto wrapper_functor = [&, work_size, offset](int64_t i){
         if (i < work_size)
         {
           m_functor (i + offset);
@@ -140,7 +140,7 @@ class ParallelFor< FunctorType
       return wrapper_functor;
     }else if constexpr (!std::is_void_v<WorkTag>)
     { 
-      auto wrapper_functor = [&](WorkTag work_tag, auto i){
+      auto wrapper_functor = [&, work_size, offset](WorkTag work_tag, int64_t i){
         if (i < work_size)
         {
           m_functor (work_tag, i + offset);

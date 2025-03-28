@@ -58,24 +58,19 @@
 #define ExecSpace KokkosResilience::ResOpenMP
 
 //Resilient
-using range_policy = Kokkos::RangePolicy<ExecSpace>;
-using MD_range_policy = Kokkos::MDRangePolicy<ExecSpace>;
-using ViewVectorIntSubscriber = Kokkos::View< int* , Kokkos::LayoutRight, MemSpace,
-        Kokkos::Experimental::SubscribableViewHooks<
-                KokkosResilience::ResilientDuplicatesSubscriber > >;
-using ViewVectorDoubleSubscriber = Kokkos::View< double* , Kokkos::LayoutRight, MemSpace,
-        Kokkos::Experimental::SubscribableViewHooks<
-                KokkosResilience::ResilientDuplicatesSubscriber > >;
-using ViewVectorDoubleSubscriber2D = Kokkos::View< double** , Kokkos::LayoutRight, MemSpace,
-        Kokkos::Experimental::SubscribableViewHooks<
-                KokkosResilience::ResilientDuplicatesSubscriber > >;
-using ConstViewVectorDoubleSubscriber = Kokkos::View< const double*, Kokkos::LayoutRight, MemSpace,
-        Kokkos::Experimental::SubscribableViewHooks<
-                KokkosResilience::ResilientDuplicatesSubscriber > >;
+using res_range_policy = Kokkos::RangePolicy<ExecSpace>;
 
+template<typename DataType, typename... MemoryTraits>
+using ResilientView = Kokkos::View<
+                      DataType,
+                      MemSpace,
+                      Kokkos::Experimental::SubscribableViewHooks<
+                              KokkosResilience::ResilientDuplicatesSubscriber>,
+		      MemoryTraits...
+                      >;
 //Non-resilient
-using ViewVectorType = Kokkos::View<double*, Kokkos::LayoutRight, Kokkos::HostSpace>;
-using range_policy2 = Kokkos::RangePolicy<Kokkos::OpenMP>;
+using KokkosVectorView = Kokkos::View<double*, Kokkos::LayoutRight, Kokkos::HostSpace>;
+using omp_range_policy = Kokkos::RangePolicy<Kokkos::OpenMP>;
 
 /*********************************
 *********PARALLEL FORS************
@@ -89,16 +84,16 @@ TEST(TestResOpenMP, TestReiterateDoubleP4)
   //KokkosResilience::global_error_settings = KokkosResilience::Error(0.1);
 	
   // Allocate y, x vectors.
-  ViewVectorDoubleSubscriber y( "y", N );
-  ViewVectorDoubleSubscriber x( "x", N );
+  ResilientView<double*> y( "y", N );
+  ResilientView<double*> x( "x", N );
 
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
-  ViewVectorIntSubscriber counter( "DataAccesses", 1);
+  ResilientView<int*> counter( "DataAccesses", 1);
 
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
@@ -123,15 +118,15 @@ TEST(TestResOpenMP, TestReiterateKokkos2D)
   //KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
 
   // Allocate 2D y, x vectors.
-  ViewVectorDoubleSubscriber2D x( "x", N, N);
-  ViewVectorDoubleSubscriber2D y( "y", N, N);
+  ResilientView<double**> x( "x", N, N);
+  ResilientView<double**> y( "y", N, N);
 
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);  
 
   counter(0) = 0;
  
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
       Kokkos::atomic_inc(&counter(0));
@@ -159,20 +154,9 @@ TEST(TestResOpenMP, TestKokkos2DPad)
 {
 
   //  KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
-
-  // Allocate 2D y, x vectors.
-  Kokkos::View<double*[N],Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-               KokkosResilience::ResilientDuplicatesSubscriber >> x( "x", N );
-
-  Kokkos::View<double*[N],Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-               KokkosResilience::ResilientDuplicatesSubscriber >> y( "y", N );
-
-  Kokkos::View<int*, Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-               KokkosResilience::ResilientDuplicatesSubscriber >,
-               Kokkos::MemoryTraits <Kokkos::Atomic> > counter( "counter", 1);
+  ResilientView<double*[N]> x( "x", N );
+  ResilientView<double*[N]> y( "y", N );
+  ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > counter( "counter", 1);
 
   size_t rank = x.rank();
   std::cout << "The rank of View x is rank: " << rank << "\n";
@@ -180,7 +164,7 @@ TEST(TestResOpenMP, TestKokkos2DPad)
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
       counter(0)++;
@@ -207,20 +191,20 @@ TEST(TestResOpenMP, TestKokkos2DPad)
 TEST(TestResOpenMP, TestOneNonResilientView)
 {
  
-  ViewVectorDoubleSubscriber y( "y", N );
-  ViewVectorType x( "x", N );
-  ViewVectorType z( "z", N );
+  ResilientView<double*> y( "y", N );
+  KokkosVectorView x( "x", N );
+  KokkosVectorView z( "z", N );
  
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter( "DataAccesses", 1);
 
   counter(0) = 0;
 
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
 
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA (const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA (const int i) {
     z( i ) = y( i );
     Kokkos::atomic_inc(&counter(0));
   });
@@ -256,7 +240,7 @@ TEST(TestResOpenMP, TestSpaceOnly)
   counter(0) = 0;
 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       y ( i,j ) = i+j;
       counter(0)++;
@@ -264,7 +248,7 @@ TEST(TestResOpenMP, TestSpaceOnly)
   });
 
   //Initialize x vector on host using parallel_for
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
       x ( i,j ) = 2 * y ( i, j );
     }
@@ -294,7 +278,7 @@ TEST(TestResOpenMP, TestMiniMDKernel)
   Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > z( "z", N );
 
   //Initialize x vector REGULAR kernel
-  Kokkos::parallel_for( range_policy2 (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( omp_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
      x ( i,0 ) = 1;
   });
 
@@ -302,7 +286,7 @@ TEST(TestResOpenMP, TestMiniMDKernel)
 
   while (j<5){
     //Test MiniMD Kernel Behavior with RESILIENT kernel, NONRESILEINT views
-    Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
       y ( i, 0 ) += test_const * x ( i, 0 );
       z ( i, 0 ) += test_const * y ( i, 0 );
     });
@@ -329,18 +313,12 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.005);
 
   // Allocate 2D y, x vectors.
-  Kokkos::View<double*[2],Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-               KokkosResilience::ResilientDuplicatesSubscriber >> x( "x", N );
-  Kokkos::View<double*[2],Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-               KokkosResilience::ResilientDuplicatesSubscriber >> y( "y", N );
-  Kokkos::View<double*[2],Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-               KokkosResilience::ResilientDuplicatesSubscriber >> z( "z", N );
-
+  ResilientView<double*[2]> x( "x", N );
+  ResilientView<double*[2]> y( "y", N );
+  ResilientView<double*[2]> z( "z", N );
+  
   //Initialize x vector RESIIENT kernel WITH ERRORS
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
      x ( i,0 ) = 1;
   });
 
@@ -348,7 +326,7 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
 
   while (j<5){
     //Test MiniMD Kernel Behavior with RESILIENT kernel, RESILEINT views WITH ERRORS (cont prev count)
-    Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
       y ( i, 0 ) += test_const * x ( i, 0 );
       z ( i, 0 ) += test_const * y ( i, 0 );
     });
@@ -374,16 +352,10 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
 TEST(TestResOpenMP, TestRandomAccess)
 {
   // Allocate RandomAccess Subscribers x, y vectors.
-  Kokkos::View<double*, Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-                 KokkosResilience::ResilientDuplicatesSubscriber >,
-		 Kokkos::MemoryTraits <Kokkos::RandomAccess> > x( "x", N );
-  Kokkos::View<double*, Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-                 KokkosResilience::ResilientDuplicatesSubscriber >, 
-                 Kokkos::MemoryTraits <Kokkos::RandomAccess> > y( "y", N );
- 
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::RandomAccess> > x( "x", N );
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::RandomAccess> > y( "y", N );
+
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
   });
 
@@ -400,23 +372,12 @@ TEST(TestResOpenMP, TestAtomic)
 {
   // Allocate Atomic Subscribers x, y vectors. 
   // See if counter behaves as if counter was accessed atomically.
-
-  Kokkos::View<double*, Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-                 KokkosResilience::ResilientDuplicatesSubscriber >,
-                 Kokkos::MemoryTraits <Kokkos::Atomic> > x( "x", N );
-  Kokkos::View<double*, Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-                 KokkosResilience::ResilientDuplicatesSubscriber >,
-                 Kokkos::MemoryTraits <Kokkos::Atomic> > y( "y", N );
-
-  Kokkos::View<int*, Kokkos::LayoutRight, MemSpace,
-               Kokkos::Experimental::SubscribableViewHooks<
-                 KokkosResilience::ResilientDuplicatesSubscriber >,
-                 Kokkos::MemoryTraits <Kokkos::Atomic> > counter( "counter", 1);
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::Atomic> > x( "x", N );
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::Atomic> > y( "y", N );
+  ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > counter( "counter1", 1 );
   Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter2( "counter2", 1);
 
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
     counter(0)++;
     Kokkos::atomic_inc(&counter2(0));
@@ -453,7 +414,7 @@ TEST(TestResOpenMP, TestUnmanaged)
 
   Kokkos::Timer timer;
 
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     y ( i ) = i;
   });
 
@@ -492,7 +453,7 @@ TEST(TestResOpenMP, TestDualView)
 
   
 
-  Kokkos::parallel_for( range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
      
     //
     //y ( i ) = i;

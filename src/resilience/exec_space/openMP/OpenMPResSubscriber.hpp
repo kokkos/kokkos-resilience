@@ -202,15 +202,13 @@ struct CombineDuplicates: public CombineDuplicatesBase
       if constexpr(rank > 1){
 	
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} ); 
-
         Kokkos::parallel_for(mdrange, *this);
-	Kokkos::fence();
-
 
       }else{
 
 	Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
       }
+      Kokkos::fence();
     }
     return success();
   }
@@ -260,7 +258,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #endif
   }
 
-  void oneD_tmr_inject(){
+  void Inject1D(){
     //Sequential, on original.size
     if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
     {
@@ -295,7 +293,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
   }
 
-  void TwoDimTMRInject(){
+  void Inject2D(){
 //#if 0    
     //This error injection works with 2D views, subtracts total extent from global_next_inject
     size_t total_extent = original.extent(0) * original.extent(1);
@@ -361,19 +359,19 @@ struct CombineDuplicates: public CombineDuplicatesBase
 #ifdef KR_ENABLE_DMR
       //Implies dmr_failover_to_tmr
       if(duplicate_count == 2) {
-	TwoDimTMRInject();
+	Inject2D();
       }
       else{//Actual DMR error injection with only 1 copy
       }//End DMR error injection
 #else
-      TwoDimTMRInject();
+      Inject2D();
 #endif 
     }else{
 
 #ifdef KR_ENABLE_DMR
       //Implies dmr_failover_to_tmr has tripped    
       if(duplicate_count == 2 ){
-	oneD_tmr_inject();
+	Inject1D();
       }
       else{//The actual dmr error inject with only 1 copy
         if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
@@ -404,7 +402,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
       }
 
 #else
-	oneD_tmr_inject();
+	Inject1D();
 #endif
     }//end rank == 1
   }// end error inject
