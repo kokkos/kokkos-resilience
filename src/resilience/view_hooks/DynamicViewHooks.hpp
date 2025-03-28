@@ -42,7 +42,6 @@
 #define INC_RESILIENCE_DYNAMICVIEWHOOKS_HPP
 
 #include "ViewHolder.hpp"
-//#include <View/Hooks/Kokkos_ViewHooks.hpp>
 #include <Kokkos_Core.hpp>
 #include <mutex>
 #include <functional>

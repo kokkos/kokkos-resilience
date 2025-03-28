@@ -11,13 +11,11 @@ add_executable(resilience_tests
                TestMain.cpp
                TestHooks.cpp
                TestDynamicViewHooks.cpp
-	       TestOpenMPResilientExecution.cpp
-	       TestMiniMD.cpp
                )
 
 if (KR_ENABLE_VELOC_BACKEND)
   target_sources(resilience_tests PRIVATE
-  		TestVelocMemoryBackend.cpp)
+      		TestVelocMemoryBackend.cpp)
   target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
 endif()
 
@@ -42,6 +40,7 @@ endif()
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
   target_sources(resilience_tests PRIVATE
                  TestOpenMPResilientExecution.cpp
+	         TestMiniMD.cpp
                  )
 endif()
 
