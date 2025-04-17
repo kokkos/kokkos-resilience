@@ -407,7 +407,7 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
   KokkosResilience::ErrorInject::error_counter = 0;
   std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
   std::cout << "This is the test of minMD 2D Resilient Error Injection \n\n\n";
-  KokkosResilience::global_error_settings = KokkosResilience::Error(0.005);
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
 
   // Allocate 2D y, x vectors.
   ResilientView<double*[2]> x( "x", M );
