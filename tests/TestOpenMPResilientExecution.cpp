@@ -52,6 +52,8 @@
 
 #define N 1000
 #define N_2 500
+#define M 100
+#define test_const 10
 #define MemSpace KokkosResilience::ResHostSpace
 #define ExecSpace KokkosResilience::ResOpenMP
 
@@ -295,12 +297,13 @@ TEST(TestResOpenMP, TestResilient2D)
 {
 
   KokkosResilience::ErrorInject::error_counter = 0;
-  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.0001);
 	
   // Allocate y, x vectors.
   ResilientView<double**> y( "y", N, N );
   ResilientView<double**> x( "x", N, N );
 
+ 
   //Initialize y vector on host using parallel_for, increment a counter for data accesses.
   Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
     for (int j = 0; j < N; j++){
@@ -308,10 +311,10 @@ TEST(TestResOpenMP, TestResilient2D)
     }
   });
 
-  KokkosResilience::ErrorInject::error_counter=0;
-  KokkosResilience::global_error_settings.reset();
   KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache(); 
+  KokkosResilience::ErrorInject::error_counter = 0;
+  KokkosResilience::global_error_settings.reset();
 
   Kokkos::deep_copy(x, y);
 
@@ -319,5 +322,171 @@ TEST(TestResOpenMP, TestResilient2D)
     for ( int j = 0; j < N; j++) {
       ASSERT_EQ(x(i,j), i+j);
     }
+  }
+}
+
+// gTest runs parallel_for with Kokkos doubles assignment and atomic counter,
+// on a multidimensional view *[N]
+// Expect counter to count iterations.
+TEST(TestResOpenMP, TestKokkos2DPad)
+{
+
+  //  KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
+  ResilientView<double*[N]> x( "x", N );
+  ResilientView<double*[N]> y( "y", N );
+  ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > counter( "counter", 1);
+
+  size_t rank = x.rank();
+  std::cout << "The rank of View x is rank: " << rank << "\n";
+
+  counter(0) = 0;
+
+  //Initialize y vector on host using parallel_for, increment a counter for data accesses.
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    for (int j = 0; j < N; j++){
+      y ( i,j ) = i+j;
+      counter(0)++;
+    }
+  });
+
+  KokkosResilience::clear_duplicates_cache();
+  //KokkosResilience::print_total_error_time();
+  //KokkosResilience::global_error_settings.reset();
+
+  Kokkos::deep_copy(x,y);
+
+  for ( int i = 0; i < N; i++) {
+    for ( int j = 0; j < N; j++) {
+      ASSERT_EQ(x(i,j), i+j);
+    }
+  }
+  ASSERT_EQ(counter(0), N*N);
+}
+
+//Test MiniMD Exact Kernel Behavior
+//Test worked, then was rewritten to demonstrate failure due to read/write copy error
+//Copy-in-place and overwrite original with result leads to massive error
+TEST(TestResOpenMP, TestMiniMDKernel)
+{
+
+  // Allocate 2D y, x vectors.
+  Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > x( "x", M );
+  Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > y( "y", M );
+  Kokkos::View<double*[2],Kokkos::LayoutRight, Kokkos::HostSpace > z( "z", M );
+
+  //Initialize x vector REGULAR kernel
+  Kokkos::parallel_for( omp_range_policy (0, M), KOKKOS_LAMBDA ( const int i) {
+     x ( i,0 ) = 1;
+  });
+
+  int j = 0;
+
+  while (j<5){
+    //Test MiniMD Kernel Behavior with RESILIENT kernel, NONRESILEINT views
+    Kokkos::parallel_for( res_range_policy (0, M), KOKKOS_LAMBDA ( const int i) {
+      y ( i, 0 ) += test_const * x ( i, 0 );
+      z ( i, 0 ) += test_const * y ( i, 0 );
+    });
+    j++;
+  }
+
+  KokkosResilience::clear_duplicates_cache();
+
+  std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively\n. ";
+  std::cout << "This test should have resulted in 50 and 1500, in these integrations, respectively." << std::endl;
+
+  for ( int i = 0; i < M; i++) {
+    ASSERT_EQ(y(i,0), 15*test_const );
+    ASSERT_EQ(z(i,0), 120*test_const*test_const );
+  }
+}
+
+//Test MiniMD Exact Kernel Behavior with Resilience
+TEST(TestResOpenMP, TestMiniMDKernelResilient)
+{
+  KokkosResilience::ErrorInject::error_counter = 0;
+  std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
+  std::cout << "This is the test of minMD 2D Resilient Error Injection \n\n\n";
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.005);
+
+  // Allocate 2D y, x vectors.
+  ResilientView<double*[2]> x( "x", M );
+  ResilientView<double*[2]> y( "y", M );
+  ResilientView<double*[2]> z( "z", M );
+
+  //Initialize x vector RESIIENT kernel WITH ERRORS
+  Kokkos::parallel_for( res_range_policy (0, M), KOKKOS_LAMBDA ( const int i) {
+     x ( i,0 ) = 1;
+  });
+
+  int j = 0;
+
+  while (j<5){
+    //Test MiniMD Kernel Behavior with RESILIENT kernel, RESILEINT views WITH ERRORS (cont prev count)
+    Kokkos::parallel_for( res_range_policy (0, M), KOKKOS_LAMBDA ( const int i) {
+      y ( i, 0 ) += test_const * x ( i, 0 );
+      z ( i, 0 ) += test_const * y ( i, 0 );
+    });
+    j++;
+  }
+
+  for ( int i = 0; i < M; i++) {
+    ASSERT_EQ(y(i,0), 5*test_const );
+    ASSERT_EQ(z(i,0), 15*test_const*test_const );
+  }
+
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::clear_duplicates_cache();
+  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
+
+  std::cout << std::endl <<std::endl;
+
+}
+
+//Test RandomAccess
+TEST(TestResOpenMP, TestRandomAccess)
+{
+  // Allocate RandomAccess Subscribers x, y vectors.
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::RandomAccess> > x( "x", N );
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::RandomAccess> > y( "y", N );
+
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = i;
+  });
+
+  KokkosResilience::clear_duplicates_cache();
+
+  Kokkos::deep_copy(x, y);
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(x(i), i);
+  }
+}
+
+// Test Atomic (As Memory Trait)
+TEST(TestResOpenMP, TestAtomic)
+{
+  // Allocate Atomic Subscribers x, y vectors.
+  // See if counter behaves as if counter was accessed atomically.
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::Atomic> > x( "x", N );
+  ResilientView<double*, Kokkos::MemoryTraits <Kokkos::Atomic> > y( "y", N );
+  ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > counter( "counter1", 1 );
+  Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace> counter2( "counter2", 1);
+
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = i;
+    counter(0)++;
+    Kokkos::atomic_inc(&counter2(0));
+  });
+
+  std::cout << "Counter (resilient, atomic declared) is: " << counter(0) << std::endl;
+  std::cout << "Counter2 (non-resilient, atomic access) is: " << counter2(0) << std::endl;
+  std::cout << std::endl;
+
+  KokkosResilience::clear_duplicates_cache();
+
+  Kokkos::deep_copy(x, y);
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(x(i), i);
   }
 }

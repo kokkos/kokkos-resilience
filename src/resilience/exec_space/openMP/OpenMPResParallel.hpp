@@ -292,7 +292,7 @@ class ParallelFor< FunctorType
     if(success==0){
       // Abort if no agreement in duplicates
       auto &handler = KokkosResilience::get_unrecoverable_data_corruption_handler();
-      handler((size_t)success);
+      handler(static_cast<size_t>(success));
     }
 
   } // execute

@@ -54,7 +54,7 @@ main( int argc, char **argv )
 
   Kokkos::initialize( argc, argv );
   {
-  ret = RUN_ALL_TESTS();
+    ret = RUN_ALL_TESTS();
   }
   Kokkos::finalize();
 

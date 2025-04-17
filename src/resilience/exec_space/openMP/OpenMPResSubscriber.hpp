@@ -299,7 +299,9 @@ struct CombineDuplicates: public CombineDuplicatesBase
     size_t total_extent = original.extent(0) * original.extent(1);
     if (total_extent !=1 && (ErrorInject::global_next_inject > total_extent))
     {
-      ErrorInject::global_next_inject = ErrorInject::global_next_inject - total_extent;
+      while (ErrorInject::global_next_inject>total_extent){
+        ErrorInject::global_next_inject = ErrorInject::global_next_inject - total_extent;
+      }
     }
 
     size_t next_inject = ErrorInject::global_next_inject;
@@ -320,27 +322,27 @@ struct CombineDuplicates: public CombineDuplicatesBase
       {
 #if 0
 		  std::cout << "The value at next_inject translates to array(" << floor(next_inject/original.extent(0)) << "," 
-                  << next_inject - (original.extent(0) * floor(next_inject/original.extent(0))) << ") = "
-                  << static_cast<typename View::value_type>(original((int)floor(next_inject/original.extent(0)),next_inject - (original.extent(0) * (int)floor(next_inject/original.extent(0)))))
+                  << next_inject % original.extent(0) << ") = "
+                  << static_cast<typename View::value_type>(original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0) ))
                   << "." << std::endl; 
-#endif
-        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-        //std::cout << "next_inject is " << next_inject << std::endl;
-	      
+	  	  std::cout << "next_inject is " << next_inject << std::endl;
+#endif	      
         if (j==0){//Inject in the original if j is 0
           original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
 		  = static_cast<typename View::value_type>( 
 		                2 * original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
 				+ 2 * ErrorInject::random_gen());//generate using ()
-          ErrorInject::error_counter++;
-        }
+          ErrorInject::error_counter++;       
+	
+	}
         else{//Else inject in one of the other two copies, copy[0] or copy[1]
           copy[j-1]((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
 		  = static_cast<typename View::value_type>( 
 		            2 * copy[j-1]((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
 			    + 2 * ErrorInject::random_gen());
           ErrorInject::error_counter++;
-        }
+	
+	}
         next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
         //std::cout << "next_inject is " << next_inject << std::endl;
       }

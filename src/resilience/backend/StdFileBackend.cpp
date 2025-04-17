@@ -80,12 +80,12 @@ void StdFileBackend::checkpoint(
     std::ofstream file(filename, std::ios::binary);
 
 #ifdef KR_ENABLE_TRACING
-  auto write_trace =
+    auto write_trace =
         Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "write");
 #endif
-  for (auto &&v : views) {
-    char *bytes     = static_cast<char *>(v->data());
-    std::size_t len = v->span() * v->data_type_size();
+    for (auto &&v : views) {
+      char *bytes     = static_cast<char *>(v->data());
+      std::size_t len = v->span() * v->data_type_size();
 
       std::cout << "writing " << len << " bytes to " << filename << " for view " << v->label() << '\n';
 
@@ -96,9 +96,6 @@ void StdFileBackend::checkpoint(
 #endif
   } catch (...) {
   }
-#ifdef KR_ENABLE_TRACING
-  write_trace.end();
-#endif
 }
 
 bool StdFileBackend::restart_available(const std::string &label, int version) {
@@ -140,12 +137,12 @@ void StdFileBackend::restart(
     std::ifstream file(filename, std::ios::binary);
 
 #ifdef KR_ENABLE_TRACING
-  auto read_trace =
+    auto read_trace =
         Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "read");
 #endif
-  for (auto &&v : views) {
-    char *bytes     = static_cast<char *>(v->data());
-    std::size_t len = v->span() * v->data_type_size();
+    for (auto &&v : views) {
+      char *bytes     = static_cast<char *>(v->data());
+      std::size_t len = v->span() * v->data_type_size();
 
       file.read(bytes, len);
     }
@@ -154,8 +151,5 @@ void StdFileBackend::restart(
 #endif
   } catch (...) {
   }
-#ifdef KR_ENABLE_TRACING
-  read_trace.end();
-#endif
 }
 }  // namespace KokkosResilience
