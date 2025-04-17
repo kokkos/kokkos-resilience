@@ -93,30 +93,6 @@ class ResOpenMP : public Kokkos::OpenMP {
 namespace Kokkos {
 namespace Impl {
 
-template <class FunctorType, class ExecPolicy,
-          class ExecutionSpace = KokkosResilience::ResOpenMP>
-struct ParallelForToolsHook {
-  static void begin_parallel_for(const ExecPolicy& policy,
-                                 const FunctorType& functor,
-                                 const std::string& label, uint64_t& kpID) {
-    //if (Kokkos::Tools::profileLibraryLoaded()) {
-    //}   
-  }
-
-  static void end_parallel_for(const ExecPolicy& policy,
-                               const FunctorType& functor,
-                               const std::string& label, uint64_t& kpID){}
-
-};
-
-}  // namespace Impl
-}  // namespace Kokkos
-
-/*------------------------------------------------------------------------*/
-
-namespace Kokkos {
-namespace Impl {
-
 // Type trait that holds space accessibility information
 // Derived from accessibility matrix (more cases in Kokkos API wiki)
 // Specialized to ResHostSpace, may need to extend to more
