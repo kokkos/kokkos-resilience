@@ -67,4 +67,4 @@ RUN cd /opt/spack-environment \
 RUN mkdir -p /opt/build/ && cd /opt/build/ && git clone --depth 1 --branch "add-cmake-config-support" https://github.com/nmm0/VELOC.git
 RUN mkdir -p /opt/veloc && cd /opt/build/VELOC && python3 ./auto-install.py --without-boost /opt/veloc '"-DBoost_ROOT=/opt/view/gcc-11.4.0/boost/1.81.0"'
 RUN rm -rf /opt/build
-ENV LD_LIBRARY_PATH /opt/veloc/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/opt/veloc/lib
