@@ -39,8 +39,7 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-
-#include <cxxopts.hpp>
+#include <CLI/CLI.hpp>
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
 #include <resilience/Resilience.hpp>
@@ -48,117 +47,112 @@
 
 #include <iostream>
 
-int main(int argc, char *argv[]) {
-   int rank, nbProcs, nbLines, M;
-   double wtime, memSize;
+int main(int argc, char* argv[]) {
+  int rank, nbProcs, nbLines, M;
+  double wtime, memSize;
 
-   auto options = cxxopts::Options("heatdis", "Sample heat distribution code");
-   options.add_options()
-           ("s,size", "Problem size", cxxopts::value<std::size_t>()->default_value("100"))
-           ("n,nsteps", "Number of timesteps", cxxopts::value<std::size_t>()->default_value("600"))
-           ("p,precision", "Min precision", cxxopts::value<double>()->default_value("0.00001"))
-           ("c,checkpoint-interval", "Checkpoint interval", cxxopts::value<int>()->default_value("100"))
-           ("config", "Config file", cxxopts::value<std::string>()->default_value("config.json"))
-           ("views", "Number of Kokkos Views", cxxopts::value<std::size_t>()->default_value("1"))
-           ("scale", "Weak or strong scaling", cxxopts::value<std::string>()->default_value("weak"))
-           ;
+  CLI::App app{"A benchmark for testing view registration scaling"};
 
-   options.parse_positional({"config"});
-   auto args = options.parse(argc, argv);
+  std::size_t mem_size    = 100;
+  std::size_t nsteps      = 600;
+  double precision        = 0.00001;
+  int chk_interval        = 100;
+  std::string config_path = "config.json";
+  std::size_t num_views   = 1;
+  std::string scale       = "weak";
+  app.add_option("-s,--size", mem_size, "Problem size");
+  app.add_option("-n,--nsteps", nsteps, "Number of timesteps");
+  app.add_option("-p,--precision", precision, "Min precision");
+  app.add_option("-c,--checkpoint-interval", chk_interval,
+                 "Checkpoint interval");
+  app.add_option("--config", config_path, "Config file");
+  app.add_option("--views", num_views, "Number of Kokkos Views");
+  app.add_option("--scale", scale, "Weak or strong scaling");
 
-   std::size_t nsteps = args["nsteps"].as< std::size_t >();
-   const auto precision = args["precision"].as< double >();
-   const auto chk_interval = args["checkpoint-interval"].as< int >();
-   const auto num_views =  args["views"].as< std::size_t >();
-   int strong              = 0;
-   std::cout << "NUM VIEWS " << num_views << '\n';
-   std::string scale;
-   scale = args["scale"].as< std::string >();
-   if (scale == "strong") {
-      strong = 1;
-   } else {
-      strong = 0;
-   }
+  CLI11_PARSE(app, argc, argv);
 
+  int strong = 0;
+  std::cout << "NUM VIEWS " << num_views << '\n';
+  if (scale == "strong") {
+    strong = 1;
+  } else {
+    strong = 0;
+  }
 
-   MPI_Init(&argc, &argv);
-   MPI_Comm_size(MPI_COMM_WORLD, &nbProcs);
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &nbProcs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-   std::size_t mem_size = args["size"].as< std::size_t >();
+  if (mem_size == 0) {
+    printf("Wrong memory size! See usage\n");
+    exit(3);
+  }
 
-   if (mem_size == 0) {
-      printf("Wrong memory size! See usage\n");
-      exit(3);
-   }
+  Kokkos::initialize(argc, argv);
+  {
+    auto ctx = KokkosResilience::make_context(MPI_COMM_WORLD, config_path);
 
-   Kokkos::initialize(argc, argv);
-   {
-      auto ctx = KokkosResilience::make_context( MPI_COMM_WORLD, args["config"].as< std::string >() );
+    const auto filt =
+        KokkosResilience::Filter::NthIterationFilter(chk_interval);
 
-      const auto filt = KokkosResilience::Filter::NthIterationFilter( chk_interval );
+    if (!strong) {
+      /* weak scaling */
+      M       = (int)sqrt((double)(mem_size * 1024.0 * 1024.0 * nbProcs) /
+                          (2 * sizeof(double)));  // two matrices needed
+      nbLines = (M / nbProcs) + 3;
+    } else {
+      /* strong scaling */
+      M       = (int)sqrt((double)(mem_size * 1024.0 * 1024.0 * nbProcs) /
+                          (2 * sizeof(double) * nbProcs));  // two matrices needed
+      nbLines = (M / nbProcs) + 3;
+    }
 
+    std::vector<KokkosResilience::View<double*>> MyViews(num_views);
+    for (std::size_t i = 0; i < num_views; ++i) {
+      Kokkos::resize(MyViews[i], M * nbLines);
+      Kokkos::deep_copy(MyViews[i], 1.0);
+    }
+
+    memSize = num_views * M * nbLines * sizeof(double) / (1024 * 1024);
+
+    if (rank == 0) {
       if (!strong) {
-
-         /* weak scaling */
-         M = (int)sqrt((double)(mem_size * 1024.0 * 1024.0 * nbProcs) / (2 * sizeof(double))); // two matrices needed
-         nbLines = (M / nbProcs) + 3;
+        std::cout << "Local data size is " << M << " x " << nbLines << " = "
+                  << memSize << " MB (" << mem_size << ") " << num_views
+                  << " Views.\n";
       } else {
-
-         /* strong scaling */
-         M = (int)sqrt((double)(mem_size * 1024.0 * 1024.0 * nbProcs) / (2 * sizeof(double) * nbProcs)); // two matrices needed
-         nbLines = (M / nbProcs) + 3;
+        std::cout << "Local data size is " << M << " x " << nbLines << " = "
+                  << memSize << " MB (" << mem_size / nbProcs << ") "
+                  << num_views << " Views.\n";
       }
+      std::cout << "Target precision: " << precision << '\n';
+      std::cout << "Maximum number of iterations: " << nsteps << '\n';
+      std::cout << "Array size: " << M * nbLines << '\n';
+    }
 
-      std::vector<KokkosResilience::View<double*>> MyViews(num_views);
-      for( std::size_t i = 0 ; i < num_views; ++i )
-      {
-         Kokkos::resize( MyViews[i], M*nbLines);
-         Kokkos::deep_copy(MyViews[i],1.0);
-      }
+    wtime         = MPI_Wtime();
+    std::size_t i = 1 + KokkosResilience::latest_version(*ctx, "test_kokkos");
 
-      memSize = num_views * M * nbLines * sizeof(double) / (1024 * 1024);
+    while (i < nsteps) {
+      KokkosResilience::checkpoint(
+          *ctx, "test_kokkos", i,
+          [=]() {  // Nic, tell me what should I put for []/
+            for (std::size_t j = 0; j < num_views; ++j) {
+              Kokkos::parallel_for(
+                  M * nbLines, KOKKOS_LAMBDA(const int& k) {
+                    MyViews[j](k) = (double)k * (double)(k + 1);
+                  });
+            }
+          },
+          filt);
 
-      if (rank == 0) {
-        if (!strong) {
-          std::cout << "Local data size is " << M << " x " << nbLines << " = "
-                    << memSize << " MB (" << mem_size << ") " << num_views
-                    << " Views.\n";
-        } else {
-          std::cout << "Local data size is " << M << " x " << nbLines << " = "
-                    << memSize << " MB (" << mem_size / nbProcs << ") "
-                    << num_views << " Views.\n";
-        }
-        std::cout << "Target precision: " << precision << '\n';
-        std::cout << "Maximum number of iterations: " << nsteps << '\n';
-        std::cout << "Array size: " << M * nbLines << '\n';
-      }
+      i++;
+    }
+    if (rank == 0)
+      printf("Execution finished in %lf seconds.\n", MPI_Wtime() - wtime);
+  }
+  Kokkos::finalize();
 
-      wtime = MPI_Wtime();
-      std::size_t i = 1 + KokkosResilience::latest_version(*ctx, "test_kokkos");
-
-      while(i < nsteps) {
-
-         KokkosResilience::checkpoint(*ctx, "test_kokkos", i, [=]() {   // Nic, tell me what should I put for []/
-
-         for( std::size_t j = 0; j < num_views; ++j )
-         {
-
-            Kokkos::parallel_for( M*nbLines, KOKKOS_LAMBDA (const int& k )
-            {
-               MyViews[j](k) = (double)k*(double)(k+1);
-            });
-         }
-       }, filt );
-
-         i++;
-      }
-      if (rank == 0)
-         printf("Execution finished in %lf seconds.\n", MPI_Wtime() - wtime);
-
-   }
-   Kokkos::finalize();
-
-   MPI_Finalize();
-   return 0;
+  MPI_Finalize();
+  return 0;
 }
