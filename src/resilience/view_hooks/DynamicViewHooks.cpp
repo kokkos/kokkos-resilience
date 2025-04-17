@@ -38,7 +38,6 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include <Kokkos_Core.hpp>
 #include "DynamicViewHooks.hpp"
 
 namespace KokkosResilience {

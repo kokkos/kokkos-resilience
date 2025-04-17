@@ -40,7 +40,6 @@ endif()
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
   target_sources(resilience_tests PRIVATE
                  TestOpenMPResilientExecution.cpp
-	         TestMiniMD.cpp
                  )
 endif()
 
