@@ -84,10 +84,8 @@ class StdFileContext : public ContextBase {
 
   Backend &backend() { return m_backend; }
 
-  void register_hashes(
-      const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector<Detail::CrefImpl> &crefs) override {
-    m_backend.register_hashes(views, crefs);
+  void register_hashes(std::unordered_set<Registration> &members) override {
+    m_backend.register_hashes(members);
   }
 
   bool restart_available(const std::string &label, int version) override {
@@ -95,15 +93,13 @@ class StdFileContext : public ContextBase {
   }
 
   void restart(const std::string &label, int version,
-               const std::vector< KokkosResilience::ViewHolder >
-                   &views) override {
-    m_backend.restart(label, version, views);
+               std::unordered_set<Registration> &members) override {
+    m_backend.restart(label, version, members);
   }
 
   void checkpoint(const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder >
-                      &views) override {
-    m_backend.checkpoint(label, version, views);
+                  std::unordered_set<Registration> &members) override {
+    m_backend.checkpoint(label, version, members);
   }
 
   int latest_version(const std::string &label) const noexcept override {
