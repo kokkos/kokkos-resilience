@@ -21,8 +21,9 @@ endif()
 
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
-     		 TestStdFileBackend.cpp)
+     		 TestStdFileBackend.cpp
                  TestLambdaCapture.cpp
+		 )
 endif()
 
 if (KR_ENABLE_STDFILE_DATA_SPACE)
