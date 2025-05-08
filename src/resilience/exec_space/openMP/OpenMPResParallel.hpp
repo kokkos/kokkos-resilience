@@ -121,7 +121,7 @@ class ParallelFor< FunctorType
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
 #ifdef KR_ENABLE_WRAPPER
-  auto MakeWrapper (int64_t work_size, int64_t offset, const FunctorType &functor_copy_0, const FunctorType &functor_copy_1) const{
+  auto make_wrapper (int64_t work_size, int64_t offset, const FunctorType &functor_copy_0, const FunctorType &functor_copy_1) const{
     if constexpr (std::is_void_v<WorkTag>){
       auto wrapper_functor = [&, work_size, offset](int64_t i){
         if (i < work_size)
@@ -193,7 +193,7 @@ class ParallelFor< FunctorType
       auto functor_copy_1 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      auto wrapper_functor = MakeWrapper (work_size, offset, functor_copy_0, functor_copy_1);
+      auto wrapper_functor = make_wrapper (work_size, offset, functor_copy_0, functor_copy_1);
       
 #endif
 

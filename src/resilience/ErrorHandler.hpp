@@ -45,7 +45,7 @@
 
 namespace KokkosResilience {
 /**
- * A function that will be invoked with the success flag if the
+ * A function that will be invoked with the total number of retries if the
  * runtime encounters an unrecoverable data corruption.
  */
 using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
