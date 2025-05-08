@@ -294,7 +294,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
   }
 
   void Inject2D(){
-//#if 0    
     //This error injection works with 2D views, subtracts total extent from global_next_inject
     size_t total_extent = original.extent(0) * original.extent(1);
     if (total_extent !=1 && (ErrorInject::global_next_inject > total_extent))
@@ -305,28 +304,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
 
     size_t next_inject = ErrorInject::global_next_inject;
-#if 0    
-    double temp = global_error_settings->error_rate;
-    std::cout << "Error::error_rate is " << temp << std::endl;
-    
-    std::cout << "ErrorInject::error_counter is " << ErrorInject::error_counter << std::endl;
-    std::cout << "original.extent(0) is " << original.extent(0) << std::endl;
-    std::cout << "original.extent(1) is " << original.extent(1) << std::endl;
-    std::cout << "total_extent is " << total_extent << std::endl;
-    std::cout << "next_inject is " << next_inject << std::endl;
-#endif
 
-//#if 0
     for (int j = 0; j<=2; j++){
       while (next_inject < total_extent)
       {
-#if 0
-		  std::cout << "The value at next_inject translates to array(" << floor(next_inject/original.extent(0)) << "," 
-                  << next_inject % original.extent(0) << ") = "
-                  << static_cast<typename View::value_type>(original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0) ))
-                  << "." << std::endl; 
-	  	  std::cout << "next_inject is " << next_inject << std::endl;
-#endif	      
         if (j==0){//Inject in the original if j is 0
           original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
 		  = static_cast<typename View::value_type>( 
@@ -344,19 +325,16 @@ struct CombineDuplicates: public CombineDuplicatesBase
 	
 	}
         next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-        //std::cout << "next_inject is " << next_inject << std::endl;
       }
       if(total_extent != 1){
         next_inject = next_inject - total_extent;
       }
     }
-//#endif
   }
 
   void inject_error() override
   {
 	  
-    //std::cout << "We got into the error injector and rank is: " << rank << "\n";
     if constexpr(rank == 2){
 #ifdef KR_ENABLE_DMR
       //Implies dmr_failover_to_tmr
@@ -386,12 +364,10 @@ struct CombineDuplicates: public CombineDuplicatesBase
           while (next_inject < original.size())
           {
             if (j==0){//Insert error into original
-		    //std::cout <<"Injecting an error at " <<next_inject<< " in the original"<< std::endl;	    
               original(next_inject) = static_cast<typename View::value_type>(2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
               ErrorInject::error_counter++;
             }
             else{//Insert error into only copy
-		    //std::cout <<"Injecting an error at " <<next_inject<< " in copy [0]"<< std::endl;
               copy[0](next_inject) = static_cast<typename View::value_type>(2 * copy[0](next_inject) + 2 * ErrorInject::random_gen());
               ErrorInject::error_counter++;
             }
@@ -555,7 +531,6 @@ KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
 
   ErrorTimerSettings::global_time_mutex.lock();
-  //auto time = ErrorTimerSettings::total_error_time.count() / 1000000000;
   std::cout << "The value of ErrorTimerSettings::total_error_time.count() is " << ErrorTimerSettings::total_error_time.count() << " nanoseconds." << std::endl;
   std::cout << "The total number of errors inserted is " << ErrorInject::error_counter << " errors." << std::endl;
   ErrorTimerSettings::global_time_mutex.unlock();

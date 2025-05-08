@@ -81,7 +81,7 @@ namespace KokkosResilience{
 
   inline void inject_error_duplicates() {
 
-    if (KokkosResilience::global_error_settings){
+    if (global_error_settings){
       //Per kernel, seed the first inject index	    
       KokkosResilience::ErrorInject::global_next_inject = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInject::random_gen);	      ;
 
@@ -121,7 +121,7 @@ class ParallelFor< FunctorType
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
 #ifdef KR_ENABLE_WRAPPER
-  auto MakeWrapper (int64_t work_size, int64_t offset, const FunctorType &m_functor_0, const FunctorType &m_functor_1) const{
+  auto MakeWrapper (int64_t work_size, int64_t offset, const FunctorType &functor_copy_0, const FunctorType &functor_copy_1) const{
     if constexpr (std::is_void_v<WorkTag>){
       auto wrapper_functor = [&, work_size, offset](int64_t i){
         if (i < work_size)
@@ -130,11 +130,11 @@ class ParallelFor< FunctorType
         }
         else if (( work_size <= i) && (i < (2 * work_size)))
         {
-          m_functor_0 (i + offset - work_size);
+          functor_copy_0 (i + offset - work_size);
         }
         else
         {
-          m_functor_1 (i + offset - ( 2 * work_size));
+          functor_copy_1 (i + offset - ( 2 * work_size));
         }
       };
       return wrapper_functor;
@@ -147,11 +147,11 @@ class ParallelFor< FunctorType
         }
         else if (( work_size <= i) && (i < (2 * work_size)))
         {
-          m_functor_0 (work_tag, i + offset - work_size);
+          functor_copy_0 (work_tag, i + offset - work_size);
         }
         else
         {
-          m_functor_1 (work_tag, i + offset - ( 2 * work_size));
+          functor_copy_1 (work_tag, i + offset - ( 2 * work_size));
         }
       };
       return wrapper_functor;
@@ -177,8 +177,8 @@ class ParallelFor< FunctorType
       wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
-      auto m_functor_0 = m_functor;
-      auto m_functor_1 = m_functor;
+      auto functor_copy_0 = m_functor;
+      auto functor_copy_1 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 #endif
 
@@ -189,11 +189,11 @@ class ParallelFor< FunctorType
 
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
-      auto m_functor_0 = m_functor;
-      auto m_functor_1 = m_functor;
+      auto functor_copy_0 = m_functor;
+      auto functor_copy_1 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-      auto wrapper_functor = MakeWrapper (work_size, offset, m_functor_0, m_functor_1);
+      auto wrapper_functor = MakeWrapper (work_size, offset, functor_copy_0, functor_copy_1);
       
 #endif
 
@@ -202,8 +202,8 @@ class ParallelFor< FunctorType
       // TMR execution with no wrapper scheduling
 
       Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure0( m_functor , wrapper_policy );
-      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1( m_functor_0 , wrapper_policy );
-      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2( m_functor_1 , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1( functor_copy_0 , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2( functor_copy_1 , wrapper_policy );
 
       closure0.execute();
       closure1.execute();
@@ -230,12 +230,12 @@ class ParallelFor< FunctorType
 
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
-      auto m_functor_0 = m_functor;
+      auto functor_copy_0 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
       // DMR execution with no wrapper scheduling, on failover TMR
       Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure0(m_functor , wrapper_policy );
-      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1(m_functor_0 , wrapper_policy );
+      Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1(functor_copy_0 , wrapper_policy );
 
       closure0.execute();
       closure1.execute();
@@ -253,10 +253,10 @@ class ParallelFor< FunctorType
       {
         KokkosResilience::ResilientDuplicatesSubscriber::dmr_failover_to_tmr = true;
         KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
-	auto m_functor_1 = m_functor;
+	auto functor_copy_1 = m_functor;
         KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-        Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(m_functor_1 , wrapper_policy );
+        Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(functor_copy_1 , wrapper_policy );
 
         start=std::chrono::steady_clock::now();
         KokkosResilience::inject_error_duplicates();
@@ -292,7 +292,7 @@ class ParallelFor< FunctorType
     if(success==0){
       // Abort if no agreement in duplicates
       auto &handler = KokkosResilience::get_unrecoverable_data_corruption_handler();
-      handler(static_cast<size_t>(success));
+      handler(0);
     }
 
   } // execute
