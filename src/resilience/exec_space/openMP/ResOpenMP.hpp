@@ -47,14 +47,10 @@
 
 #include <cstddef>
 #include <iosfwd>
-
 #include <vector>
 
 #include <Kokkos_Core.hpp>
 
-#include <impl/Kokkos_InitializationSettings.hpp>
-
-//This space specific
 #include "ResHostSpace.hpp" //Resilient
 
 /*------------------------------------------------------------------------*/
@@ -76,8 +72,6 @@ class ResOpenMP : public Kokkos::OpenMP {
 
 /*------------------------------------*/
 
-    //Do not delete constructor, defined in cpp
-
     ~ResOpenMP() {}
     ResOpenMP();
 
@@ -87,9 +81,6 @@ class ResOpenMP : public Kokkos::OpenMP {
     ResOpenMP & operator = ( const ResOpenMP & ) = default;
 
 /*------------------------------------*/
-
-    // Print configuration information to the given output stream.
-    void print_configuration(std::ostream& os, bool verbose = false) const;
 
     static const char* name();
 
@@ -107,11 +98,8 @@ namespace Impl {
 // Specialized to ResHostSpace, may need to extend to more
 template <>
 struct MemorySpaceAccess
-  < KokkosResilience::ResHostSpace
-  , Kokkos::OpenMP::scratch_memory_space
-  > : MemorySpaceAccess
-  < Kokkos::HostSpace
-  , Kokkos::OpenMP::scratch_memory_space >
+  < KokkosResilience::ResHostSpace, Kokkos::OpenMP::scratch_memory_space> : MemorySpaceAccess
+  < Kokkos::HostSpace, Kokkos::OpenMP::scratch_memory_space >
 {};
 
 }  // namespace Impl
@@ -135,10 +123,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 
 /*------------------------------------------------------------------------*/
 
-#include <OpenMP/Kokkos_OpenMP_Instance.hpp>
-#include <OpenMP/Kokkos_OpenMP_Team.hpp>
 #include "OpenMPResParallel.hpp" // Resilient specific parallel functors
-#include <OpenMP/Kokkos_OpenMP_Task.hpp>
 
 /*------------------------------------------------------------------------*/
 
