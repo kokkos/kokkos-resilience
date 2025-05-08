@@ -442,18 +442,6 @@ struct ResilientDuplicatesSubscriber {
       }   
     } 
 
-#if 0    
-#ifdef KR_ENABLE_DMR
-
-     // DMR variant initialization of copies
-     // only 1 initially, 2 on fail
-     if (dmr_failover_to_tmr && res.copy[1].data()==nullptr){
-      // Create second copy
-        set_duplicate_view(res.copy[1], original, 1);
-      }
-#endif
-#endif
-
     if (inserted || extents_resized) {
       res.original = original;
 
