@@ -49,7 +49,7 @@ namespace KokkosResilience {
  * runtime encounters an unrecoverable data corruption.
  */
 using unrecoverable_data_corruption_handler = std::function<void(std::size_t)>;
-void default_unrecoverable_data_corruption_handler(std::size_t success);
+void default_unrecoverable_data_corruption_handler(std::size_t num_retries);
 void set_unrecoverable_data_corruption_handler(unrecoverable_data_corruption_handler handler);
 unrecoverable_data_corruption_handler &get_unrecoverable_data_corruption_handler();
 }  // namespace KokkosResilience

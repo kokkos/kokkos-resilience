@@ -266,13 +266,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
 
     size_t next_inject = ErrorInject::global_next_inject;
-#if 0
-    double temp = global_error_settings->error_rate;
-    std::cout << "Error::error_rate is " << temp << std::endl;
-
-    std::cout << "ErrorInject::error_counter is " << ErrorInject::error_counter << std::endl;
-    std::cout << "next_inject is " << next_inject << std::endl;
-#endif
+    
     for (int j=0; j<=2; j++){
       while (next_inject < original.size())
       {
