@@ -117,6 +117,32 @@ auto make_md_range_policy( const View &view, std::index_sequence< Ranks... >){
   return Kokkos::MDRangePolicy<Kokkos::Rank<View::rank()>>({ get_start_index < 0 > ( Ranks ) ... }, { static_cast<std::int64_t>( view.extent ( Ranks ))... });
 }
 
+// Calculates coordinate formulas from linear iterator
+template< typename View>
+auto get_inject_indices_array( const View &view, std::size_t next_inject ){
+
+  std::array<std::size_t, 8> indices {};	
+  std::array<std::size_t, 8> dim_products {};
+
+  //Array of dimensional products, with one in index 0 and up to n=7
+  dim_products[0] = 1; 
+  for (int i=1;i<8;i++){
+    dim_products[i] = dim_products[i-1] * view.extent(i-1);
+  }	  
+  
+  // View.extent() returns 1 for uninitialized dimensions
+  // this array returns accurate coordinates up to the existing view rank
+  // coordinates past rank are inaccurate, but are truncated by view.access() in the main injector
+  size_t temp_numer = next_inject;
+  indices[0] = next_inject % view.extent(0);
+
+  for(int i=1;i<8;i++){
+    indices[i] = ((temp_numer - (indices[i-1] * dim_products[i-1])) / dim_products[i] ) % view.extent(i);
+  }
+ 
+  return indices;
+}
+
 template <class Type, class Enabled = void>
 struct CheckDuplicateEquality;
 
@@ -257,39 +283,17 @@ struct CombineDuplicates: public CombineDuplicatesBase
     success() = false;
 #endif
   }
-
-  void Inject1D(){
-    //Sequential, on original.size
-    if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
-    {
-      ErrorInject::global_next_inject = ErrorInject::global_next_inject - original.size();
+  
+  void inject_error() override
+  {
+#ifdef KR_ENABLE_TMR
+    //Any-dimensional TMR error injector
+    size_t total_extent = 1;
+    for(int i=0; i<= (int)rank; i++){
+      total_extent = total_extent * original.extent(i);	    
     }
 
-    size_t next_inject = ErrorInject::global_next_inject;
-    
-    for (int j=0; j<=2; j++){
-      while (next_inject < original.size())
-      {
-        if (j==0){//Inject in the original if j is 0
-          original(next_inject) = static_cast<typename View::value_type>(2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
-          ErrorInject::error_counter++;
-        }
-        else{//Else inject in one of the other two copies, copy[0] or copy[1]
-          copy[j-1](next_inject) = static_cast<typename View::value_type>(2 * copy[j-1](next_inject) + 2 * ErrorInject::random_gen());
-          ErrorInject::error_counter++;
-        }
-        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-
-      }
-      if(original.size() != 1){
-      next_inject = (next_inject) - (original.size());
-      }
-    }
-  }
-
-  void Inject2D(){
-    //This error injection works with 2D views, subtracts total extent from global_next_inject
-    size_t total_extent = original.extent(0) * original.extent(1);
+    //requires error in range, unless view size too small
     if (total_extent !=1 && (ErrorInject::global_next_inject > total_extent))
     {
       while (ErrorInject::global_next_inject>total_extent){
@@ -298,86 +302,31 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
 
     size_t next_inject = ErrorInject::global_next_inject;
+    std::array<size_t, 8> indices {};
 
     for (int j = 0; j<=2; j++){
       while (next_inject < total_extent)
       {
+	indices = get_inject_indices_array( original, next_inject );      
         if (j==0){//Inject in the original if j is 0
-          original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
-		  = static_cast<typename View::value_type>( 
-		                2 * original((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
-				+ 2 * ErrorInject::random_gen());//generate using ()
-          ErrorInject::error_counter++;       
-	
-	}
-        else{//Else inject in one of the other two copies, copy[0] or copy[1]
-          copy[j-1]((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
-		  = static_cast<typename View::value_type>( 
-		            2 * copy[j-1]((int)floor(next_inject/original.extent(0)), next_inject % original.extent(0)) 
-			    + 2 * ErrorInject::random_gen());
+	  //replace value with noise
+	  original.access(indices[0],indices[1],indices[2],indices[3],indices[4],indices[5],indices[6],indices[7]) 
+		   = static_cast<typename View::value_type>(ErrorInject::random_gen());
           ErrorInject::error_counter++;
-	
-	}
+        }
+        else{//Else inject in one of the other two copies, copy[0] or copy[1]
+          copy[j-1].access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7]) 
+                   = static_cast<typename View::value_type>(ErrorInject::random_gen());
+	  ErrorInject::error_counter++;
+        }
         next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
       }
       if(total_extent != 1){
         next_inject = next_inject - total_extent;
       }
     }
-  }
-
-  void inject_error() override
-  {
-	  
-    if constexpr(rank == 2){
-#ifdef KR_ENABLE_DMR
-      //Implies dmr_failover_to_tmr
-      if(duplicate_count == 2) {
-	Inject2D();
-      }
-      else{//Actual DMR error injection with only 1 copy
-      }//End DMR error injection
-#else
-      Inject2D();
-#endif 
-    }else{
-
-#ifdef KR_ENABLE_DMR
-      //Implies dmr_failover_to_tmr has tripped    
-      if(duplicate_count == 2 ){
-	Inject1D();
-      }
-      else{//The actual dmr error inject with only 1 copy
-        if ((original.size() != 1) && (ErrorInject::global_next_inject > original.size()))
-        {
-          ErrorInject::global_next_inject = ErrorInject::global_next_inject - original.size();
-        }
-
-        size_t next_inject = ErrorInject::global_next_inject;
-	for (int j = 0; j<2; j++){
-          while (next_inject < original.size())
-          {
-            if (j==0){//Insert error into original
-              original(next_inject) = static_cast<typename View::value_type>(2 * original(next_inject) + 2 * ErrorInject::random_gen());//generate using ()
-              ErrorInject::error_counter++;
-            }
-            else{//Insert error into only copy
-              copy[0](next_inject) = static_cast<typename View::value_type>(2 * copy[0](next_inject) + 2 * ErrorInject::random_gen());
-              ErrorInject::error_counter++;
-            }
-            next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-          }
-          if(original.size() != 1){
-          next_inject = (next_inject) - (original.size());
-          }
-        }
-      }
-
-#else
-	Inject1D();
 #endif
-    }//end rank == 1
-  }// end error inject
+  }// end inject_error
 
 };// end Combiner
 
