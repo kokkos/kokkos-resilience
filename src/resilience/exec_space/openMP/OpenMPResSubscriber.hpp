@@ -122,22 +122,16 @@ template< typename View>
 auto get_inject_indices_array( const View &view, std::size_t next_inject ){
 
   std::array<std::size_t, 8> indices {};	
-  std::array<std::size_t, 8> dim_products {};
+  size_t dim_product = 1;
 
-  //Array of dimensional products, with one in index 0 and up to n=7
-  dim_products[0] = 1; 
-  for (int i=1;i<8;i++){
-    dim_products[i] = dim_products[i-1] * view.extent(i-1);
-  }	  
-  
   // View.extent() returns 1 for uninitialized dimensions
   // this array returns accurate coordinates up to the existing view rank
   // coordinates past rank are inaccurate, but are truncated by view.access() in the main injector
-  size_t temp_numer = next_inject;
   indices[0] = next_inject % view.extent(0);
 
   for(int i=1;i<8;i++){
-    indices[i] = ((temp_numer - (indices[i-1] * dim_products[i-1])) / dim_products[i] ) % view.extent(i);
+    indices[i] = ((next_inject - (indices[i-1] * dim_product)) / (dim_product * view.extent(i-1) )) % view.extent(i);
+    dim_product = dim_product * view.extent(i-1);
   }
  
   return indices;

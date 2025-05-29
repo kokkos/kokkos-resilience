@@ -52,7 +52,7 @@ main( int argc, char **argv )
 #endif
 
   Kokkos::initialize( argc, argv );
-  auto  ret = RUN_ALL_TESTS();
+  auto ret = RUN_ALL_TESTS();
   Kokkos::finalize();
 
 #if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND)
