@@ -50,7 +50,6 @@
 #include <vector>
 
 #include <Kokkos_Core.hpp>
-
 #include "ResOpenMP.hpp"
 
 /*------------------------------------------------------------------------*/
@@ -59,14 +58,6 @@ namespace KokkosResilience {
 
 ResOpenMP::ResOpenMP()
   : OpenMP() {
-}
-
-void
-ResOpenMP::print_configuration(std::ostream& os, bool verbose) const
-{
-  os << "KokkosResilience::ResOpenMP:\n";
-
-  Kokkos::OpenMP::print_configuration( os, verbose );
 }
 
 const char* ResOpenMP::name() { return "ResOpenMP"; }
