@@ -38,29 +38,21 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP
+#define INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP
 
 #include <Kokkos_Macros.hpp>
 #if defined(KOKKOS_ENABLE_OPENMP)
 
-#include <cstdio>
-#include <cstdlib>
-
-#include <limits>
-#include <iostream>
-#include <vector>
-
-#include <Kokkos_Core.hpp>
-#include "ResOpenMP.hpp"
-
-/*------------------------------------------------------------------------*/
+#include "Resilient_OpenMP_Subscriber.hpp"
 
 namespace KokkosResilience {
 
-ResOpenMP::ResOpenMP()
-  : OpenMP() {
+bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+#ifdef KR_ENABLE_DMR
+bool ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
+#endif
 }
 
-const char* ResOpenMP::name() { return "ResOpenMP"; }
-
-} // namespace KokkosResilience
-#endif // KOKKOS_ENABLE_OPENMP
+#endif //defined(KOKKOS_ENABLE_OPENMP)
+#endif //INC_RESILIENCE_OPENMP_OPENMPRESSUBSCRIBER_CPP

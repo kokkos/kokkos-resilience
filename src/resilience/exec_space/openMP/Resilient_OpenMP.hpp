@@ -50,8 +50,7 @@
 #include <vector>
 
 #include <Kokkos_Core.hpp>
-
-#include "ResHostSpace.hpp" //Resilient
+#include "Resilient_HostSpace.hpp" //Resilient
 
 /*------------------------------------------------------------------------*/
 
@@ -123,7 +122,7 @@ struct DeviceTypeTraits<KokkosResilience::ResOpenMP> {
 
 /*------------------------------------------------------------------------*/
 
-#include "OpenMPResParallel.hpp" // Resilient specific parallel functors
+#include "Resilient_OpenMP_Parallel_For.hpp" // Resilient specific parallel functors
 
 /*------------------------------------------------------------------------*/
 
