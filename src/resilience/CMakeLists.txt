@@ -3,9 +3,9 @@ target_sources(resilience PRIVATE ${CMAKE_CURRENT_LIST_DIR}/Resilience.cpp)
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience PRIVATE 
                  ${CMAKE_CURRENT_LIST_DIR}/config/Config.cpp
-                 ${CMAKE_CURRENT_LIST_DIR}/Cref.cpp
                  )
   add_subdirectory(backend)
+  add_subdirectory(registration)
   add_subdirectory(context)
 endif()
 

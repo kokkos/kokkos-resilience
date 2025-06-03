@@ -48,8 +48,8 @@
 #include <string>
 #include <vector>
 
-#include "resilience/Cref.hpp"
 #include "resilience/context/StdFileContext.hpp"
+#include <unordered_set>
 
 namespace KokkosResilience {
 
@@ -61,20 +61,18 @@ class StdFileBackend {
 
   void checkpoint(
       const std::string &label, int version,
-      const std::vector< KokkosResilience::ViewHolder > &views);
+      std::unordered_set<Registration> &members);
 
   bool restart_available(const std::string &label, int version);
   int latest_version(const std::string &label) const noexcept;
 
   void restart(
       const std::string &label, int version,
-      const std::vector< KokkosResilience::ViewHolder > &views);
+      std::unordered_set<Registration> &members);
 
   void reset() {}
 
-  void register_hashes(
-      const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector<Detail::CrefImpl> &crefs) {}
+  void register_hashes(std::unordered_set<Registration> &members) {}
 
  private:
   std::string m_filename;
