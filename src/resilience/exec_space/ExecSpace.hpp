@@ -40,8 +40,8 @@
  */
 
 #ifdef KR_ENABLE_OPENMP_EXEC_SPACE
-#include "openMP/ResOpenMP.hpp"
-#include "openMP/OpenMPResParallel.hpp"
-#include "openMP/OpenMPResSubscriber.hpp"
-#include "openMP/ResHostSpace.hpp"
+#include "openMP/Resilient_OpenMP.hpp"
+#include "openMP/Resilient_OpenMP_Parallel_For.hpp"
+#include "openMP/Resilient_OpenMP_Subscriber.hpp"
+#include "openMP/Resilient_HostSpace.hpp"
 #endif

@@ -51,7 +51,7 @@
 
 #include <Kokkos_Core.hpp>
 
-#include "OpenMPResSubscriber.hpp"
+#include "Resilient_OpenMP_Subscriber.hpp"
 
 /*--------------------------------------------------------------------------*/
 /************************** DUPLICATE COMBINER CALL *************************/
