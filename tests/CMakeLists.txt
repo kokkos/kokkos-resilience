@@ -19,6 +19,12 @@ if (KR_ENABLE_VELOC_BACKEND)
   target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
 endif()
 
+if (KR_ENABLE_FENIX_BACKEND)
+  target_sources(resilience_tests PRIVATE
+    TestFenixMemoryBackend.cpp)
+  target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
+endif()
+
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
      		 TestStdFileBackend.cpp
