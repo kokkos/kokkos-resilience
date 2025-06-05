@@ -38,8 +38,8 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_VELOC_VELOCBACKEND_HPP
-#define INC_RESILIENCE_VELOC_VELOCBACKEND_HPP
+#ifndef INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
+#define INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
 
 #include <string>
 #include <vector>
@@ -49,6 +49,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
+#include <fenix.h>
 #include "../Cref.hpp"
 #include "../MemProtect.hpp"
 
@@ -56,21 +57,18 @@ namespace KokkosResilience
 {
   class ContextBase;
 
-  template< typename Backend >
-  class MPIContext;
-
-  class VeloCMemoryBackend
+  class FenixMemoryBackend
   {
   public:
 
-    VeloCMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm );
-    ~VeloCMemoryBackend();
+    FenixMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm );
+    ~FenixMemoryBackend();
 
-    VeloCMemoryBackend( const VeloCMemoryBackend & ) = delete;
-    VeloCMemoryBackend( VeloCMemoryBackend && ) noexcept = default;
+    FenixMemoryBackend( const FenixMemoryBackend & ) = delete;
+    FenixMemoryBackend( FenixMemoryBackend && ) noexcept = default;
 
-    VeloCMemoryBackend &operator=( const VeloCMemoryBackend & ) = delete;
-    VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
+    FenixMemoryBackend &operator=( const FenixMemoryBackend & ) = delete;
+    FenixMemoryBackend &operator=( FenixMemoryBackend && ) = default;
 
     void checkpoint( const std::string &label, int version,
                      const std::vector< KokkosResilience::ViewHolder > &views );
@@ -101,46 +99,15 @@ namespace KokkosResilience
     mutable std::unordered_map< std::string, int > m_latest_version;
     std::unordered_map< std::string, std::string > m_alias_map;
     int m_last_id;
-  };
 
-  class VeloCRegisterOnlyBackend : public VeloCMemoryBackend
-  {
-   public:
+    std::unordered_map< std::string, int > m_groups;
+    int m_last_group;
 
-    using VeloCMemoryBackend::VeloCMemoryBackend;
-    ~VeloCRegisterOnlyBackend() = default;
-
-    VeloCRegisterOnlyBackend( const VeloCRegisterOnlyBackend & ) = delete;
-    VeloCRegisterOnlyBackend( VeloCRegisterOnlyBackend && ) noexcept = default;
-
-    VeloCRegisterOnlyBackend &operator=( const VeloCRegisterOnlyBackend & ) = delete;
-    VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
-
-    void checkpoint( const std::string &label, int version,
-                     const std::vector< KokkosResilience::ViewHolder > &views );
-
-    void restart( const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder > &views );
-  };
-
-  class VeloCFileBackend
-  {
-  public:
-
-    VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
-    ~VeloCFileBackend();
-
-    void checkpoint( const std::string &label, int version,
-                     const std::vector< KokkosResilience::ViewHolder > &views );
-
-    bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label) const noexcept;
-
-    void restart( const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder > &views );
-
-    void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
+    const int m_fenix_data_group_id = 1000;
+    const int m_fenix_policy_name = FENIX_DATA_POLICY_IN_MEMORY_RAID;
+    const int m_fenix_policy_value[3] = {1, 1, 0}; // pairs ranks (0, 1), (2, 3), (4, 5), ...
+    int m_fenix_policy_flag;
   };
 }
 
-#endif  // INC_RESILIENCE_VELOC_VELOCBACKEND_HPP
+#endif  // INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
