@@ -78,6 +78,7 @@ kr_option(KR_ENABLE_MPI_CONTEXT "Compile MPI checkpointing context" ON KR_ENABLE
 #Backends
 kr_option(KR_ENABLE_VELOC_BACKEND "Compile VeloC checkpointing backend" ON KR_ENABLE_MPI_CONTEXT)
 kr_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF KR_ENABLE_VELOC)
+kr_option(KR_ENABLE_FENIX_BACKEND "Compile Fenix checkpointing backend" ON KR_ENABLE_MPI_CONTEXT)
 
 #Data space options
 kr_option(KR_ENABLE_DATA_SPACES "Enable Kokkos memory spaces for manual view checkpointing" OFF)
@@ -103,6 +104,12 @@ kr_option(KR_KERNEL_FUSING "enable kernel fusing" OFF "KR_ENABLE_OPENMP_EXEC_SPA
 if (KR_ENABLE_VELOC_BACKEND)
   find_package(veloc REQUIRED)
   target_link_libraries(resilience PUBLIC veloc::client)
+endif()
+
+# Fenix backend
+if (KR_ENABLE_FENIX_BACKEND)
+  find_package(fenix REQUIRED)
+  target_link_libraries(resilience PUBLIC fenix)
 endif()
 
 if (KR_ENABLE_HDF5_DATA_SPACE)
