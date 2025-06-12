@@ -120,7 +120,7 @@ class ParallelFor< FunctorType
 
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag, LaunchBounds>;
 
-#ifdef KR_ENABLE_WRAPPER
+#ifdef KR_KERNEL_FUSING
   auto make_wrapper (int64_t work_size, int64_t offset, const FunctorType &functor_copy_0, const FunctorType &functor_copy_1) const{
     if constexpr (std::is_void_v<WorkTag>){
       auto wrapper_functor = [&, work_size, offset](int64_t i){
@@ -173,7 +173,8 @@ class ParallelFor< FunctorType
     bool success = 0; //! This bool indicates that all views successfully reached a consensus.
 
       surrogate_policy wrapper_policy;
-#ifdef KR_ENABLE_TMR
+      
+#if KR_TRIPLE_MODULAR_REDUNDANCY
       wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
@@ -182,7 +183,7 @@ class ParallelFor< FunctorType
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 #endif
 
-#ifdef KR_ENABLE_WRAPPER
+#ifdef KR_KERNEL_FUSING
       auto work_size = m_policy.end() - m_policy.begin();
       auto offset = m_policy.begin();
       wrapper_policy = surrogate_policy(0, 3 * work_size );
@@ -197,10 +198,8 @@ class ParallelFor< FunctorType
       
 #endif
 
-#ifdef KR_ENABLE_TMR
-
+#ifdef KR_TRIPLE_MODULAR_REDUNDANCY 
       // TMR execution with no wrapper scheduling
-
       Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure0( m_functor , wrapper_policy );
       Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure1( functor_copy_0 , wrapper_policy );
       Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2( functor_copy_1 , wrapper_policy );
@@ -223,8 +222,7 @@ class ParallelFor< FunctorType
 
 #endif
 
-#ifdef KR_ENABLE_DMR
-
+#ifdef KR_DOUBLE_MODULAR_REDUNDANCY
       //DMR with failover to TMR on error
       wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
 
@@ -270,7 +268,8 @@ class ParallelFor< FunctorType
       }
       KokkosResilience::clear_duplicates_map();
 #endif
-#ifdef KR_ENABLE_WRAPPER
+
+#ifdef KR_KERNEL_FUSION
 
       // TMR with kernel fusion
       // Functor is fused, with iterations bound to duplicated functors in 3x range

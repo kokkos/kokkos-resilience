@@ -102,11 +102,9 @@ TEST(TestResOpenMP, TestResilientForDouble)
 {
   
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
-  
   // Allocate y, x vectors.
   ResilientView<double*> y( "y", N );
   ResilientView<double*> x( "x", N );
-
   //Integer vector 1 long to count data accesses, because scalar view bugs (previously)
   ResilientView<int*> counter( "DataAccesses", 1);
 
@@ -117,11 +115,10 @@ TEST(TestResOpenMP, TestResilientForDouble)
     y ( i ) = i;
     Kokkos::atomic_inc(&counter(0));
   });
-
   //reset global error settings
+  KokkosResilience::print_total_error_time();
   KokkosResilience::ErrorInject::error_counter=0;
   KokkosResilience::global_error_settings.reset();
-  KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache();
   
   Kokkos::deep_copy(x, y);
