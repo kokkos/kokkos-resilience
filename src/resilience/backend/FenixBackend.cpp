@@ -79,7 +79,7 @@ namespace KokkosResilience
   }
 
   FenixMemoryBackend::FenixMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
-      : m_context(&ctx), m_last_id(0), m_last_group(0), m_fenix_data_group_id(1234) {
+      : m_context(&ctx), m_last_id(1000) {
     MPI_Comm_dup(mpi_comm, &m_mpi_comm);
     std::cout << "Creating data group\n";
     FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, m_fenix_policy_name, (void *)(m_fenix_policy_value), &m_fenix_policy_flag ) );
