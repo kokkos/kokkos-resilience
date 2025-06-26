@@ -115,9 +115,6 @@ namespace KokkosResilience
     std::unordered_map< std::string, std::string > m_alias_map;
     int m_last_id;
 
-    std::unordered_map< std::string, int > m_groups;
-    int m_last_group;
-
     const int m_fenix_data_group_id = 1000;
     const int m_fenix_policy_name = FENIX_DATA_POLICY_IN_MEMORY_RAID;
     const int m_fenix_policy_value[3] = {1, 1, 0}; // pairs ranks (0, 1), (2, 3), (4, 5), ...
