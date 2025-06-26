@@ -52,6 +52,7 @@
 #include <Kokkos_Core.hpp>
 
 #include "Resilient_OpenMP_Subscriber.hpp"
+#include "Resilient_OpenMP_Error_Injector.hpp"
 
 /*--------------------------------------------------------------------------*/
 /************************** DUPLICATE COMBINER CALL *************************/
@@ -83,8 +84,7 @@ namespace KokkosResilience{
 
     if (global_error_settings){
       //Per kernel, seed the first inject index	    
-      KokkosResilience::ErrorInject::global_next_inject = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInject::random_gen);	      ;
-
+      KokkosResilience::ErrorInjectionTracking::global_next_inject = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInjectionTracking::random_gen);
       // Inject geometrically distributed error into all duplicates
       // Go over the Subscriber map, inject into all the CombinerBase elements
       for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
@@ -212,8 +212,8 @@ class ParallelFor< FunctorType
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
-      KokkosResilience::ErrorTimerSettings::elapsed_seconds = KokkosResilience::ErrorTimerSettings::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      KokkosResilience::ErrorTimerSettings::total_error_time = KokkosResilience::ErrorTimerSettings::total_error_time + KokkosResilience::ErrorTimerSettings::elapsed_seconds;
+      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
@@ -241,8 +241,8 @@ class ParallelFor< FunctorType
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
-      KokkosResilience::ErrorTimerSettings::elapsed_seconds = KokkosResilience::ErrorTimerSettings::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      KokkosResilience::ErrorTimerSettings::total_error_time = KokkosResilience::ErrorTimerSettings::total_error_time + KokkosResilience::ErrorTimerSettings::elapsed_seconds;
+      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
       
       // Combine the duplicate views, majority vote not triggered due to CMAKE macro
       success = KokkosResilience::combine_resilient_duplicates();
@@ -259,8 +259,8 @@ class ParallelFor< FunctorType
         start=std::chrono::steady_clock::now();
         KokkosResilience::inject_error_duplicates();
         stop=std::chrono::steady_clock::now();
-        KokkosResilience::ErrorTimerSettings::elapsed_seconds = KokkosResilience::ErrorTimerSettings::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-        KokkosResilience::ErrorTimerSettings::total_error_time = KokkosResilience::ErrorTimerSettings::total_error_time + KokkosResilience::ErrorTimerSettings::elapsed_seconds;
+        KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+        KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
 
         success = KokkosResilience::combine_resilient_duplicates();
         KokkosResilience::clear_duplicates_map();
@@ -280,8 +280,8 @@ class ParallelFor< FunctorType
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
-      KokkosResilience::ErrorTimerSettings::elapsed_seconds = KokkosResilience::ErrorTimerSettings::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      KokkosResilience::ErrorTimerSettings::total_error_time = KokkosResilience::ErrorTimerSettings::total_error_time + KokkosResilience::ErrorTimerSettings::elapsed_seconds;
+      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();

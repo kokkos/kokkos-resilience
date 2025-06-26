@@ -58,6 +58,7 @@
 #include <array>
 #include <cstdint>
 #include <random>
+#include "Resilient_OpenMP_Error_Injector.hpp"
 
 /*--------------------------------------------------------------------------
  ******************** ERROR MESSAGE GENERATION *****************************
@@ -80,31 +81,6 @@ namespace KokkosResilience {
 
 namespace KokkosResilience {
 
-// Struct to gate error insertion
-struct Error{
-
-explicit Error(double rate) : error_rate(rate), geometric(rate){}
-
-double error_rate;
-std::geometric_distribution<> geometric{error_rate};
-
-};
-
-inline std::optional<Error> global_error_settings;
-
-struct ErrorInject{
-inline static int64_t error_counter;
-inline static std::mt19937 random_gen{0};
-inline static size_t global_next_inject = 0;
-};
-
-struct ErrorTimerSettings{
-//Error timer settings zero-initialized
-inline static std::chrono::duration<long int, std::nano> elapsed_seconds{};
-inline static std::chrono::duration<long int, std::nano> total_error_time{};
-inline static std::mutex global_time_mutex;
-};
-
 // Helper template used to get Rank number of 0's for MDRangePolicy
 template< std::int64_t begin >
 constexpr auto get_start_index ( std::size_t ){
@@ -115,26 +91,6 @@ constexpr auto get_start_index ( std::size_t ){
 template< typename View, std::size_t... Ranks >
 auto make_md_range_policy( const View &view, std::index_sequence< Ranks... >){
   return Kokkos::MDRangePolicy<Kokkos::Rank<View::rank()>>({ get_start_index < 0 > ( Ranks ) ... }, { static_cast<std::int64_t>( view.extent ( Ranks ))... });
-}
-
-// Calculates coordinate formulas from linear iterator
-template< typename View>
-auto get_inject_indices_array( const View &view, std::size_t next_inject ){
-
-  std::array<std::size_t, 8> indices {};	
-  size_t dim_product = 1;
-
-  // View.extent() returns 1 for uninitialized dimensions
-  // this array returns accurate coordinates up to the existing view rank
-  // coordinates past rank are inaccurate, but are truncated by view.access() in the main injector
-  indices[0] = next_inject % view.extent(0);
-
-  for(int i=1;i<8;i++){
-    indices[i] = ((next_inject - (indices[i-1] * dim_product)) / (dim_product * view.extent(i-1) )) % view.extent(i);
-    dim_product = dim_product * view.extent(i-1);
-  }
- 
-  return indices;
 }
 
 template <class Type, class Enabled = void>
@@ -186,6 +142,7 @@ struct CombineDuplicatesBase
 template< typename View >
 struct CombineDuplicates: public CombineDuplicatesBase
 {
+
   using EqualityType = CheckDuplicateEquality<typename View::value_type>;
   EqualityType check_equality;
 
@@ -198,6 +155,11 @@ struct CombineDuplicates: public CombineDuplicatesBase
   Kokkos::View <bool> success {"Combiner success"};
 
   static constexpr size_t rank = View::rank();
+
+  ErrorInjection<View, CombineDuplicates> error_container;
+  void inject_error() override{
+    error_container.error_injection(original, copy[0], copy[1]);  
+  }
 
   void clear() override
   {
@@ -277,50 +239,6 @@ struct CombineDuplicates: public CombineDuplicatesBase
     success() = false;
 #endif
   }
-  
-  void inject_error() override
-  {
-#ifdef KR_TRIPLE_MODULAR_REDUNDANCY
-    //Any-dimensional TMR error injector
-    size_t total_extent = 1;
-    for(int i=0; i<= (int)rank; i++){
-      total_extent = total_extent * original.extent(i);	    
-    }
-    //requires error in range, unless view size too small
-    if (total_extent !=1 && (ErrorInject::global_next_inject > total_extent))
-    {
-      while (ErrorInject::global_next_inject>total_extent){
-        ErrorInject::global_next_inject = ErrorInject::global_next_inject - total_extent;
-      }
-    }
-
-    size_t next_inject = ErrorInject::global_next_inject;
-    std::array<size_t, 8> indices {};
-
-    for (int j = 0; j<=2; j++){
-      while (next_inject < total_extent)
-      {
-	indices = get_inject_indices_array( original, next_inject );      
-        if (j==0){//Inject in the original if j is 0
-	  //replace value with noise
-	  original.access(indices[0],indices[1],indices[2],indices[3],indices[4],indices[5],indices[6],indices[7]) 
-		   = static_cast<typename View::value_type>(ErrorInject::random_gen());
-          ErrorInject::error_counter++;
-        }
-        else{//Else inject in one of the other two copies, copy[0] or copy[1]
-          copy[j-1].access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7]) 
-                   = static_cast<typename View::value_type>(ErrorInject::random_gen());
-	  ErrorInject::error_counter++;
-        }
-        next_inject = global_error_settings->geometric(ErrorInject::random_gen)+next_inject+1;
-      }
-      if(total_extent != 1){
-        next_inject = next_inject - total_extent;
-      }
-    }
-#endif
-  }// end inject_error
-
 };// end Combiner
 
 } // namespace KokkosResilience
@@ -450,16 +368,6 @@ struct ResilientDuplicatesSubscriber {
   template <typename View>
   static void copy_assigned(View &self, const View &other) {}
 };
-
-KOKKOS_INLINE_FUNCTION
-void print_total_error_time() {
-
-  ErrorTimerSettings::global_time_mutex.lock();
-  std::cout << "The value of ErrorTimerSettings::total_error_time.count() is " << ErrorTimerSettings::total_error_time.count() << " nanoseconds." << std::endl;
-  std::cout << "The total number of errors inserted is " << ErrorInject::error_counter << " errors." << std::endl;
-  ErrorTimerSettings::global_time_mutex.unlock();
-
-}
 
 KOKKOS_INLINE_FUNCTION
 void clear_duplicates_map() {
