@@ -88,9 +88,16 @@ kr_option(KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF KR_ENABLE_H
 #Exec space options
 kr_option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
 kr_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient OpenMP execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED")
-kr_option(KR_ENABLE_DMR "enable double modular redundancy" OFF "KR_ENABLE_OPENMP_EXEC_SPACE")
-kr_option(KR_ENABLE_TMR "enable triple modular redundancy" ON "KR_ENABLE_OPENMP_EXEC_SPACE;NOT KR_ENABLE_DMR")
-kr_option(KR_ENABLE_WRAPPER "enable kernel fusing" OFF "KR_ENABLE_OPENMP_EXEC_SPACE")
+if(KR_ENABLE_OPENMP_EXEC_SPACE)
+  set(KR_MODULAR_REDUNDANCY TRIPLE CACHE STRING "choose level of modular redundancy")
+  set_property(CACHE KR_MODULAR_REDUNDANCY PROPERTY STRINGS OFF DOUBLE TRIPLE)
+  if (KR_MODULAR_REDUNDANCY STREQUAL TRIPLE)
+    target_compile_definitions(resilience PUBLIC KR_TRIPLE_MODULAR_REDUNDANCY)
+  elseif (KR_MODULAR_REDUNDANCY STREQUAL DOUBLE)
+    target_compile_definitions(resilience PUBLIC KR_DOUBLE_MODULAR_REDUNDANCY)
+  endif()
+endif()
+kr_option(KR_KERNEL_FUSING "enable kernel fusing" OFF "KR_ENABLE_OPENMP_EXEC_SPACE;KR_MODULAR_REDUNDANCY")
 
 # VeloC backend
 if (KR_ENABLE_VELOC_BACKEND)

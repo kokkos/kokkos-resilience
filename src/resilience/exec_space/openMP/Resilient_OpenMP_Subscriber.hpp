@@ -208,7 +208,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
   bool execute() override
   { 
     success() = 1;
-#ifdef KR_ENABLE_DMR
+#ifdef KR_DOUBLE_MODULAR_REDUNDANCY
     if (duplicate_count < 1){
       Kokkos::abort("Aborted in CombineDuplicates, no duplicate created");
     }
@@ -238,7 +238,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
   KOKKOS_INLINE_FUNCTION
   void operator ()(Args&&... its) const{ //function parameter pack
 
-#ifdef KR_ENABLE_DMR
+#ifdef KR_DOUBLE_MODULAR_REDUNDANCY
     //Indicates dmr_failover_to_tmr tripped
     if(duplicate_count == 2 ){
       //Main combiner begin, dmr failover has tripped into TMR
@@ -280,13 +280,12 @@ struct CombineDuplicates: public CombineDuplicatesBase
   
   void inject_error() override
   {
-#ifdef KR_ENABLE_TMR
+#ifdef KR_TRIPLE_MODULAR_REDUNDANCY
     //Any-dimensional TMR error injector
     size_t total_extent = 1;
     for(int i=0; i<= (int)rank; i++){
       total_extent = total_extent * original.extent(i);	    
     }
-
     //requires error in range, unless view size too small
     if (total_extent !=1 && (ErrorInject::global_next_inject > total_extent))
     {
@@ -337,7 +336,7 @@ struct ResilientDuplicatesSubscriber {
   // Gating for using subscriber only inside resilient parallel loops
   static bool in_resilient_parallel_loop;
 
-#ifdef KR_ENABLE_DMR
+#ifdef KR_DOUBLE_MODULAR_REDUNDANCY
   static bool dmr_failover_to_tmr;
 
 #endif
@@ -382,7 +381,7 @@ struct ResilientDuplicatesSubscriber {
     if (inserted || extents_resized) {
       res.original = original;
 
-#ifdef KR_ENABLE_DMR
+#ifdef KR_DOUBLE_MODULAR_REDUNDANCY
       if (dmr_failover_to_tmr){
         // Create second copy
         set_duplicate_view(res.copy[1], original, 1);

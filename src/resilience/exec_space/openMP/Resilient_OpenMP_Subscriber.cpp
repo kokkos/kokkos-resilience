@@ -49,7 +49,7 @@
 namespace KokkosResilience {
 
 bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
-#ifdef KR_ENABLE_DMR
+#ifdef KR_DOUBLE_MODULAR_REDUNDANCY
 bool ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;
 #endif
 }
