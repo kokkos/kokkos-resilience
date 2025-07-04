@@ -38,26 +38,68 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_MEMPROTECT_HPP
+#define INC_RESILIENCE_MEMPROTECT_HPP
 
-#include <gtest/gtest.h>
-#include <Kokkos_Core.hpp>
-#include <resilience/Resilience.hpp>
+#include <cstdint>
+#include <vector>
 
-int
-main( int argc, char **argv )
-{
-  ::testing::InitGoogleTest( &argc, argv );
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND) || defined(KR_ENABLE_FENIX_BACKEND)
-  MPI_Init( &argc, &argv );
-#endif
+namespace KokkosResilience {
 
-  Kokkos::initialize( argc, argv );
-  auto ret = RUN_ALL_TESTS();
-  Kokkos::finalize();
+namespace Detail
+  {
+    struct MemProtectKey
+    {
+      explicit MemProtectKey( void *maddr )
+          : addr( reinterpret_cast< std::uintptr_t >( maddr ) )
+      {}
 
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND) || defined(KR_ENABLE_FENIX_BACKEND)
-  MPI_Finalize();
-#endif
-  
-  return ret;
+      std::uintptr_t addr;
+
+      friend bool operator==( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
+      {
+        return _lhs.addr == _rhs.addr;
+      }
+
+      friend bool operator!=( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
+      {
+        return !( _lhs == _rhs );
+      }
+
+      friend bool operator<( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
+      {
+        return _lhs.addr < _rhs.addr;
+      }
+    };
+
+    struct MemProtectBlock
+    {
+      explicit MemProtectBlock( int mid )
+          : id( mid )
+      {}
+
+      int id;
+      std::vector< unsigned char > buff;
+      void *ptr = nullptr;
+      std::size_t size = 0;
+      std::size_t element_size = 0;
+      bool protect = false;
+      bool registered = false;
+    };
+  }
+
 }
+
+namespace std
+{
+  template<>
+  struct hash< KokkosResilience::Detail::MemProtectKey >
+  {
+    std::size_t operator()( const KokkosResilience::Detail::MemProtectKey &_mem ) const noexcept
+    {
+      return std::hash< std::uintptr_t >{}( _mem.addr );
+    }
+  };
+}
+
+#endif
