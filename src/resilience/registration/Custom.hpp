@@ -39,18 +39,19 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef _INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
-#define _INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
+#ifndef INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
+#define INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
 
 #include "Registration.hpp"
 
-namespace KokkosResilience::Detail {
-  struct CustomRegistration : public RegistrationBase {
-    CustomRegistration() = delete;
-    CustomRegistration(serializer_t&& serializer, deserializer_t&& deserializer, const std::string name) : 
-        RegistrationBase(name),
-        m_serializer(serializer),
-        m_deserializer(deserializer) {};
+namespace KokkosResilience::RegistrationImpl {
+  class Custom : public Base {
+  public:
+    Custom() = delete;
+    Custom(serializer_t&& ser, deserializer_t&& deser, const std::string name) :
+        Base(name),
+        m_serializer(ser),
+        m_deserializer(deser) {};
 
     const serializer_t serializer() const override{
         return m_serializer;
@@ -61,11 +62,13 @@ namespace KokkosResilience::Detail {
     }
 
     const bool is_same_reference(const Registration& other_reg) const override{
-      auto other = dynamic_cast<CustomRegistration*>(other_reg.get());
+      auto other = dynamic_cast<Custom*>(other_reg.get());
       
       if(!other){
-        //We wouldn't expect this to happen, and it may indicate a hash collision
-        fprintf(stderr, "KokkosResilience: Warning, member name %s is shared by more than 1 registration type\n", name.c_str());
+        fprintf(stderr,
+          "KokkosResilience: Warning, member name %s is shared by more than 1"
+          " registration type\n", name.c_str()
+        );
         return false;
       }
 
@@ -79,4 +82,4 @@ namespace KokkosResilience::Detail {
   };
 }
 
-#endif
+#endif //INC_RESILIENCE_REGISTRATION_CUSTOM_HPP

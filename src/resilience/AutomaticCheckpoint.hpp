@@ -47,12 +47,14 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <unordered_set>
 
 #include <Kokkos_Core.hpp>
 #include "view_hooks/ViewHolder.hpp"
 #include "view_hooks/DynamicViewHooks.hpp"
 
 #include "resilience/registration/Registration.hpp"
+#include "resilience/registration/Specialized.hpp"
 #include "resilience/context/CheckpointFilter.hpp"
 
 // Tracing support
@@ -61,7 +63,7 @@
 #include <sstream>
 #endif
 
-#define KR_CHECKPOINT(x) KokkosResilience::Detail::RegInfo(x, std::string(#x))
+#define KR_CHECKPOINT(x) KokkosResilience::RegistrationInfo(x, std::string(#x))
 
 namespace KokkosResilience
 {
@@ -76,7 +78,10 @@ namespace KokkosResilience
   namespace Detail
   {
     template<typename RegionFunc, typename... T>
-    void autodetect_members(ContextBase& ctx, RegionFunc&& fun, std::unordered_set<Registration>& members){
+    void autodetect_members(
+      ContextBase& ctx, RegionFunc&& fun,
+      std::unordered_set<Registration>& members
+    ) {
         //Enable ViewHolder copy constructor hooks to register the views
         KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback(
           [&ctx, &members](const KokkosResilience::ViewHolder &view) {
@@ -93,8 +98,11 @@ namespace KokkosResilience
     }
 
     template< typename RegionFunc, typename FilterFunc, typename... T>
-    void checkpoint_impl( ContextBase &ctx, const std::string &label, int iteration, RegionFunc &&fun, FilterFunc &&filter, RegInfo<T>... explicit_members)
-    {
+    void checkpoint_impl(
+      ContextBase &ctx, const std::string &label, int iteration,
+      RegionFunc &&fun, FilterFunc &&filter,
+      RegistrationInfo<T>... explicit_members
+    ) {
       // Trace if enabled
   #ifdef KR_ENABLE_TRACING
       std::ostringstream oss;
@@ -177,14 +185,13 @@ namespace KokkosResilience
   >;
 
   template< typename Context, typename F, typename FilterFunc, typename... T, std::enable_if_t<is_filter_v<FilterFunc>>* = nullptr>
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, Detail::RegInfo<T>... explicit_members)
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, RegistrationInfo<T>... explicit_members)
   {
-    static_assert(is_filter_v<FilterFunc>);
     Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), explicit_members...);
   }
 
   template< typename Context, typename F, typename... T>
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, Detail::RegInfo<T>... explicit_members)
+  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, RegistrationInfo<T>... explicit_members)
   {
     Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter(), explicit_members... );
   }

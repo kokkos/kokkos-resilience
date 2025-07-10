@@ -39,67 +39,14 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifndef _INC_RESILIENCE_REGISTRATION_IMPL_HPP
-#define _INC_RESILIENCE_REGISTRATION_IMPL_HPP
+#ifndef INC_RESILIENCE_REGISTRATION_SPECIALIZED_HPP
+#define INC_RESILIENCE_REGISTRATION_SPECIALIZED_HPP
 
-#include "Registration.hpp"
+// This file is a meta-include for all enabled specialized registrations
+// Specialized registrations are allowed to interact with the context they are
+//  being added to, so it it helpful to separate them from Registration.hpp to
+//  avoid circular includes
 
-namespace KokkosResilience {
-  namespace Detail {
-    template<typename T>
-    RegInfo<T>::RegInfo(T& m_member, const std::string m_label) :
-      member(m_member), label(m_label) {};
+#include "ViewHolder.hpp"
 
-
-    template<typename T, typename enable>
-    struct SpecializedRegistration {
-      //Specializations must exist
-      static constexpr bool exists = false;
-      
-      //Specializations must implement this, but may ignore provided label.
-      SpecializedRegistration(ContextBase& ctx, T& member, const std::string& label);
-      //Specializations may implement this, if label can be inferred.
-      SpecializedRegistration(ContextBase& ctx, T& member);
-
-      std::shared_ptr<RegistrationBase> get();
-    };
-
-    template<typename T>
-    struct SimpleRegistration;
-  }
-
-  template<typename T>
-  Registration::Registration(
-    ContextBase& ctx, T& member, const std::string& label
-  ) : base(nullptr)
-  {
-    if constexpr(Detail::SpecializedRegistration<T>::exists) {
-      base = Detail::SpecializedRegistration(ctx, member, label).get();
-    } else {
-      base = std::make_shared<Detail::SimpleRegistration<T>>(member, label);
-    }
-  }
-
-  template<typename T>
-  Registration::Registration(
-    ContextBase& ctx, T& member
-  ) : Registration(Detail::SpecializedRegistration(ctx, member).get())
-  { }
-
-  template<typename T>
-  Registration::Registration(ContextBase& ctx, Detail::RegInfo<T>& reg_info) 
-    : Registration(ctx, reg_info.member, reg_info.label)
-  { }
-}
-
-
-namespace std {
-  template<>
-  struct hash<KokkosResilience::Registration>{
-    size_t operator()(const KokkosResilience::Registration& registration) const {
-      return registration.hash();
-    }
-  };
-}
-
-#endif //_INC_RESILIENCE_REGISTRATION_HPP
+#endif

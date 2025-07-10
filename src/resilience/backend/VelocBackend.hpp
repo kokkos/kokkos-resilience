@@ -128,7 +128,7 @@ namespace KokkosResilience
   {
   public:
 
-    VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
+    VeloCFileBackend(ContextBase &ctx, MPI_Comm mpi_comm);
     ~VeloCFileBackend();
 
     void checkpoint( const std::string &label, int version,
@@ -141,6 +141,11 @@ namespace KokkosResilience
                   std::unordered_set<Registration> &members );
 
     void register_hashes( std::unordered_set<Registration> &members ) {} // Do nothing
+    
+    veloc::client_t *veloc_client;
+    
+    ContextBase *m_context;
+    MPI_Comm m_mpi_comm;
   };
 }
 

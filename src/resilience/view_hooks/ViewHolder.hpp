@@ -95,33 +95,37 @@ class ConstViewHolderImplBase {
  public:
   virtual ~ConstViewHolderImplBase() = default;
 
+  size_t size() const { return m_size; };
   size_t span() const { return m_span; }
   bool span_is_contiguous() const { return m_span_is_contiguous; }
-  const void *data() const { return m_data; }
+
+  const char *data() const { return m_data; }
   std::string label() const { return m_label; }
 
   size_t data_type_size() const { return m_data_type_size; }
   bool is_host_space() const noexcept { return m_is_host_space; }
 
-  virtual void deep_copy_to_buffer(unsigned char *buff) = 0;
+  virtual void deep_copy_to_buffer(char *buff) = 0;
   virtual ConstViewHolderImplBase *clone() const        = 0;
   virtual void serialize(std::ostream& stream, char *buf = nullptr) = 0;
 
  protected:
-  ConstViewHolderImplBase(std::size_t span, bool span_is_contiguous,
+  ConstViewHolderImplBase(size_t size, size_t span, bool span_is_contiguous,
                           const void *data, std::string label,
-                          std::size_t data_type_size, bool is_host_space)
-      : m_span(span),
+                          size_t data_type_size, bool is_host_space)
+      : m_size(size),
+        m_span(span),
         m_span_is_contiguous(span_is_contiguous),
-        m_data(data),
+        m_data(static_cast<const char*>(data)),
         m_label(std::move(label)),
         m_data_type_size(data_type_size),
         m_is_host_space(is_host_space) {}
 
  private:
+  size_t m_size             = 0;
   size_t m_span             = 0;
   bool m_span_is_contiguous = false;
-  const void *m_data        = nullptr;
+  const char *m_data        = nullptr;
   std::string m_label;
   size_t m_data_type_size = 0;
   bool m_is_host_space    = false;
@@ -131,34 +135,37 @@ class ViewHolderImplBase {
  public:
   virtual ~ViewHolderImplBase() = default;
 
+  size_t size() const { return m_size; }
   size_t span() const { return m_span; }
   bool span_is_contiguous() const { return m_span_is_contiguous; }
-  void *data() const { return m_data; }
+  char *data() const { return m_data; }
   std::string label() const { return m_label; }
 
   size_t data_type_size() const { return m_data_type_size; }
   bool is_host_space() const noexcept { return m_is_host_space; }
 
-  virtual void deep_copy_to_buffer(unsigned char *buff)   = 0;
-  virtual void deep_copy_from_buffer(const unsigned char *buff) = 0;
+  virtual void deep_copy_to_buffer(char *buff)   = 0;
+  virtual void deep_copy_from_buffer(const char *buff) = 0;
   virtual ViewHolderImplBase *clone() const               = 0;
   virtual void serialize(std::ostream& stream, char *buf = nullptr) = 0;
   virtual void deserialize(std::istream& stream, char *buf = nullptr) = 0;
 
  protected:
-  ViewHolderImplBase(std::size_t span, bool span_is_contiguous, void *data,
-                     std::string label, std::size_t data_type_size,
+  ViewHolderImplBase(size_t size, size_t span, bool span_is_contiguous,
+                     void *data, std::string label, size_t data_type_size,
                      bool is_host_space)
-      : m_span(span),
+      : m_size(size),
+        m_span(span),
         m_span_is_contiguous(span_is_contiguous),
-        m_data(data),
+        m_data(static_cast<char*>(data)),
         m_label(std::move(label)),
         m_data_type_size(data_type_size),
         m_is_host_space(is_host_space) {}
 
+  size_t m_size             = 0;
   size_t m_span             = 0;
   bool m_span_is_contiguous = false;
-  void *m_data              = nullptr;
+  char *m_data              = nullptr;
  private:
   std::string m_label;
   size_t m_data_type_size = 0;
@@ -167,12 +174,12 @@ class ViewHolderImplBase {
 
 template <typename SrcViewType, typename DstViewType, typename Enabled = void>
 struct ViewHolderImplDeepCopyImpl {
-  static void copy_to_unmanaged(SrcViewType &, void *) {
+  static void copy_to_unmanaged(SrcViewType &, char *) {
     Kokkos::Impl::throw_runtime_exception(
         "Cannot deep copy a view holder to an incompatible view");
   }
 
-  static void copy_from_unmanaged(DstViewType &, const void *) {
+  static void copy_from_unmanaged(DstViewType &, const char *) {
     Kokkos::Impl::throw_runtime_exception(
         "Cannot deep copy from a host unmanaged view holder to an incompatible "
         "view");
@@ -183,15 +190,13 @@ template <typename SrcViewType, typename DstViewType>
 struct ViewHolderImplDeepCopyImpl<SrcViewType, DstViewType,
                                   std::enable_if_t<Kokkos::is_always_assignable_impl<
                                       DstViewType, SrcViewType>::value>> {
-  static void copy_to_unmanaged(SrcViewType &_src, void *_buff) {
-    auto dst = make_unmanaged_view_like(
-        _src, reinterpret_cast<unsigned char *>(_buff));
+  static void copy_to_unmanaged(SrcViewType &_src, char *_buff) {
+    auto dst = make_unmanaged_view_like(_src, _buff);
     deep_copy(dst, _src);
   }
 
-  static void copy_from_unmanaged(DstViewType &_dst, const void *_buff) {
-    auto src = Impl::make_unmanaged_view_like(
-        _dst, reinterpret_cast<const unsigned char *>(_buff));
+  static void copy_from_unmanaged(DstViewType &_dst, const char *_buff) {
+    auto src = Impl::make_unmanaged_view_like(_dst, _buff);
     deep_copy(_dst, src);
   }
 };
@@ -207,17 +212,17 @@ class ViewHolderImpl : public ViewHolderImplBase {
 
   explicit ViewHolderImpl(const View &view)
       : ViewHolderImplBase(
-            view.span(), view.span_is_contiguous(), view.data(), view.label(),
-            sizeof(typename View::value_type),
+            view.size(), view.span(), view.span_is_contiguous(), view.data(),
+            view.label(), sizeof(typename View::value_type),
             std::is_same<typename View::memory_space, Kokkos::HostSpace>::value),
         m_view(view) {}
 
-  void deep_copy_to_buffer(unsigned char *buff) override {
+  void deep_copy_to_buffer(char *buff) override {
     using dst_type = unmanaged_view_type_like<View>;
     ViewHolderImplDeepCopyImpl<View, dst_type>::copy_to_unmanaged(m_view, buff);
   }
 
-  void deep_copy_from_buffer(const unsigned char *buff) override {
+  void deep_copy_from_buffer(const char *buff) override {
     using src_type = const_unmanaged_view_type_like<View>;
     ViewHolderImplDeepCopyImpl<src_type, View>::copy_from_unmanaged(m_view,
                                                                     buff);
@@ -225,18 +230,18 @@ class ViewHolderImpl : public ViewHolderImplBase {
 
   void serialize(std::ostream& stream, char *buf) override {
     if(!span_is_contiguous() || !is_host_space()){
-      deep_copy_to_buffer((unsigned char*)buf);
-      stream.write((const char*)buf, data_type_size() * span());
+      deep_copy_to_buffer(buf);
+      stream.write(buf, data_type_size() * size());
     } else {
-      stream.write((const char*)data(), data_type_size() * span());
+      stream.write(data(), data_type_size() * size());
     }
   }
   void deserialize(std::istream& stream, char *buf) override{
     if(!span_is_contiguous() || !is_host_space()){
-      stream.read(buf, data_type_size() * span());
-      deep_copy_from_buffer((const unsigned char*)buf);
+      stream.read(buf, data_type_size() * size());
+      deep_copy_from_buffer(buf);
     } else {
-      stream.read((char*)data(), data_type_size() * span());
+      stream.read(data(), data_type_size() * size());
     }
   }
 
@@ -259,22 +264,22 @@ class ViewHolderImpl<View, typename std::enable_if<std::is_const<
 
   explicit ViewHolderImpl(const View &view)
       : ConstViewHolderImplBase(
-            view.span(), view.span_is_contiguous(), view.data(), view.label(),
+            view.size(), view.span(), view.span_is_contiguous(), view.data(), view.label(),
             sizeof(typename View::value_type),
             std::is_same<typename View::memory_space, Kokkos::HostSpace>::value),
         m_view(view) {}
 
-  void deep_copy_to_buffer(unsigned char *buff) override {
+  void deep_copy_to_buffer(char *buff) override {
     using dst_type = unmanaged_view_type_like<View>;
     ViewHolderImplDeepCopyImpl<View, dst_type>::copy_to_unmanaged(m_view, buff);
   }
 
   void serialize(std::ostream& stream, char *buf = nullptr) override {
     if(!span_is_contiguous() || !is_host_space()){
-      deep_copy_to_buffer((unsigned char *)buf);
-      stream.write((const char*)buf, data_type_size() * span());
+      deep_copy_to_buffer(buf);
+      stream.write(buf, data_type_size() * size());
     } else {
-      stream.write((const char*)data(), data_type_size() * span());
+      stream.write(data(), data_type_size() * size());
     }
   }
 
@@ -309,7 +314,7 @@ class BasicViewHolder {
     return *this;
   }
 
-  std::conditional_t<IsConst, const void *, void *> data() const {
+  std::conditional_t<IsConst, const char *, char *> data() const {
     return m_impl ? m_impl->data() : nullptr;
   }
 

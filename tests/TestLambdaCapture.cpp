@@ -63,7 +63,7 @@ auto get_view_list( F &&_fun )
 template< typename View >
 bool capture_list_contains( const std::vector< KokkosResilience::ViewHolder > &_list, View &&_v )
 {
-  auto pos = std::find_if( _list.begin(), _list.end(), [&_v]( auto &&_hold ){ return _hold.data() == _v.data(); } );
+  auto pos = std::find_if( _list.begin(), _list.end(), [&_v]( auto &&_hold ){ return static_cast<void*>(_hold.data()) == _v.data(); } );
   return pos != _list.end();
 }
 
@@ -108,9 +108,9 @@ TEST(LambdaCapture, clone_holder)
   auto holder = KokkosResilience::make_view_holder( dat.x );
   auto h2 = holder;
 
-  EXPECT_EQ( holder.data(), dat.x.data() );
-  EXPECT_EQ( holder.data(), h2.data() );
-  EXPECT_EQ( h2.data(), dat.x.data() );
+  EXPECT_EQ( static_cast<void*>(holder.data()), dat.x.data() );
+  EXPECT_EQ( static_cast<void*>(holder.data()), h2.data() );
+  EXPECT_EQ( static_cast<void*>(h2.data()), dat.x.data() );
 }
 
 TEST(LambdaCapture, holder)

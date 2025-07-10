@@ -62,7 +62,7 @@ namespace KokkosResilience
     void veloc_internal_error_throw( int e, const char *name, const char *file, int line = 0 )
     {
       std::ostringstream out;
-      out << name << " error: VELOC operation failed";
+      out << name << " error: VELOC operation failed (" << e << ")";
       if ( file )
       {
         out << " " << file << ":" << line;
@@ -70,6 +70,9 @@ namespace KokkosResilience
 
       // TODO: implement exception class
       //Kokkos::Impl::throw_runtime_exception( out.str() );
+      // In the meantime, we'll print at least
+      out << "\n";
+      std::cerr << out.str();
     }
 
     inline void veloc_internal_safe_call( int e, const char *name, const char *file, int line = 0 )
@@ -82,7 +85,7 @@ namespace KokkosResilience
   VeloCMemoryBackend::VeloCMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
       : m_context(&ctx), m_mpi_comm(mpi_comm) {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_mpi_comm, vconf.c_str());
+    veloc_client = veloc::get_client(m_mpi_comm, vconf);
   }
 
   VeloCMemoryBackend::~VeloCMemoryBackend()
@@ -186,8 +189,8 @@ namespace KokkosResilience
   void
   VeloCMemoryBackend::register_alias( const std::string &original, const std::string &alias )
   {
-    m_alias_map[Detail::sanitized_label(alias)] = static_cast<int>(
-        Detail::label_hash(Detail::sanitized_label(original))
+    m_alias_map[sanitized_label(alias)] = static_cast<int>(
+        label_hash(sanitized_label(original))
     );
   }
 
@@ -205,15 +208,15 @@ namespace KokkosResilience
     // No-op, don't do anything
   }
 
-  VeloCFileBackend::VeloCFileBackend(MPIContext<VeloCFileBackend> &,
-                                     MPI_Comm mpi_comm,
-                                     const std::string &veloc_config) {
-    VELOC_SAFE_CALL( VELOC_Init( mpi_comm, veloc_config.c_str()));
+  VeloCFileBackend::VeloCFileBackend(ContextBase& context, MPI_Comm mpi_comm) 
+    : m_context(&context), m_mpi_comm(mpi_comm) {
+    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(m_mpi_comm, vconf);
   }
 
   VeloCFileBackend::~VeloCFileBackend()
   {
-    VELOC_Finalize( false );
+    veloc_client->checkpoint_wait();
   }
 
   void
@@ -221,88 +224,81 @@ namespace KokkosResilience
                                 std::unordered_set<Registration> &members )
   {
     // Wait for previous checkpoint to finish
-    VELOC_SAFE_CALL( VELOC_Checkpoint_wait());
+    VELOC_SAFE_CALL( veloc_client->checkpoint_wait() );
 
     // Start new checkpoint
-    VELOC_SAFE_CALL( VELOC_Checkpoint_begin( label.c_str(), version ));
+    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
 
-    char veloc_file_name[VELOC_MAX_NAME];
-
-    bool status = true;
-    try
-    {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
-
-      std::string   fname( veloc_file_name );
+    bool success = true;
+    try {
+      std::string   fname = veloc_client->route_file(label);
       std::ofstream vfile( fname, std::ios::binary );
 
 #ifdef KR_ENABLE_TRACING
-      auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "write" );
+      auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >(
+        *m_context, "write"
+      );
 #endif
-      for ( auto &&member : members )
-      {
-        status = member->serialize(vfile);
-        if(!status) break;
+      for ( auto& member : members ) {
+        success = member->serialize(vfile);
+        if(!success) break;
       }
 #ifdef KR_ENABLE_TRACING
       write_trace.end();
 #endif
-    }
-    catch ( ... )
-    {
-      status = false;
+    } catch ( const std::exception& e){
+      success = false;
+      std::cerr << std::string("VelocFileBackend::checkpoint error: ") + e.what();
+    } catch ( ... ) {
+      success = false;
+      std::cerr << "VelocFileBackend::checkpoint error: (unknown exception type)";
     }
 
-    VELOC_SAFE_CALL( VELOC_Checkpoint_end( status ));
+    VELOC_SAFE_CALL( veloc_client->checkpoint_end(success) );
   }
 
   bool
   VeloCFileBackend::restart_available( const std::string &label, int version )
   {
-    int latest = VELOC_Restart_test( label.c_str(), 0 );
-
     // res is < 0 if no versions available, else it is the latest version
-    return version <= latest;
+    return version <= latest_version(label);
   }
 
   int VeloCFileBackend::latest_version( const std::string &label ) const noexcept
   {
-    return VELOC_Restart_test( label.c_str(), 0 );
+    return veloc_client->restart_test(label, 0);
   }
 
   void VeloCFileBackend::restart( const std::string &label, int version,
                                   std::unordered_set<Registration> &members )
   {
-    VELOC_SAFE_CALL( VELOC_Restart_begin( label.c_str(), version ));
+    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
 
-    char veloc_file_name[VELOC_MAX_NAME];
-
-    bool status = true;
-    try
-    {
-      VELOC_SAFE_CALL( VELOC_Route_file( veloc_file_name, veloc_file_name ) );
-      printf( "restore file name: %s\n", veloc_file_name );
-
-      std::string   fname( veloc_file_name );
+    bool success = true;
+    try {
+      std::string   fname = veloc_client->route_file(label);
       std::ifstream vfile( fname, std::ios::binary );
 
 #ifdef KR_ENABLE_TRACING
-      auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >( *m_context, "read" );
+      auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >(
+        *m_context, "read"
+      );
 #endif
-      for ( auto &&member : members )
-      {
-        status = member->deserialize(vfile);
-        if(!status) break;
+      for ( auto& member : members ) {
+        success = member->deserialize(vfile);
+        if(!success) break;
       }
 #ifdef KR_ENABLE_TRACING
       read_trace.end();
 #endif
-    }
-    catch ( ... )
-    {
-      status = false;
+    } catch ( const std::exception& e ){
+      success = false;
+      std::cerr << std::string("VelocFileBackend::restart error: ") + e.what();
+    } catch ( ... ) {
+      success = false;
+      std::cerr << "VelocFileBackend::checkpoint error: (unknown exception type)";
     }
 
-    VELOC_SAFE_CALL( VELOC_Restart_end( status ));
+    VELOC_SAFE_CALL( veloc_client->restart_end(success) );
   }
 }

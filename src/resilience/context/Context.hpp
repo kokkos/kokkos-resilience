@@ -52,6 +52,7 @@
 #include <chrono>
 #include <unordered_set>
 #include "resilience/config/Config.hpp"
+#include "resilience/registration/Registration.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
 #ifdef KR_ENABLE_MPI_CONTEXT
@@ -65,12 +66,6 @@
 
 namespace KokkosResilience
 {
-  namespace detail
-  {
-  }
-
-  class Registration;
-
   class ContextBase
   {
   public:

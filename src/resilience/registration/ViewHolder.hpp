@@ -46,81 +46,85 @@
 #include "resilience/view_hooks/ViewHolder.hpp"
 #include "resilience/context/Context.hpp"
 
-namespace KokkosResilience::Detail {
-struct ViewHolderRegistration : public RegistrationBase {
-  ViewHolderRegistration() = delete;
+namespace KokkosResilience::RegistrationImpl {
+  class ViewHolder : public Base {
+  public:
+    ViewHolder() = delete;
 
-  ViewHolderRegistration(ContextBase& ctx, const KokkosResilience::ViewHolder& view) : 
-    RegistrationBase(view->label()), m_view(view), m_ctx(ctx) {};
+    ViewHolder(ContextBase& ctx, const KokkosResilience::ViewHolder& view) : 
+      Base(view->label()), m_view(view), m_ctx(ctx) {};
 
-  const serializer_t serializer() const override{
-    return [&, this](std::ostream& stream){
-      size_t buffer_size = need_buffer ? m_view->data_type_size()*m_view->span() : 0;
-      char* buf = m_ctx.get_buffer(buffer_size);
-  
-      m_view->serialize(stream, buf);
-      return stream.good();
-    };
-  }
-
-  const deserializer_t deserializer() const override{
-    return [&, this](std::istream& stream){
-      size_t buffer_size = need_buffer ? m_view->data_type_size()*m_view->span() : 0;
-      char* buf = m_ctx.get_buffer(buffer_size);
-  
-      m_view->deserialize(stream, buf);
-      return stream.good();
-    };
-  }
-
-  const bool is_same_reference(const Registration& other_reg) const override{
-    auto other = dynamic_cast<ViewHolderRegistration*>(other_reg.get());
+    const serializer_t serializer() const override{
+      return [&, this](std::ostream& stream){
+        size_t buffer_size = 
+          need_buffer ? m_view->data_type_size()*m_view->size() : 0;
+        char* buf = m_ctx.get_buffer(buffer_size);
     
-    if(!other){
-      //We wouldn't expect this to happen, and it may indicate a hash collision
-      fprintf(stderr, "KokkosResilience: Warning, member name %s is shared by more than 1 registration type\n", name.c_str());
-      return false;
+        m_view->serialize(stream, buf);
+        return stream.good();
+      };
     }
-  
-    //Handle subviews! We want to checkpoint the largest view/subview, so report that the other is 
-    //the same reference if they're a subset of me.
-    //
-    //TODO: This currently assumes the two views are equal or subviews (ie no name collisions),
-    //      and that a larger data() pointer implies a subview (ie we can deal well with subviews of 
-    //      subviews, but not two different subviews of the same view). Does Kokkos expose anything
-    //      that can help with this?
-    return m_view->data() <= other->m_view->data();
-  }
 
-private:
-  const KokkosResilience::ViewHolder m_view;
+    const deserializer_t deserializer() const override{
+      return [&, this](std::istream& stream){
+        size_t buffer_size = 
+          need_buffer ? m_view->data_type_size()*m_view->size() : 0;
+        char* buf = m_ctx.get_buffer(buffer_size);
+    
+        m_view->deserialize(stream, buf);
+        return stream.good();
+      };
+    }
 
-  const bool need_buffer = 
-  #ifdef KR_ENABLE_MAGISTRATE
-      false;
-  #else
-      !(m_view->span_is_contiguous() && m_view->is_host_space());
-  #endif
+    const bool is_same_reference(const Registration& other_reg) const override{
+      auto other = dynamic_cast<ViewHolder*>(other_reg.get());
+      
+      if(!other){
+        fprintf(stderr,
+          "KokkosResilience: Warning, member name %s is shared by more than 1"
+          " registration type\n", name.c_str()
+        );
+        return false;
+      }
+    
+      // This currently assumes the two views are equal or subviews (ie no name
+      //  collisions), and that a larger data() pointer implies a subview (ie
+      //  we can deal well with subviews of subviews, but not two different
+      //  subviews of the same view).
+      // Should probably be updated once we have the new view hooking system
+      return m_view->data() <= other->m_view->data();
+    }
 
-  ContextBase& m_ctx;
-};
+  private:
+    const KokkosResilience::ViewHolder m_view;
 
-template<>
-struct SpecializedRegistration<const KokkosResilience::ViewHolder>{
-  static constexpr bool exists = true;
+    const bool need_buffer = 
+    #ifdef KR_ENABLE_MAGISTRATE
+        false;
+    #else
+        !(m_view->span_is_contiguous() && m_view->is_host_space());
+    #endif
 
-  using RegT = Detail::ViewHolderRegistration;
-  std::shared_ptr<RegT> reg;
+    ContextBase& m_ctx;
+  };
 
-  SpecializedRegistration(ContextBase& ctx, const KokkosResilience::ViewHolder& view) 
+  template<>
+  struct Specialized<const KokkosResilience::ViewHolder>{
+    static constexpr bool exists = true;
+
+    using RegT = ViewHolder;
+    std::shared_ptr<RegT> reg;
+
+    Specialized(ContextBase& ctx, const KokkosResilience::ViewHolder& view)
       : reg(std::make_shared<RegT>(ctx, view)) {};
-  SpecializedRegistration(ContextBase& ctx, const KokkosResilience::ViewHolder& view, std::string unused) 
-      : SpecializedRegistration(ctx, view) {};
+    Specialized(
+      ContextBase& ctx, const KokkosResilience::ViewHolder& view, std::string
+    ) : Specialized(ctx, view) {};
 
-  std::shared_ptr<RegistrationBase> get() {
-    return reg;
-  }
-};
+    std::shared_ptr<Base> get() {
+      return reg;
+    }
+  };
 }
 
 #endif
