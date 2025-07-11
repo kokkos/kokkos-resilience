@@ -5,8 +5,10 @@ namespace KokkosResilience::RegistrationImpl {
   class Simple : public Base {
   public:
     Simple() = delete;
-    Simple(MemberType& member, const std::string name) 
-      : Base(name), member_ptr(reinterpret_cast<char *>(&member)) {}
+    Simple(ContextBase&, MemberType& member, const std::string name) 
+      : Base(name), member_ptr(reinterpret_cast<char *>(&member)) {
+      static_assert(std::is_trivially_copyable_v<MemberType>);
+    }
 
     const serializer_t serializer() const override{
       return [&, this](std::ostream& stream){

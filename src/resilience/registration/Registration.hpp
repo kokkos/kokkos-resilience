@@ -50,11 +50,11 @@
 #include <iostream>
 
 namespace KokkosResilience
-{ 
+{
   //Takes a stream as input, returns success flag
   using   serializer_t = std::function<bool (std::ostream &)>;
   using deserializer_t = std::function<bool (std::istream &)>;
-  
+
   std::string sanitized_label(std::string label);
   size_t label_hash(const std::string& label);
 
@@ -67,8 +67,6 @@ namespace KokkosResilience::RegistrationImpl
 
   class Base {
   public:
-    explicit Base(const std::string member_name);
-
     Base() = delete;
     virtual ~Base() = default;
 
@@ -81,8 +79,11 @@ namespace KokkosResilience::RegistrationImpl
 
     const bool operator==(const Base& other) const;
     virtual const size_t hash() const;
-    
+
     const std::string name;
+
+  protected:
+    explicit Base(const std::string member_name);
   };
   
   
@@ -99,19 +100,15 @@ namespace KokkosResilience::RegistrationImpl
   template<typename T>
   class Simple;
   
-  //Enables overrides for the default Simple registration
-  template<typename T, typename enable = void*>
-  struct Specialized {
-    //Specializations must exist
-    static constexpr bool exists = false;
-     
-    //Specializations must implement this, but may ignore provided label.
-    Specialized(ContextBase& ctx, T& member, const std::string& label);
+  template<typename T, typename ImplT = Simple<T>>
+  struct Factory {
+    static auto build(ContextBase& ctx, T& member, const std::string& label) {
+      return std::make_shared<ImplT>(ctx, member, label);
+    }
 
-    //Specializations may implement this, if label can be inferred.
-    Specialized(ContextBase& ctx, T& member);
-
-    std::shared_ptr<Base> get();
+    static auto build(ContextBase& ctx, T& member) {
+      return std::make_shared<ImplT>(ctx, member);
+    }
   };
 
   class Registration {
@@ -121,20 +118,18 @@ namespace KokkosResilience::RegistrationImpl
 
     //Typical constructor
     template<typename T>
-    Registration(ContextBase& ctx, T& member, const std::string& label){
-      if constexpr(Specialized<T>::exists)
-        base = Specialized(ctx, member, label).get();
-      else base = std::make_shared<Simple<T>>(member, label);
-    }
+    Registration(ContextBase& ctx, T& member, const std::string& label)
+      : base( Factory<T>::build(ctx, member, label) ) {}
 
     //For members we can infer labels for
     template<typename T>
     Registration(ContextBase& ctx, T& member)
-      : Registration( Specialized(ctx, member).get() ) {}
-    
+      : base( Factory<T>::build(ctx, member) ) {}
+ 
+    //For members explicitly specified by the user, just unpack
     template<typename T>
     Registration(ContextBase& ctx, Info<T>& info) 
-      : Registration(ctx, info.member, info.label) {}
+      : base( Factory<T>::build(ctx, info.member, info.label) ) {}
 
     //Create using custom (de)serialize functions
     Registration(

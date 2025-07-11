@@ -51,8 +51,11 @@ namespace KokkosResilience::RegistrationImpl {
   public:
     ViewHolder() = delete;
 
-    ViewHolder(ContextBase& ctx, const KokkosResilience::ViewHolder& view) : 
-      Base(view->label()), m_view(view), m_ctx(ctx) {};
+    ViewHolder(
+      ContextBase& ctx,
+      const KokkosResilience::ViewHolder& view,
+      const std::string& label = ""
+    ) : Base(view->label()), m_view(view), m_ctx(ctx) {};
 
     const serializer_t serializer() const override{
       return [&, this](std::ostream& stream){
@@ -109,22 +112,8 @@ namespace KokkosResilience::RegistrationImpl {
   };
 
   template<>
-  struct Specialized<const KokkosResilience::ViewHolder>{
-    static constexpr bool exists = true;
-
-    using RegT = ViewHolder;
-    std::shared_ptr<RegT> reg;
-
-    Specialized(ContextBase& ctx, const KokkosResilience::ViewHolder& view)
-      : reg(std::make_shared<RegT>(ctx, view)) {};
-    Specialized(
-      ContextBase& ctx, const KokkosResilience::ViewHolder& view, std::string
-    ) : Specialized(ctx, view) {};
-
-    std::shared_ptr<Base> get() {
-      return reg;
-    }
-  };
+  struct Factory<const KokkosResilience::ViewHolder>
+   : public Factory<const KokkosResilience::ViewHolder, ViewHolder>{};
 }
 
 #endif
