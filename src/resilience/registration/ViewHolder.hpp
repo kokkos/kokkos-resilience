@@ -61,7 +61,7 @@ namespace KokkosResilience::RegistrationImpl {
       return [&, this](std::ostream& stream){
         size_t buffer_size = 
           need_buffer ? m_view->data_type_size()*m_view->size() : 0;
-        char* buf = m_ctx.get_buffer(buffer_size);
+        char* buf = m_ctx.get_scratch_buffer(buffer_size);
     
         m_view->serialize(stream, buf);
         return stream.good();
@@ -72,7 +72,7 @@ namespace KokkosResilience::RegistrationImpl {
       return [&, this](std::istream& stream){
         size_t buffer_size = 
           need_buffer ? m_view->data_type_size()*m_view->size() : 0;
-        char* buf = m_ctx.get_buffer(buffer_size);
+        char* buf = m_ctx.get_scratch_buffer(buffer_size);
     
         m_view->deserialize(stream, buf);
         return stream.good();

@@ -95,17 +95,12 @@ namespace KokkosResilience
 #endif
 
     //Pointer not guaranteed to remain valid, use immediately & discard.
-    char* get_buffer(size_t minimum_size){
-      if(buffer.size() < minimum_size){
-        buffer.resize(minimum_size);
-      }
-      return buffer.data();
-    }
+    char* get_scratch_buffer(size_t minimum_size);
 
   private:
     
     //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
-    std::vector<char> buffer;
+    std::vector<char> m_scratch_buffer;
 
     Config m_config;
 
