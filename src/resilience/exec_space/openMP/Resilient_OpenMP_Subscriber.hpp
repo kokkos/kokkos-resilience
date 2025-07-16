@@ -156,9 +156,8 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   static constexpr size_t rank = View::rank();
 
-  ErrorInjection<View, CombineDuplicates> error_container;
   void inject_error() override{
-    error_container.error_injection(original, copy[0], copy[1]);  
+    error_injection(original, copy[0], copy[1]);
   }
 
   void clear() override

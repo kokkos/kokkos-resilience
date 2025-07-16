@@ -45,28 +45,26 @@
 #if defined(KOKKOS_ENABLE_OPENMP)
 
 #include "Resilient_OpenMP_Subscriber.hpp"
-//#if 0
+
 namespace KokkosResilience{
 
 // Struct to gate error insertion
 struct Error{
-explicit Error(double rate) : error_rate(rate), geometric(rate){}
+  explicit Error(double rate) : error_rate(rate), geometric(rate){}
 
-double error_rate;
-std::geometric_distribution<> geometric{error_rate};
-
+  double error_rate;
+  std::geometric_distribution<> geometric{error_rate};
 };
 
 inline std::optional<Error> global_error_settings;
 
 struct ErrorInjectionTracking{
-inline static int64_t error_counter;
-inline static std::mt19937 random_gen{0};
-inline static size_t global_next_inject = 0;
-//Error timer settings zero-initialized
-inline static std::chrono::duration<long int, std::nano> elapsed_seconds{};
-inline static std::chrono::duration<long int, std::nano> total_error_time{};
-inline static std::mutex global_time_mutex;
+  inline static int64_t error_counter;
+  inline static std::mt19937 random_gen{0};
+  inline static size_t global_next_inject = 0;
+  inline static std::chrono::duration<long int, std::nano> elapsed_seconds{};
+  inline static std::chrono::duration<long int, std::nano> total_error_time{};
+  inline static std::mutex global_time_mutex;
 };
 
 // Calculates coordinate formulas from linear iterator
@@ -89,59 +87,52 @@ auto get_inject_indices_array( const View &view, std::size_t next_inject ){
   return indices;
 }
 
-template <typename View, typename CombineDuplicates>
-struct ErrorInjection
+template <typename View>	
+void error_injection(View& original, View& copy_0, View& copy_1)
 {
-  void error_injection(View& original, View& copy_0, View& copy_1)
-  {
 #ifdef KR_TRIPLE_MODULAR_REDUNDANCY
-    //Any-dimensional TMR error injector
-    size_t total_extent = 1;
-    for(int i=0; i<= (int)CombineDuplicates::rank; i++){
-      total_extent = total_extent * original.extent(i);
-    }
+  //Any-dimensional TMR error injector
+  size_t total_extent = original.size();
 
-    //requires error in range, unless view size too small
-    if (total_extent !=1 && (ErrorInjectionTracking::global_next_inject > total_extent))
+  //requires error in range, unless view size too small
+  if (total_extent !=1 && (ErrorInjectionTracking::global_next_inject > total_extent))
+  {
+    while (ErrorInjectionTracking::global_next_inject>total_extent){
+      ErrorInjectionTracking::global_next_inject = ErrorInjectionTracking::global_next_inject - total_extent;
+    }
+  }
+
+  size_t next_inject = ErrorInjectionTracking::global_next_inject;
+  std::array<size_t, 8> indices {};
+
+  for (int j = 0; j<=2; j++){
+    while (next_inject < total_extent)
     {
-      while (ErrorInjectionTracking::global_next_inject>total_extent){
-        ErrorInjectionTracking::global_next_inject = ErrorInjectionTracking::global_next_inject - total_extent;
+      indices = get_inject_indices_array( original, next_inject );
+      if (j==0){//Inject in the original if j is 0
+        //replace value with noise
+  	original.access(indices[0],indices[1],indices[2],indices[3],indices[4],indices[5],indices[6],indices[7])
+                 = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+        ErrorInjectionTracking::error_counter++;
       }
+      else if(j==1){//Else inject in one of the other two copies, copy[0]
+	copy_0.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
+                 = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+        ErrorInjectionTracking::error_counter++;
+      }
+      else{//or copy[1]
+	copy_1.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
+                 = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+        ErrorInjectionTracking::error_counter++;
+      }
+      next_inject = global_error_settings->geometric(ErrorInjectionTracking::random_gen)+next_inject+1;
     }
-
-    size_t next_inject = ErrorInjectionTracking::global_next_inject;
-    std::array<size_t, 8> indices {};
-
-    for (int j = 0; j<=2; j++){
-      while (next_inject < total_extent)
-      {
-        indices = get_inject_indices_array( original, next_inject );
-        if (j==0){//Inject in the original if j is 0
-          //replace value with noise
-  	  original.access(indices[0],indices[1],indices[2],indices[3],indices[4],indices[5],indices[6],indices[7])
-                   = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
-          ErrorInjectionTracking::error_counter++;
-        }
-        else if(j==1){//Else inject in one of the other two copies, copy[0]
-	  copy_0.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
-                   = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
-          ErrorInjectionTracking::error_counter++;
-	}
-	else{//or copy[1]
-	  copy_1.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
-                   = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
-          ErrorInjectionTracking::error_counter++;
-        }
-        next_inject = global_error_settings->geometric(ErrorInjectionTracking::random_gen)+next_inject+1;
-      }
-      if(total_extent != 1){
-        next_inject = next_inject - total_extent;
-      }
+    if(total_extent != 1){
+      next_inject = next_inject - total_extent;
     }
+  }
 #endif
-  }// end inject_error
-
-};
+}// end inject_error
 
 KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
