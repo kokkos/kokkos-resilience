@@ -8,8 +8,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/resilienceTargets.cmake")
 #All options defined with kr_option are exposed to linking targets' CMakeLists
 set(KR_EXPOSED_OPTIONS @KR_EXPOSED_OPTIONS@)
 set(KR_EXPOSED_OPTION_VALUES @KR_EXPOSED_OPTION_VALUES@)
-foreach (OPT_1 OPT_2 IN ZIP_LISTS KR_EXPOSED_OPTIONS KR_EXPOSED_OPTION_VALUES)
-   set(${OPT_1} ${OPT_2})
+foreach (OPT VAL in ZIP_LISTS KR_EXPOSED_OPTIONS KR_EXPOSED_OPTION_VALUES)
+	set(${OPT} ${VAL})
 endforeach()
 
 # VeloC needs to add a cmake config...
