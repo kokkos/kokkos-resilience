@@ -94,7 +94,7 @@ struct ErrorInjection
 {
   void error_injection(View& original, View& copy_0, View& copy_1)
   {
-#ifdef KR_ENABLE_TMR
+#ifdef KR_TRIPLE_MODULAR_REDUNDANCY
     //Any-dimensional TMR error injector
     size_t total_extent = 1;
     for(int i=0; i<= (int)CombineDuplicates::rank; i++){

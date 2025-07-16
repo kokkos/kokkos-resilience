@@ -174,7 +174,7 @@ class ParallelFor< FunctorType
 
       surrogate_policy wrapper_policy;
       
-#if KR_TRIPLE_MODULAR_REDUNDANCY
+#ifdef KR_TRIPLE_MODULAR_REDUNDANCY
       wrapper_policy = surrogate_policy(m_policy.begin(), m_policy.end());
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
