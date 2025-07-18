@@ -155,15 +155,12 @@ namespace KokkosResilience
   using RegistrationInfo = RegistrationImpl::Info<T>;
 }
 
-namespace std
-{
-  template<>
-  struct hash<KokkosResilience::Registration>{
-    size_t operator()(const KokkosResilience::Registration& r) const {
-      return r.hash();
-    }
-  };
-}
+template<>
+struct std::hash<KokkosResilience::Registration>{
+  size_t operator()(const KokkosResilience::Registration& r) const {
+    return r.hash();
+  }
+};
 
 #include "Simple.hpp"
 #include "Custom.hpp"
