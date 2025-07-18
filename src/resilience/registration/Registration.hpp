@@ -61,7 +61,7 @@ namespace KokkosResilience
   class ContextBase;
 }
 
-namespace KokkosResilience::RegistrationImpl
+namespace KokkosResilience::Impl::Registration
 {
   class Registration;
 
@@ -149,10 +149,10 @@ namespace KokkosResilience::RegistrationImpl
 
 namespace KokkosResilience
 {
-  using RegistrationImpl::Registration;
+  using Impl::Registration::Registration;
 
   template<typename T>
-  using RegistrationInfo = RegistrationImpl::Info<T>;
+  using RegistrationInfo = Impl::Registration::Info<T>;
 }
 
 template<>

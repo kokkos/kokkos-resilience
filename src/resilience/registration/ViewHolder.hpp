@@ -46,7 +46,7 @@
 #include "resilience/view_hooks/ViewHolder.hpp"
 #include "resilience/context/Context.hpp"
 
-namespace KokkosResilience::RegistrationImpl {
+namespace KokkosResilience::Impl::Registration {
   class ViewHolder : public Base {
   public:
     ViewHolder() = delete;

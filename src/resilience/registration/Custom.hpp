@@ -44,7 +44,7 @@
 
 #include "Registration.hpp"
 
-namespace KokkosResilience::RegistrationImpl {
+namespace KokkosResilience::Impl::Registration {
   class Custom : public Base {
   public:
     Custom() = delete;
