@@ -50,11 +50,11 @@
 #include <memory>
 #include <functional>
 #include <chrono>
+#include <unordered_set>
 #include "resilience/config/Config.hpp"
-#include "resilience/Cref.hpp"
+#include "resilience/registration/Registration.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
-#include "resilience/view_hooks/ViewHolder.hpp"
 #ifdef KR_ENABLE_MPI_CONTEXT
 #include <mpi.h>
 #endif
@@ -66,10 +66,6 @@
 
 namespace KokkosResilience
 {
-  namespace detail
-  {
-  }
-
   class ContextBase
   {
   public:
@@ -77,14 +73,12 @@ namespace KokkosResilience
     explicit ContextBase( Config cfg );
 
     virtual ~ContextBase() = default;
-
-    virtual void register_hashes(const std::vector< KokkosResilience::ViewHolder > &views,
-                                 const std::vector< Detail::CrefImpl > &crefs) = 0;
+    virtual void register_hashes(std::unordered_set<Registration> &members) = 0;
     virtual bool restart_available( const std::string &label, int version ) = 0;
     virtual void restart( const std::string &label, int version,
-                          const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
+                          std::unordered_set<Registration> &members) = 0;
     virtual void checkpoint( const std::string &label, int version,
-                             const std::vector< KokkosResilience::ViewHolder > &views ) = 0;
+                             std::unordered_set<Registration> &members) = 0;
 
     virtual int latest_version( const std::string &label ) const noexcept = 0;
     virtual void register_alias( const std::string &original, const std::string &alias ) = 0;
@@ -100,7 +94,13 @@ namespace KokkosResilience
     Util::detail::TraceStack  &trace() { return m_trace; };
 #endif
 
+    //Pointer not guaranteed to remain valid, use immediately & discard.
+    char* get_scratch_buffer(size_t minimum_size);
+
   private:
+    
+    //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
+    std::vector<char> m_scratch_buffer;
 
     Config m_config;
 
@@ -119,4 +119,5 @@ namespace KokkosResilience
 #endif
 }
 
+#include "resilience/registration/Registration.hpp"
 #endif  // INC_RESILIENCE_CONTEXT_HPP

@@ -75,6 +75,13 @@ namespace KokkosResilience
     }
   }
 
+  char* ContextBase::get_scratch_buffer(size_t minimum_size){
+    if(m_scratch_buffer.size() < minimum_size){
+      m_scratch_buffer.resize(minimum_size);
+    }
+    return m_scratch_buffer.data();
+  }
+
   std::unique_ptr< ContextBase >
   make_context( const std::string &config )
   {
