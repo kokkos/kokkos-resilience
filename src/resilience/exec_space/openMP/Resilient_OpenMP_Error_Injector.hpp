@@ -59,12 +59,11 @@ struct Error{
 inline std::optional<Error> global_error_settings;
 
 struct ErrorInjectionTracking{
-  inline static int64_t error_counter;
+  inline static size_t error_counter;
   inline static std::mt19937 random_gen{0};
   inline static size_t global_next_inject = 0;
   inline static std::chrono::duration<long int, std::nano> elapsed_seconds{};
   inline static std::chrono::duration<long int, std::nano> total_error_time{};
-  inline static std::mutex global_time_mutex;
 };
 
 // Calculates coordinate formulas from linear iterator
@@ -72,16 +71,15 @@ template< typename View>
 auto get_inject_indices_array( const View &view, std::size_t next_inject ){
 
   std::array<std::size_t, 8> indices {};
-  size_t dim_product = 1;
+  size_t next_inject_copy = next_inject;
 
   // View.extent() returns 1 for uninitialized dimensions
-  // this array returns accurate coordinates up to the existing view rank
-  // coordinates past rank are inaccurate, but are truncated by view.access() in the main injector
-  indices[0] = next_inject % view.extent(0);
-
-  for(int i=1;i<8;i++){
-    indices[i] = ((next_inject - (indices[i-1] * dim_product)) / (dim_product * view.extent(i-1) )) % view.extent(i);
-    dim_product = dim_product * view.extent(i-1);
+  // this array returns accurate coordinates up to the existing view rank 
+  // and zero for the rest, which are truncated by view.access() in the main injector
+  // assumes column-major (Fortran) ordering
+  for(int i=0;i<8;i++){
+    indices[i] = next_inject_copy % view.extent(i);
+    next_inject_copy /= view.extent(i);
   }
 
   return indices;
@@ -104,6 +102,7 @@ void error_injection(View& original, View& copy_0, View& copy_1)
 
   size_t next_inject = ErrorInjectionTracking::global_next_inject;
   std::array<size_t, 8> indices {};
+  //auto access = std::mem_fn(&View::access);
 
   for (int j = 0; j<=2; j++){
     while (next_inject < total_extent)
@@ -112,19 +111,28 @@ void error_injection(View& original, View& copy_0, View& copy_1)
       if (j==0){//Inject in the original if j is 0
         //replace value with noise
   	original.access(indices[0],indices[1],indices[2],indices[3],indices[4],indices[5],indices[6],indices[7])
-                 = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+	//Incorrect because access expects individual indices, not a tuple.
+	//Hence the need to use apply with a tuple
+	//access(original, indices)
+	//auto tuple = std::make_tuple(original, indices); 
+	//std::apply(access, tuple) 
+		= static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
+//#if 0
       else if(j==1){//Else inject in one of the other two copies, copy[0]
 	copy_0.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
-                 = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+	//access(copy_0, indices)
+	          = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
       else{//or copy[1]
 	copy_1.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
-                 = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+	//access(copy_1, indices)
+		  = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
+//#endif
       next_inject = global_error_settings->geometric(ErrorInjectionTracking::random_gen)+next_inject+1;
     }
     if(total_extent != 1){
@@ -137,10 +145,11 @@ void error_injection(View& original, View& copy_0, View& copy_1)
 KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
 
-  ErrorInjectionTracking::global_time_mutex.lock();
+  static std::mutex global_time_mutex;	
+  global_time_mutex.lock();
   std::cout << "The value of ErrorInjectionTracking::total_error_time.count() is " << ErrorInjectionTracking::total_error_time.count() << " nanoseconds." << std::endl;
   std::cout << "The total number of errors inserted is " << ErrorInjectionTracking::error_counter << " errors." << std::endl;
-  ErrorInjectionTracking::global_time_mutex.unlock();
+  global_time_mutex.unlock();
 
 }
 

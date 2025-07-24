@@ -212,8 +212,8 @@ class ParallelFor< FunctorType
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
-      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
@@ -241,8 +241,8 @@ class ParallelFor< FunctorType
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
-      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
       
       // Combine the duplicate views, majority vote not triggered due to CMAKE macro
       success = KokkosResilience::combine_resilient_duplicates();
@@ -259,8 +259,8 @@ class ParallelFor< FunctorType
         start=std::chrono::steady_clock::now();
         KokkosResilience::inject_error_duplicates();
         stop=std::chrono::steady_clock::now();
-        KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-        KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+        KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+        KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
 
         success = KokkosResilience::combine_resilient_duplicates();
         KokkosResilience::clear_duplicates_map();
@@ -280,8 +280,8 @@ class ParallelFor< FunctorType
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
-      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = KokkosResilience::ErrorInjectionTracking::elapsed_seconds + (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
-      KokkosResilience::ErrorInjectionTracking::total_error_time = KokkosResilience::ErrorInjectionTracking::total_error_time + KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+      KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+      KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
