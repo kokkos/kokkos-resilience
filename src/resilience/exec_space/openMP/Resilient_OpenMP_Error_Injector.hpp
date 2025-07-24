@@ -102,7 +102,6 @@ void error_injection(View& original, View& copy_0, View& copy_1)
 
   size_t next_inject = ErrorInjectionTracking::global_next_inject;
   std::array<size_t, 8> indices {};
-  //auto access = std::mem_fn(&View::access);
 
   for (int j = 0; j<=2; j++){
     while (next_inject < total_extent)
@@ -111,28 +110,19 @@ void error_injection(View& original, View& copy_0, View& copy_1)
       if (j==0){//Inject in the original if j is 0
         //replace value with noise
   	original.access(indices[0],indices[1],indices[2],indices[3],indices[4],indices[5],indices[6],indices[7])
-	//Incorrect because access expects individual indices, not a tuple.
-	//Hence the need to use apply with a tuple
-	//access(original, indices)
-	//auto tuple = std::make_tuple(original, indices); 
-	//std::apply(access, tuple) 
 		= static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
-//#if 0
       else if(j==1){//Else inject in one of the other two copies, copy[0]
 	copy_0.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
-	//access(copy_0, indices)
 	          = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
       else{//or copy[1]
 	copy_1.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
-	//access(copy_1, indices)
 		  = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
-//#endif
       next_inject = global_error_settings->geometric(ErrorInjectionTracking::random_gen)+next_inject+1;
     }
     if(total_extent != 1){
