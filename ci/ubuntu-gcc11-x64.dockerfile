@@ -63,7 +63,7 @@ RUN . /opt/spack/share/spack/setup-env.sh \
   && spack env activate /opt/spack-environment \
   && mkdir -p /opt/build/ \
   && cd /opt/build/ \
-  && git clone --depth 1 https://github.com/sandialabs/Fenix.git \
+  && git clone --branch feature/cpp --depth 1 https://github.com/sandialabs/Fenix.git \
   && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/fenix -B Fenix-build/ -S Fenix/ \
   && cmake --build Fenix-build/ --target all \
   && cmake --build Fenix-build/ --target install \
