@@ -49,6 +49,8 @@
 
 #include <random>
 
+#include <signal.h>
+#include <unistd.h>
 #include <fenix.h>
 
 template< typename ExecSpace >
@@ -59,7 +61,7 @@ public:
   using exec_space = ExecSpace;
 
   template< typename Layout, typename Context >
-  static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy )
+  static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy, bool kill_process = false )
   {
     ctx.backend().reset();
     using memory_space = typename exec_space::memory_space;
@@ -106,6 +108,12 @@ public:
       }
     }
 
+    // kill process
+    if (kill_process) {
+      pid_t pid = getpid();
+      kill(pid, SIGTERM);
+    }
+
     // The lambda shouldn't be executed, instead recovery should start
     KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [main_view]() {
       ASSERT_TRUE( false );
@@ -132,16 +140,30 @@ TYPED_TEST_SUITE( TestFenixMemoryBackend, enabled_exec_spaces );
 
 TYPED_TEST( TestFenixMemoryBackend, fenix_mem )
 {
-  MPI_Comm mpi_comm;
-  MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
+  int size = -1;
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  // set up a single spare rank only if there are more than 2 MPI processes
+  int spare_ranks = 0;
+  if (size > 2) {
+    spare_ranks = 1;
+  }
 
   int fenix_role;
   MPI_Comm res_comm;
   int error;
-  Fenix_Init( &fenix_role, mpi_comm, &res_comm, /* &argc = */ NULL, /* &argv = */ NULL, /* spare_ranks = */ 0, /* spawn = */ 0, MPI_INFO_NULL, &error );
+  Fenix_Init( &fenix_role, MPI_COMM_WORLD, &res_comm, /* &argc = */ NULL, /* &argv = */ NULL, spare_ranks, /* spawn = */ 0, MPI_INFO_NULL, &error );
 
   if (error != FENIX_SUCCESS) {
-    // TODO Kokkos::abort?
+    Kokkos::abort("could not set up the resilient communicator");
+  }
+
+  // flag process 0 to be killed
+  int res_rank = -1;
+  bool kill_process = false;
+  if ( fenix_role == FENIX_ROLE_INITIAL_RANK ) {
+    MPI_Comm_rank(res_comm, &res_rank);
+    kill_process = (spare_ranks > 0 && res_rank == 0);
   }
 
   {
@@ -154,7 +176,12 @@ TYPED_TEST( TestFenixMemoryBackend, fenix_mem )
     {
       for ( std::size_t dimy = 1; dimy < 5; ++dimy )
       {
-        TestFixture::template test_layout< Kokkos::LayoutRight >( ctx, dimx, dimy );
+        if (dimx == 2 && dimy == 3) {
+          // kill process 0 during this particular iteration
+          TestFixture::template test_layout< Kokkos::LayoutRight >( ctx, dimx, dimy, kill_process );
+        } else {
+          TestFixture::template test_layout< Kokkos::LayoutRight >( ctx, dimx, dimy );
+        }
         TestFixture::template test_layout< Kokkos::LayoutLeft >( ctx, dimx, dimy );
       }
     }
@@ -162,4 +189,3 @@ TYPED_TEST( TestFenixMemoryBackend, fenix_mem )
 
   Fenix_Finalize();
 }
-
