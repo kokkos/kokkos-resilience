@@ -74,3 +74,23 @@ configure_file(data/hdf5_test_config.json data/hdf5_test_config.json COPYONLY)
 configure_file(data/veloc_test.cfg.in data/veloc_test.cfg @ONLY)
 
 target_compile_definitions(resilience_tests PRIVATE KR_TEST_DATADIR="${KR_TEST_DATADIR}")
+
+add_test(
+  NAME "TestFenixMemoryBackend.fenix_mem.serial.np2"
+  COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/0.fenix_mem")
+add_test(
+  NAME "TestFenixMemoryBackend.fenix_mem.serial.np3.prockill"
+  COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/0.fenix_mem")
+add_test(
+  NAME "TestFenixMemoryBackend.fenix_mem.serial.np4.prockill"
+  COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/0.fenix_mem")
+
+add_test(
+  NAME "TestFenixMemoryBackend.fenix_mem.openmp.np2"
+  COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/1.fenix_mem")
+add_test(
+  NAME "TestFenixMemoryBackend.fenix_mem.openmp.np3.prockill"
+  COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/1.fenix_mem")
+add_test(
+  NAME "TestFenixMemoryBackend.fenix_mem.openmp.np4.prockill"
+  COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/1.fenix_mem")
