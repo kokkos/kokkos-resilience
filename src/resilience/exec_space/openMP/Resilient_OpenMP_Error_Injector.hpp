@@ -89,10 +89,15 @@ auto get_inject_indices_array( const View &view, std::size_t next_inject ){
 template <typename View>	
 void error_injection(View& original, View& copy_0, View& copy_1)
 {
-#ifdef KR_TRIPLE_MODULAR_REDUNDANCY
-  //Any-dimensional TMR error injector
+  auto access = [](auto *view, auto... idcs) -> decltype (auto)
+                {return view->access(idcs...);};
   size_t total_extent = original.size();
 
+#ifdef KR_TRIPLE_MODULAR_REDUNDANCY
+  //Any-dimensional TMR error injector
+
+#if defined KR_GEOMETRIC_ERROR_INJECTION 
+  size_t next_inject = ErrorInjectionTracking::global_next_inject;
   //requires error in range, unless view size too small
   if (total_extent !=1 && (ErrorInjectionTracking::global_next_inject > total_extent))
   {
@@ -101,9 +106,13 @@ void error_injection(View& original, View& copy_0, View& copy_1)
     }
   }
 
-  auto access = [](auto *view, auto... idcs) -> decltype (auto)
-                {return view->access(idcs...);};
-  size_t next_inject = ErrorInjectionTracking::global_next_inject;
+#elif defined KR_DETERMINISTIC_ERROR_INJECTION  
+  size_t next_inject = 0;
+
+#else
+  size_t next_inject = total_extent;
+
+#endif
 
   for (int j = 0; j<=2; j++){
     while (next_inject < total_extent)
@@ -113,28 +122,71 @@ void error_injection(View& original, View& copy_0, View& copy_1)
 	auto view_tuple = std::tuple_cat(std::make_tuple(&original), indices);
         //replace value with noise
 	std::apply(access, view_tuple)
-  	              = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+  	           = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
       else if(j==1){//Else inject in one of the other two copies, copy[0]
 	auto view_tuple = std::tuple_cat(std::make_tuple(&copy_0), indices);
 	std::apply(access, view_tuple)
-    	            = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+    	           = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
       else{//or copy[1]
 	auto view_tuple = std::tuple_cat(std::make_tuple(&copy_1), indices);
 	std::apply(access, view_tuple)
-    	            = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+    	           = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
+#if defined KR_GEOMETRIC_ERROR_INJECTION
       next_inject = global_error_settings->geometric(ErrorInjectionTracking::random_gen)+next_inject+1;
     }
     if(total_extent != 1){
       next_inject = next_inject - total_extent;
     }
-  }
+#elif defined KR_DETERMINISTIC_ERROR_INJECTION
+      next_inject++;
+    }
+#else
+    }
 #endif
+  }
+
+#if 0
+#ifdef KR_DETERMINISTIC_ERROR_INJECTION
+  //Stripes errors across view + copies by 3's, predictable and correctable pattern.  
+  size_t total_extent = original.size();
+  size_t next_inject = 0;
+
+  for (int j = 0; j<=2; j++){
+    while (next_inject < total_extent)
+    {
+      auto indices = get_inject_indices_array( original, next_inject );
+      if (j==0){//Inject in the original if j is 0
+	auto view_tuple = std::tuple_cat(std::make_tuple(&original), indices);
+        //replace value with noise
+        std::apply(access, view_tuple)
+                   = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+        ErrorInjectionTracking::error_counter++;
+      }
+      else if(j==1){//Else inject in one of the other two copies, copy[0]
+	auto view_tuple = std::tuple_cat(std::make_tuple(&original), indices);
+        copy_0.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
+                  = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+        ErrorInjectionTracking::error_counter++;
+      }
+      else{//or copy[1]
+	auto view_tuple = std::tuple_cat(std::make_tuple(&original), indices);
+        copy_1.access(indices[0],indices[1],indices[2],indices[3],indices[5],indices[5],indices[6],indices[7])
+                  = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
+        ErrorInjectionTracking::error_counter++;
+      }
+      next_inject++;
+    }
+  }
+#endif //KR_DETERMINISTIC_ERROR_INJECTION
+#endif
+
+#endif //KR_TRIPLE_MODULAR_REDUNDANCY
 }// end inject_error
 
 KOKKOS_INLINE_FUNCTION
