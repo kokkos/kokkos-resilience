@@ -117,7 +117,7 @@ TEST(TestResOpenMP, TestResilientForDouble)
   });
   //reset global error settings
   KokkosResilience::print_total_error_time();
-  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
   KokkosResilience::global_error_settings.reset();
   KokkosResilience::clear_duplicates_cache();
   
@@ -175,7 +175,7 @@ TEST(TestResOpenMP, TestErrorHandler)
   KokkosResilience::set_unrecoverable_data_corruption_handler(
       [&failed_recovery](std::size_t) { failed_recovery = true; });
  
-  KokkosResilience::ErrorInject::error_counter = 0;
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
   //Set an extremely high error rate that the test cannot recover from
   //Half of all values are errors
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.5);
@@ -293,7 +293,7 @@ TEST(TestResOpenMP, TestKokkos2D)
 TEST(TestResOpenMP, TestResilient2D)
 {
 
-  KokkosResilience::ErrorInject::error_counter = 0;
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.0001);
 	
   // Allocate y, x vectors.
@@ -310,7 +310,7 @@ TEST(TestResOpenMP, TestResilient2D)
 
   KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache(); 
-  KokkosResilience::ErrorInject::error_counter = 0;
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
   KokkosResilience::global_error_settings.reset();
 
   Kokkos::deep_copy(x, y);
@@ -401,8 +401,8 @@ TEST(TestResOpenMP, TestMiniMDKernel)
 //Test MiniMD Exact Kernel Behavior with Resilience
 TEST(TestResOpenMP, TestMiniMDKernelResilient)
 {
-  KokkosResilience::ErrorInject::error_counter = 0;
-  std::cout << "ErrorInject::error_counter is " << KokkosResilience::ErrorInject::error_counter << "\n";
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
+  std::cout << "ErrorInjectionTracking::error_counter is " << KokkosResilience::ErrorInjectionTracking::error_counter << "\n";
   std::cout << "This is the test of minMD 2D Resilient Error Injection \n\n\n";
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
 
@@ -434,7 +434,7 @@ TEST(TestResOpenMP, TestMiniMDKernelResilient)
 
   KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache();
-  KokkosResilience::ErrorInject::error_counter=0;
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
   KokkosResilience::global_error_settings.reset();
 
   std::cout << std::endl <<std::endl;
