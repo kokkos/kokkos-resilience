@@ -19,12 +19,6 @@ if (KR_ENABLE_VELOC_BACKEND)
   target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
 endif()
 
-if (KR_ENABLE_FENIX_BACKEND)
-  target_sources(resilience_tests PRIVATE
-    TestFenixMemoryBackend.cpp)
-  target_link_libraries(resilience_tests PRIVATE MPI::MPI_CXX)
-endif()
-
 if (KR_ENABLE_AUTOMATIC_CHECKPOINTING)
   target_sources(resilience_tests PRIVATE
      		 TestStdFileBackend.cpp
@@ -69,28 +63,60 @@ include(GoogleTest)
 gtest_discover_tests(resilience_tests)
 
 set(KR_TEST_DATADIR "${CMAKE_CURRENT_BINARY_DIR}/data")
+target_compile_definitions(resilience_tests PRIVATE KR_TEST_DATADIR="${KR_TEST_DATADIR}")
 
 configure_file(data/hdf5_test_config.json data/hdf5_test_config.json COPYONLY)
 configure_file(data/veloc_test.cfg.in data/veloc_test.cfg @ONLY)
 
-target_compile_definitions(resilience_tests PRIVATE KR_TEST_DATADIR="${KR_TEST_DATADIR}")
+# fenix tests
 
-add_test(
-  NAME "TestFenixMemoryBackend.fenix_mem.serial.np2"
-  COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/0.fenix_mem")
-add_test(
-  NAME "TestFenixMemoryBackend.fenix_mem.serial.np3.prockill"
-  COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/0.fenix_mem")
-add_test(
-  NAME "TestFenixMemoryBackend.fenix_mem.serial.np4.prockill"
-  COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/0.fenix_mem")
+if (KR_ENABLE_FENIX_BACKEND)
+  add_executable(resilience_fenix_tests
+                 TestFenixMemoryBackend.cpp
+                 )
+  target_link_libraries(resilience_fenix_tests PRIVATE gtest)
+  target_link_libraries(resilience_fenix_tests PRIVATE resilience)
+  target_link_libraries(resilience_fenix_tests PRIVATE MPI::MPI_CXX)
 
-add_test(
-  NAME "TestFenixMemoryBackend.fenix_mem.openmp.np2"
-  COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/1.fenix_mem")
-add_test(
-  NAME "TestFenixMemoryBackend.fenix_mem.openmp.np3.prockill"
-  COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/1.fenix_mem")
-add_test(
-  NAME "TestFenixMemoryBackend.fenix_mem.openmp.np4.prockill"
-  COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_tests> --gtest_filter="TestFenixMemoryBackend/1.fenix_mem")
+  if (KR_WARNINGS_AS_ERRORS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      target_compile_options(resilience_fenix_tests PRIVATE "-Wall")
+    endif()
+  endif()
+
+  if (KR_WARNINGS_AS_ERRORS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      target_compile_options(resilience_fenix_tests PRIVATE "-Werror")
+    endif()
+  endif()
+
+  if(KR_SERIAL_DEVICE_ENABLED)
+    add_test(
+      NAME "TestFenixMemoryBackend.Serial.np1"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 1 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+    add_test(
+      NAME "TestFenixMemoryBackend.Serial.np2"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+    add_test(
+      NAME "TestFenixMemoryBackend.Serial.np3.prockill"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+    add_test(
+      NAME "TestFenixMemoryBackend.Serial.np4.prockill"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+  endif()
+
+  if(KR_OPENMP_DEVICE_ENABLED)
+    add_test(
+      NAME "TestFenixMemoryBackend.OpenMP.np1"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 1 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+    add_test(
+      NAME "TestFenixMemoryBackend.OpenMP.np2"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+    add_test(
+      NAME "TestFenixMemoryBackend.OpenMP.np3.prockill"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+    add_test(
+      NAME "TestFenixMemoryBackend.OpenMP.np4.prockill"
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+  endif()
+endif()

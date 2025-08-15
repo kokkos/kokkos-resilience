@@ -38,12 +38,13 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "TestCommon.hpp"
+#include <gtest/gtest.h>
+#include <Kokkos_Core.hpp>
+#include <resilience/Resilience.hpp>
 
 #include <resilience/backend/FenixBackend.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
 #include <resilience/context/MPIContext.hpp>
-#include <resilience/util/filesystem/Filesystem.hpp>
 
 #include <string>
 
@@ -53,92 +54,88 @@
 #include <unistd.h>
 #include <fenix.h>
 
-template< typename ExecSpace >
-class TestFenixMemoryBackend : public ::testing::Test
+template< typename ExecSpace, typename Layout, typename Context >
+static void test( Context &ctx, std::size_t dimx, std::size_t dimy, bool kill_process = false )
 {
-public:
-
   using exec_space = ExecSpace;
 
-  template< typename Layout, typename Context >
-  static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy, bool kill_process = false )
+  ctx.backend().reset();
+  using memory_space = typename exec_space::memory_space;
+  using view_type = KokkosResilience::View< double **, Layout, memory_space >;
+
+  auto e = std::default_random_engine( 0 );
+  auto ud = std::uniform_real_distribution< double >( -10.0, 10.0 );
+
+  view_type main_view( "main_view", dimx, dimy );
+  auto host_mirror = Kokkos::create_mirror_view( main_view );
+
+  for ( std::size_t x = 0; x < dimx; ++x )
   {
-    ctx.backend().reset();
-    using memory_space = typename exec_space::memory_space;
-    using view_type = KokkosResilience::View< double **, Layout, memory_space >;
-
-    auto e = std::default_random_engine( 0 );
-    auto ud = std::uniform_real_distribution< double >( -10.0, 10.0 );
-
-    view_type main_view( "main_view", dimx, dimy );
-    auto host_mirror = Kokkos::create_mirror_view( main_view );
-
-    for ( std::size_t x = 0; x < dimx; ++x )
+    for ( std::size_t y = 0; y < dimy; ++y )
     {
-      for ( std::size_t y = 0; y < dimy; ++y )
-      {
-        host_mirror( x, y ) = ud( e );
-      }
-    }
-
-    Kokkos::deep_copy( main_view, host_mirror );
-
-    Kokkos::fence();
-
-    KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
-      Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
-        for ( std::size_t j = 0; j < dimy; ++j )
-          main_view( i, j ) -= 1.0;
-      } );
-    } );
-
-    // Clobber main_view, should be reloaded at checkpoint
-    Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
-      for ( std::size_t j = 0; j < dimy; ++j )
-        main_view( i, j ) = 0.0;
-    } );
-
-    // Clobber host view just in case
-
-    for ( std::size_t x = 0; x < dimx; ++x )
-    {
-      for ( std::size_t y = 0; y < dimy; ++y )
-      {
-        host_mirror( x, y ) = 0.0;
-      }
-    }
-
-    // kill process
-    if (kill_process) {
-      pid_t pid = getpid();
-      kill(pid, SIGTERM);
-    }
-
-    // The lambda shouldn't be executed, instead recovery should start
-    KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [main_view]() {
-      ASSERT_TRUE( false );
-    } );
-
-    Kokkos::fence();
-
-    Kokkos::deep_copy( host_mirror, main_view );
-
-    e.seed( 0 );
-
-    for ( std::size_t x = 0; x < dimx; ++x )
-    {
-      for ( std::size_t y = 0; y < dimy; ++y )
-      {
-        ASSERT_EQ( host_mirror( x, y ), ud( e ) - 1.0 );
-      }
+      host_mirror( x, y ) = ud( e );
     }
   }
-};
 
+  Kokkos::deep_copy( main_view, host_mirror );
 
-TYPED_TEST_SUITE( TestFenixMemoryBackend, enabled_exec_spaces );
+  Kokkos::fence();
 
-TYPED_TEST( TestFenixMemoryBackend, fenix_mem )
+  KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
+    Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
+      for ( std::size_t j = 0; j < dimy; ++j )
+        main_view( i, j ) -= 1.0;
+    } );
+  } );
+
+  // Clobber main_view, should be reloaded at checkpoint
+  Kokkos::parallel_for( Kokkos::RangePolicy<exec_space>( 0, dimx ), KOKKOS_LAMBDA( int i ) {
+    for ( std::size_t j = 0; j < dimy; ++j )
+      main_view( i, j ) = 0.0;
+  } );
+
+  // Clobber host view just in case
+
+  for ( std::size_t x = 0; x < dimx; ++x )
+  {
+    for ( std::size_t y = 0; y < dimy; ++y )
+    {
+      host_mirror( x, y ) = 0.0;
+    }
+  }
+
+  // kill process
+  if (kill_process) {
+    pid_t pid = getpid();
+    kill(pid, SIGTERM);
+  }
+
+  // The lambda shouldn't be executed, instead recovery should start
+  KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [main_view]() {
+    ASSERT_TRUE( false );
+  } );
+
+  Kokkos::fence();
+
+  Kokkos::deep_copy( host_mirror, main_view );
+
+  e.seed( 0 );
+
+  for ( std::size_t x = 0; x < dimx; ++x )
+  {
+    for ( std::size_t y = 0; y < dimy; ++y )
+    {
+      ASSERT_EQ( host_mirror( x, y ), ud( e ) - 1.0 );
+    }
+  }
+}
+
+// TYPED_TEST_SUITE( TestFenixMemoryBackend, enabled_exec_spaces );
+
+//TYPED_TEST( TestFenixMemoryBackend, fenix_mem )
+
+template < typename ExecSpace >
+void test_fenix_meory_backend()
 {
   int size = -1;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -177,15 +174,55 @@ TYPED_TEST( TestFenixMemoryBackend, fenix_mem )
       for ( std::size_t dimy = 1; dimy < 5; ++dimy )
       {
         if (dimx == 2 && dimy == 3) {
-          // kill process 0 during this particular iteration
-          TestFixture::template test_layout< Kokkos::LayoutRight >( ctx, dimx, dimy, kill_process );
+          // kill process 0 during this particular iteration if spare ranks are available
+          test< ExecSpace, Kokkos::LayoutRight >( ctx, dimx, dimy, kill_process );
         } else {
-          TestFixture::template test_layout< Kokkos::LayoutRight >( ctx, dimx, dimy );
+          test< ExecSpace, Kokkos::LayoutRight >( ctx, dimx, dimy );
         }
-        TestFixture::template test_layout< Kokkos::LayoutLeft >( ctx, dimx, dimy );
+        test< ExecSpace, Kokkos::LayoutLeft >( ctx, dimx, dimy );
       }
     }
   }
 
   Fenix_Finalize();
+}
+
+#ifdef KOKKOS_ENABLE_SERIAL
+TEST(TestFenixMemoryBackend, Serial) {
+  test_fenix_meory_backend<Kokkos::Serial>();
+}
+#endif
+
+#ifdef KOKKOS_ENABLE_OPENMP
+TEST(TestFenixMemoryBackend, OpenMP) {
+  test_fenix_meory_backend<Kokkos::OpenMP>();
+}
+#endif
+
+#ifdef KOKKOS_ENABLE_CUDA
+TEST(TestFenixMemoryBackend, Cuda) {
+  test_fenix_meory_backend<Kokkos::Cuda>();
+}
+#endif
+
+#ifdef KOKKOS_ENABLE_HPX
+TEST(TestFenixMemoryBackend, HPX) {
+  test_fenix_meory_backend<Kokkos::Experimental::HPX>();
+}
+#endif  
+
+int
+main( int argc, char **argv )
+{
+  ::testing::InitGoogleTest( &argc, argv );
+
+  MPI_Init( &argc, &argv );
+  Kokkos::initialize( argc, argv );
+
+  auto ret = RUN_ALL_TESTS();
+
+  Kokkos::finalize();
+  MPI_Finalize();
+  
+  return ret;
 }

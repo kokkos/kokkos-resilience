@@ -47,7 +47,7 @@ int
 main( int argc, char **argv )
 {
   ::testing::InitGoogleTest( &argc, argv );
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND) || defined(KR_ENABLE_FENIX_BACKEND)
+#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND)
   MPI_Init( &argc, &argv );
 #endif
 
@@ -55,7 +55,7 @@ main( int argc, char **argv )
   auto ret = RUN_ALL_TESTS();
   Kokkos::finalize();
 
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND) || defined(KR_ENABLE_FENIX_BACKEND)
+#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND)
   MPI_Finalize();
 #endif
   
