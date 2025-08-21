@@ -70,6 +70,8 @@ namespace KokkosResilience
 
       // TODO: implement exception class
       //Kokkos::Impl::throw_runtime_exception( out.str() );
+
+      std::cerr << out.str() << std::endl;
     }
 
     inline void fenix_internal_safe_call( int e, const char *name, const char *file, int line = 0 )
