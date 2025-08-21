@@ -94,7 +94,7 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyConstruct )
 
   // Trigger the non-const copy-construct callback
   test_view_type testb(testa);
-  EXPECT_EQ(testa.data(), holder.data());
+  EXPECT_EQ(testa.data(), static_cast<void*>(holder.data()));
   EXPECT_EQ(const_holder.data(), nullptr);
   const_test_view_type testa_const(
       testa);  // Won't trigger the callback since this is not a copy
@@ -102,7 +102,7 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyConstruct )
 
   // Trigger the const copy-construct callback
   const_test_view_type testb_const(testa_const);
-  EXPECT_EQ(testa_const.data(), const_holder.data());
+  EXPECT_EQ(testa_const.data(), static_cast<const void*>(const_holder.data()));
 }
 
 TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveConstruct )
@@ -169,7 +169,7 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyAssign )
 
   // Trigger the non-const copy assign callback
   testb = testa;
-  EXPECT_EQ(testa.data(), holder.data());
+  EXPECT_EQ(testa.data(), static_cast<void*>(holder.data()));
   EXPECT_EQ(const_holder.data(), nullptr);
   const_test_view_type testa_const(
       testa);  // Won't trigger the callback since this is not a copy
@@ -178,7 +178,7 @@ TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksCopyAssign )
 
   // Trigger the const copy assign callback
   testb_const = testa_const;
-  EXPECT_EQ(testa_const.data(), const_holder.data());
+  EXPECT_EQ(testa_const.data(), static_cast<const void*>(const_holder.data()));
 }
 
 TYPED_TEST( TestDynamicViewHooks, TestDynamicViewHooksMoveAssign )

@@ -45,11 +45,12 @@
 #include <vector>
 #include <memory>
 #include <Kokkos_Core.hpp>
-#include "../view_hooks/ViewHolder.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
-#include "../Cref.hpp"
+#include "resilience/registration/Registration.hpp"
+
+#include <veloc.hpp>
 
 namespace KokkosResilience
 {
@@ -57,63 +58,8 @@ namespace KokkosResilience
 
   template< typename Backend >
   class MPIContext;
-
-  namespace Detail
-  {
-    struct MemProtectKey
-    {
-      explicit MemProtectKey( void *maddr )
-          : addr( reinterpret_cast< std::uintptr_t >( maddr ) )
-      {}
-
-      std::uintptr_t addr;
-
-      friend bool operator==( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
-      {
-        return _lhs.addr == _rhs.addr;
-      }
-
-      friend bool operator!=( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
-      {
-        return !( _lhs == _rhs );
-      }
-
-      friend bool operator<( const MemProtectKey &_lhs, const MemProtectKey &_rhs )
-      {
-        return _lhs.addr < _rhs.addr;
-      }
-    };
-
-    struct MemProtectBlock
-    {
-      explicit MemProtectBlock( int mid )
-          : id( mid )
-      {}
-
-      int id;
-      std::vector< unsigned char > buff;
-      void *ptr = nullptr;
-      std::size_t size = 0;
-      std::size_t element_size = 0;
-      bool protect = false;
-      bool registered = false;
-    };
-  }
 }
 
-
-
-namespace std
-{
-  template<>
-  struct hash< KokkosResilience::Detail::MemProtectKey >
-  {
-    std::size_t operator()( const KokkosResilience::Detail::MemProtectKey &_mem ) const noexcept
-    {
-      return std::hash< std::uintptr_t >{}( _mem.addr );
-    }
-  };
-}
 
 namespace KokkosResilience
 {
@@ -131,34 +77,31 @@ namespace KokkosResilience
     VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
 
     void checkpoint( const std::string &label, int version,
-                     const std::vector< KokkosResilience::ViewHolder > &views );
+                     std::unordered_set<Registration> &members );
 
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
 
     void restart( const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder > &views );
+                  std::unordered_set<Registration> &members );
 
     void clear_checkpoints();
 
-    void register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector< Detail::CrefImpl > &crefs );
+    void register_hashes( std::unordered_set<Registration> &members );
 
     void reset();
     void register_alias( const std::string &original, const std::string &alias );
 
+    std::set<int> hash_set(std::unordered_set<Registration> &members);
+
   private:
-
-    std::string get_canonical_label( const std::string &_label ) const noexcept;
-
-    std::unordered_map< std::string, Detail::MemProtectBlock > m_registry;
-
-    MPI_Comm m_mpi_comm;
     ContextBase *m_context;
+    MPI_Comm m_mpi_comm;
+
+    veloc::client_t *veloc_client;
 
     mutable std::unordered_map< std::string, int > m_latest_version;
-    std::unordered_map< std::string, std::string > m_alias_map;
-    int m_last_id;
+    std::unordered_map< std::string, int > m_alias_map;
   };
 
   class VeloCRegisterOnlyBackend : public VeloCMemoryBackend
@@ -175,29 +118,34 @@ namespace KokkosResilience
     VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
 
     void checkpoint( const std::string &label, int version,
-                     const std::vector< KokkosResilience::ViewHolder > &views );
+                     std::unordered_set<Registration> &members );
 
     void restart( const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder > &views );
+                  std::unordered_set<Registration> &members );
   };
 
   class VeloCFileBackend
   {
   public:
 
-    VeloCFileBackend( MPIContext< VeloCFileBackend > &ctx, MPI_Comm mpi_comm, const std::string &veloc_config);
+    VeloCFileBackend(ContextBase &ctx, MPI_Comm mpi_comm);
     ~VeloCFileBackend();
 
     void checkpoint( const std::string &label, int version,
-                     const std::vector< KokkosResilience::ViewHolder > &views );
+                     std::unordered_set<Registration> &members );
 
     bool restart_available( const std::string &label, int version );
     int latest_version (const std::string &label) const noexcept;
 
     void restart( const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder > &views );
+                  std::unordered_set<Registration> &members );
 
-    void register_hashes( const std::vector< KokkosResilience::ViewHolder > & ) {} // Do nothing
+    void register_hashes( std::unordered_set<Registration> &members ) {} // Do nothing
+    
+    veloc::client_t *veloc_client;
+    
+    ContextBase *m_context;
+    MPI_Comm m_mpi_comm;
   };
 }
 

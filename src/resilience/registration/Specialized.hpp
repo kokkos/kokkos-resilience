@@ -38,12 +38,15 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "Cref.hpp"
 
-namespace KokkosResilience
-{
-  namespace Detail
-  {
-    std::vector< CrefImpl > *Cref::check_ref_list = nullptr;
-  }
-}
+#ifndef INC_RESILIENCE_REGISTRATION_SPECIALIZED_HPP
+#define INC_RESILIENCE_REGISTRATION_SPECIALIZED_HPP
+
+// This file is a meta-include for all enabled specialized registrations
+// Specialized registrations are allowed to interact with the context they are
+//  being added to, so it is helpful to separate them from Registration.hpp to
+//  avoid circular includes
+
+#include "ViewHolder.hpp"
+
+#endif

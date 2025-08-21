@@ -38,47 +38,48 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_CREF_HPP
-#define INC_RESILIENCE_CREF_HPP
 
-#include <vector>
+#ifndef INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
+#define INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
 
-namespace KokkosResilience
-{
-  namespace Detail
-  {
-    struct CrefImpl
-    {
-      CrefImpl( void *p, std::size_t s, std::size_t n, const char *_name )
-          : ptr( p ), sz( s ), num( n ), name( _name )
-      {}
+#include "Registration.hpp"
 
-      void *ptr;
-      std::size_t sz;
-      std::size_t num;
-      const char *name;
-    };
+namespace KokkosResilience::Impl::Registration {
+  class Custom : public Base {
+  public:
+    Custom() = delete;
+    Custom(serializer_t&& ser, deserializer_t&& deser, const std::string name) :
+        Base(name),
+        m_serializer(ser),
+        m_deserializer(deser) {};
 
-    struct Cref : public CrefImpl
-    {
-      using CrefImpl::CrefImpl;
+    const serializer_t serializer() const override{
+        return m_serializer;
+    }
 
-      Cref( const Cref &_other )
-          : CrefImpl( _other.ptr, _other.sz, _other.num, _other.name )
-      {
-        if ( check_ref_list )
-          check_ref_list->emplace_back( ptr, sz, num, name );
+    const deserializer_t deserializer() const override{
+        return m_deserializer;
+    }
+
+    const bool is_same_reference(const Registration& other_reg) const override{
+      auto other = dynamic_cast<Custom*>(other_reg.get());
+      
+      if(!other){
+        fprintf(stderr,
+          "KokkosResilience: Warning, member name %s is shared by more than 1"
+          " registration type\n", name.c_str()
+        );
+        return false;
       }
 
-      static std::vector< CrefImpl > *check_ref_list;
-    };
-  }
+      return (&m_serializer == &(other->m_serializer)) && 
+           (&m_deserializer == &(other->m_deserializer));
+    }
 
-  template< typename T >
-  auto check_ref( T &_t, const char *_str )
-  {
-    return Detail::Cref{ reinterpret_cast< void * >( &_t ), sizeof( T ), 1, _str };
-  }
+  private:
+    const serializer_t m_serializer;
+    const deserializer_t m_deserializer;
+  };
 }
 
-#endif  // INC_RESILIENCE_CREF_HPP
+#endif //INC_RESILIENCE_REGISTRATION_CUSTOM_HPP

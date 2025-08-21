@@ -48,6 +48,7 @@
 #ifdef KR_ENABLE_AUTOMATIC_CHECKPOINTING
 #include "resilience/context/Context.hpp"
 #include "resilience/backend/Backend.hpp"
+#include "resilience/registration/Registration.hpp"
 #include "resilience/AutomaticCheckpoint.hpp"
 #endif
 
