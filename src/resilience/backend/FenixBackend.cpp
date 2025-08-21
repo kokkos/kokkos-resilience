@@ -47,10 +47,11 @@
 
 #include <resilience/AutomaticCheckpoint.hpp>
 #include <resilience/backend/VelocBackend.hpp>
-
 #ifdef KR_ENABLE_TRACING
 #include <Resilience/util/Trace.hpp>
 #endif
+
+#include <fenix.h>
 
 #define FENIX_SAFE_CALL( call ) KokkosResilience::fenix_internal_safe_call( call, #call, __FILE__, __LINE__ )
 
@@ -80,16 +81,23 @@ namespace KokkosResilience
 
   FenixMemoryBackend::FenixMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
       : m_context(&ctx), m_last_id(1000) {
-    MPI_Comm_dup(mpi_comm, &m_mpi_comm);
+    m_mpi_comm = mpi_comm;
+
+    MPI_Comm_size(m_mpi_comm, &m_mpi_comm_size);
+
+    m_fenix_policy_value[0] = 1;
+    m_fenix_policy_value[1] = m_mpi_comm_size / 2;
+    m_fenix_policy_value[2] = 0;
+
+    int flag;
     std::cout << "Creating data group\n";
-    FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, m_fenix_policy_name, (void *)(m_fenix_policy_value), &m_fenix_policy_flag ) );
+    FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID, (void *)(m_fenix_policy_value), &flag ) );
   }
 
   FenixMemoryBackend::~FenixMemoryBackend()
   {
     std::cout << "Deleting data group\n";
     FENIX_SAFE_CALL( Fenix_Data_group_delete( m_fenix_data_group_id ) );
-    MPI_Comm_free(&m_mpi_comm);
   }
 
   void
@@ -109,8 +117,9 @@ namespace KokkosResilience
     m_latest_version.clear();
     m_alias_map.clear();
 
+    int flag;
     std::cout << "Creating data group\n";
-    FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, m_fenix_policy_name, (void *)(m_fenix_policy_value), &m_fenix_policy_flag ) );
+    FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID, (void *)(m_fenix_policy_value), &flag ) );
   }
 
   void

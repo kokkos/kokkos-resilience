@@ -76,6 +76,7 @@ if (KR_ENABLE_FENIX_BACKEND)
                  )
   target_link_libraries(resilience_fenix_tests PRIVATE gtest)
   target_link_libraries(resilience_fenix_tests PRIVATE resilience)
+  target_link_libraries(resilience_fenix_tests PRIVATE fenix)
   target_link_libraries(resilience_fenix_tests PRIVATE MPI::MPI_CXX)
 
   if (KR_WARNINGS_AS_ERRORS)

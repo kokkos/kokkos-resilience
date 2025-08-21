@@ -109,7 +109,7 @@ endif()
 # Fenix backend
 if (KR_ENABLE_FENIX_BACKEND)
   find_package(fenix REQUIRED)
-  target_link_libraries(resilience PUBLIC fenix)
+  target_link_libraries(resilience PRIVATE fenix)
 endif()
 
 if (KR_ENABLE_HDF5_DATA_SPACE)
