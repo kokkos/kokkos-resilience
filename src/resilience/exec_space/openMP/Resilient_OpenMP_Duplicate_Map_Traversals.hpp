@@ -39,10 +39,52 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#ifdef KR_ENABLE_OPENMP_EXEC_SPACE
-#include "openMP/Resilient_OpenMP.hpp"
-#include "openMP/Resilient_OpenMP_Parallel_For.hpp"
-#include "openMP/Resilient_OpenMP_Parallel_Reduce.hpp"
-#include "openMP/Resilient_OpenMP_Subscriber.hpp"
-#include "openMP/Resilient_HostSpace.hpp"
+#ifndef INC_RESILIENCE_OPENMP_DUPLICATE_MAP_TRAVERSALS_HPP
+#define INC_RESILIENCE_OPENMP_DUPLICATE_MAP_TRAVERSALS_HPP
+
+#include <Kokkos_Macros.hpp>
+#include "resilience/ErrorHandler.hpp"
+#if defined(KOKKOS_ENABLE_OPENMP)
+
+#include <omp.h>
+#include <iostream>
+
+#include <Kokkos_Core.hpp>
+
+#include "Resilient_OpenMP_Subscriber.hpp"
+#include "Resilient_OpenMP_Error_Injector.hpp"
+
+namespace KokkosResilience{
+	
+  inline bool combine_resilient_duplicates() {
+    bool success = true;
+    // Combines all duplicates
+    // Go over the Subscriber map, execute all the CombinerBase elements
+    // If any duplicate fails to find a match, breaks
+    for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+      success = combiner.second->execute();
+      if(!success) break;
+    }
+    return success;
+  }
+ 
+#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION  
+  inline void inject_error_duplicates() {
+
+    if (global_error_settings){
+      //Per kernel, seed the first inject index     
+      KokkosResilience::ErrorInjectionTracking::global_next_inject 
+	      = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInjectionTracking::random_gen);
+      // Inject error into duplicates, deterministically or randomly chosen at compile time
+      // Go over the Subscriber map, inject into all the CombinerBase elements
+      for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+        combiner.second->inject_error();
+      }
+    }
+  }
 #endif
+
+} // namespace KokkosResilience
+
+#endif // KOKKOS_ENABLE_OPENMP
+#endif // INC_RESILIENCE_OPENMP_OPENMP_DUPLICATE_MAP_TRAVERSALS_HPP

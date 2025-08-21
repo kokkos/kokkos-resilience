@@ -487,3 +487,56 @@ TEST(TestResOpenMP, TestAtomic)
     ASSERT_EQ(x(i), i);
   }
 }
+
+/**********************************
+ *********PARALLEL REDUCES*********
+ **********************************/
+// gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
+TEST(TestResOpenMP, TestKokkosReduceDouble)
+{
+
+  KokkosVectorView y( "y", N );
+  KokkosVectorView x( "x", N );
+
+  Kokkos::parallel_for( omp_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 1.0;
+  });
+
+  Kokkos::deep_copy(x,y);
+
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(omp_range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
+
+  ASSERT_EQ(dot_product, N);
+
+}
+//#if 0
+// gTest runs parallel_reduce with resilient Kokkos to get a dot product.
+TEST(TestResOpenMP, TestResilientReduceDouble)
+{
+  // Allocate y, x vectors.
+  ResilientView<double*> y( "y", N );
+  ResilientView<double*> x( "x", N );
+
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 1.0;
+  });
+
+  Kokkos::deep_copy(x,y);
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(res_range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
+
+  ASSERT_EQ(dot_product, N);
+  KokkosResilience::clear_duplicates_cache();
+}
+//#endif
