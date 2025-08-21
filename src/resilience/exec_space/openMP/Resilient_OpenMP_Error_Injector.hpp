@@ -66,6 +66,7 @@ struct ErrorInjectionTracking{
   inline static std::chrono::duration<long int, std::nano> total_error_time{};
 };
 
+#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION
 // Calculates coordinate formulas from linear iterator
 template< typename View>
 auto get_inject_indices_array( const View &view, std::size_t next_inject ){
@@ -152,6 +153,8 @@ void error_injection(View& original, View& copy_0, View& copy_1)
   }
 #endif //KR_TRIPLE_MODULAR_REDUNDANCY
 }// end inject_error
+
+#endif //defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION
 
 KOKKOS_INLINE_FUNCTION
 void print_total_error_time() {
