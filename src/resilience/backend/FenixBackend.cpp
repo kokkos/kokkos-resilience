@@ -42,11 +42,12 @@
 
 #include <sstream>
 #include <fstream>
-#include <fenix.h>
 #include <cassert>
 
+#include <fenix.h>
+
 #include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/backend/VelocBackend.hpp>
+
 #ifdef KR_ENABLE_TRACING
 #include <Resilience/util/Trace.hpp>
 #endif
@@ -81,193 +82,203 @@ namespace KokkosResilience
     }
   }
 
-  FenixMemoryBackend::FenixMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
-      : m_context(&ctx), m_last_id(1000) {
-    m_mpi_comm = mpi_comm;
+  FenixMemoryBackend::FenixMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm) : m_context(&ctx), m_mpi_comm(mpi_comm)
+  {
+    int fenix_data_group_id = 1000;
+    
+    int mpi_comm_size;
+    MPI_Comm_size(m_mpi_comm, &mpi_comm_size);
 
-    MPI_Comm_size(m_mpi_comm, &m_mpi_comm_size);
-
-    m_fenix_policy_value[0] = 1;
-    m_fenix_policy_value[1] = m_mpi_comm_size / 2;
-    m_fenix_policy_value[2] = 0;
-
+    // TODO: expose policy as user configuration option
+    //       isolate Fenix calls inside a fenix client class a la veloc_client_t?
+    int fenix_policy_value[3] = { 1, std::max(1, mpi_comm_size / 2), 0 };
     int flag;
-    std::cout << "Creating data group\n";
-    FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID, (void *)(m_fenix_policy_value), &flag ) );
+
+    std::cout << "Creating data group " << fenix_data_group_id << '\n';
+    FENIX_SAFE_CALL( Fenix_Data_group_create( fenix_data_group_id, m_mpi_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
+                                              reinterpret_cast<void *>(fenix_policy_value), &flag ) );
   }
 
   FenixMemoryBackend::~FenixMemoryBackend()
   {
-    std::cout << "Deleting data group\n";
-    FENIX_SAFE_CALL( Fenix_Data_group_delete( m_fenix_data_group_id ) );
+    int fenix_data_group_id = 1000;
+
+    std::cout << "Deleting data group" << fenix_data_group_id << '\n';
+    FENIX_SAFE_CALL( Fenix_Data_group_delete( fenix_data_group_id ) );
   }
 
   void
   FenixMemoryBackend::reset()
   {
-    for ( auto &&vr : m_registry )
+    int fenix_data_group_id = 1000;
+
+    for ( auto &&p : m_registry )
     {
-      std::cout << "Unprotecting memory id " << vr.second.id << " with label " << vr.first << '\n';
-      FENIX_SAFE_CALL( Fenix_Data_member_delete( m_fenix_data_group_id, vr.second.id ) );
+      std::cout << "Unprotecting memory id " << p.second.m_id << '\n';
+      FENIX_SAFE_CALL( Fenix_Data_member_delete( fenix_data_group_id, p.second.m_id ) );
     }
 
-    std::cout << "Deleting data group\n";
-    FENIX_SAFE_CALL( Fenix_Data_group_delete( m_fenix_data_group_id ) );
+    std::cout << "Deleting data group" << fenix_data_group_id << '\n';
+    FENIX_SAFE_CALL( Fenix_Data_group_delete( fenix_data_group_id ) );
 
     m_registry.clear();
 
     m_latest_version.clear();
     m_alias_map.clear();
 
+    int mpi_comm_size;
+    MPI_Comm_size(m_mpi_comm, &mpi_comm_size);
+
+    int fenix_policy_value[3] = { 1, std::max(1, mpi_comm_size / 2), 0 };
     int flag;
-    std::cout << "Creating data group\n";
-    FENIX_SAFE_CALL( Fenix_Data_group_create( m_fenix_data_group_id, m_mpi_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID, (void *)(m_fenix_policy_value), &flag ) );
+
+    std::cout << "Creating data group" << fenix_data_group_id << '\n';
+    FENIX_SAFE_CALL( Fenix_Data_group_create( fenix_data_group_id, m_mpi_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
+                                              reinterpret_cast<void *>(fenix_policy_value), &flag ) );
+  }
+
+  std::unordered_set< int >
+  FenixMemoryBackend::hash_set( const std::unordered_set< Registration > &members )
+  {
+    std::unordered_set< int > ids;
+    std::transform(
+      members.begin(),
+      members.end(),
+      std::inserter( ids, ids.begin() ),
+      [this]( const Registration &member ) -> int
+      {
+        auto iter = m_alias_map.find( member-> name );
+        if ( iter == m_alias_map.end() )
+          return static_cast<int>( member->hash() );
+        else
+          return iter->second;
+      }
+    );
+    return ids;
   }
 
   void
-  FenixMemoryBackend::register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
-                                       const std::vector< Detail::CrefImpl > &crefs  )
+  FenixMemoryBackend::register_hashes( const std::unordered_set< Registration > &members )
   {
     // Clear protected bits
-    for ( auto &&p : m_registry )
+    for ( auto &&entry : m_registry )
     {
-      p.second.protect = false;
+      entry.second.m_protect = false;
     }
 
-    for ( auto &&view : views )
+    // determine which members should be protected, and store their serialization routines
+    for ( auto &&member : members )
     {
-      if ( !view->data() )  // uninitialized view
+      if ( m_alias_map.count( member->name ) != 0 )
         continue;
 
-      std::string label = get_canonical_label( view->label() );
-      auto iter = m_registry.find( label );
+      auto id = static_cast<int>( member->hash() );
 
-      // Attempt to find the view in our registry
+      auto iter = m_registry.find( id );
       if ( iter == m_registry.end() )
       {
-        // Calculate id using hash of view label
-        int id = ++m_last_id; // Prefix since we will consider id 0 to be no-id
         iter = m_registry.emplace( std::piecewise_construct,
-                                        std::forward_as_tuple( label ),
-                                        std::forward_as_tuple( id ) ).first;
-        iter->second.element_size = view->data_type_size();
-        iter->second.size = view->span();
-
-        if ( !view->is_host_space() || !view->span_is_contiguous() )
-        {
-          // Can't reference memory directly, allocate memory for a watch buffer
-          iter->second.buff.assign( iter->second.size * iter->second.element_size, 0x00 );
-          iter->second.ptr = iter->second.buff.data();
-        } else {
-          iter->second.ptr = view->data();
-        }
+                                   std::forward_as_tuple( id ),
+                                   std::forward_as_tuple( id, member->serializer(), member->deserializer() ) ).first;
       }
 
-      // iter now pointing to our entry
-      iter->second.protect = true;
+      iter->second.m_protect = true;
     }
-
-    // Register crefs
-    for ( auto &&cref : crefs )
-    {
-      if ( !cref.ptr )  // uninitialized view
-        continue;
-      // If we haven't already register, register with VeloC
-      auto iter = m_registry.find( cref.name );
-      if ( iter == m_registry.end())
-      {
-        int id = ++m_last_id; // Prefix since we will consider id 0 to be no-id
-        iter = m_registry.emplace( std::piecewise_construct,
-            std::forward_as_tuple( cref.name ),
-            std::forward_as_tuple( id ) ).first;
-
-        iter->second.ptr = cref.ptr;
-        iter->second.size = cref.num;
-        iter->second.element_size = cref.sz;
-      }
-
-      iter->second.protect = true;
-    }
-
-    // Register everything protected, unregister anything unprotected
-    for ( auto &&p : m_registry )
-    {
-      if ( p.second.protect )
-      {
-        if ( !p.second.registered )
-        {
-          std::cout << "Protecting memory id " << p.second.id << " with label " << p.first << '\n';
-          FENIX_SAFE_CALL( Fenix_Data_member_create( m_fenix_data_group_id, p.second.id, p.second.ptr, p.second.size * p.second.element_size, MPI_CHAR ) );
-          p.second.registered = true;
-        }
-      } else { //deregister
-        if ( p.second.registered )
-        {
-          std::cout << "Unprotecting memory id " << p.second.id << " with label " << p.first << '\n';
-          FENIX_SAFE_CALL( Fenix_Data_member_delete( m_fenix_data_group_id, p.second.id ) );
-          p.second.registered = false;
-        }
-      }
-    }
-  }
-
-  void
-  FenixMemoryBackend::register_alias( const std::string &original, const std::string &alias )
-  {
-    m_alias_map[alias] = original;
   }
 
   void FenixMemoryBackend::checkpoint( const std::string &label, int version,
-                                       const std::vector< KokkosResilience::ViewHolder > &_views )
+                                       const std::unordered_set< Registration > &members )
   {
-    for ( auto &&view : _views )
+    int fenix_data_group_id = 1000;
+
+    // register protected members, deregister everyting else
+    for ( auto &&p : m_registry )
     {
-      std::string label = get_canonical_label( view->label() );
-      auto pos = m_registry.find( label );
-
-      if ( pos != m_registry.end())
+      if ( p.second.m_protect )
       {
-        // Check if we need to copy any views to backing store
-        if ( !view->span_is_contiguous() || !view->is_host_space() )
+        if ( !p.second.m_registered )
         {
-          view->deep_copy_to_buffer( pos->second.buff.data() );
-          assert( pos->second.buff.size() == view->data_type_size() * view->span() );
-        }
+          std::cout << "Protecting member id " << p.second.m_id << '\n';
 
-        // store data to fenix
-        std::cout << "Storing memory id " << pos->second.id << " with label " << pos->first << '\n';
-        FENIX_SAFE_CALL( Fenix_Data_member_store(m_fenix_data_group_id, pos->second.id, FENIX_DATA_SUBSET_FULL) );
+          // save serialized object to a persistent buffer, which will later be used during actual checkpointing
+
+          std::ostringstream stream;
+          p.second.m_serializer(stream);
+
+          std::string temp_buffer = stream.str(); // can we avoid this copy?
+          p.second.m_size = temp_buffer.length();
+
+          p.second.m_buffer.resize(p.second.m_size);
+          std::memcpy(p.second.m_buffer.data(), temp_buffer.data(), p.second.m_size); // and this copy?
+
+          FENIX_SAFE_CALL( Fenix_Data_member_create( fenix_data_group_id, p.second.m_id, p.second.m_buffer.data(),
+                                                     p.second.m_size, MPI_CHAR ) );
+
+          p.second.m_registered = true;
+        }
+      }
+      else
+      {
+        if ( p.second.m_registered )
+        {
+          std::cout << "Unprotecting member id " << p.second.m_id << '\n';
+
+          FENIX_SAFE_CALL( Fenix_Data_member_delete( fenix_data_group_id, p.second.m_id ) );
+
+          p.second.m_registered = false;
+        }
       }
     }
 
-    FENIX_SAFE_CALL( Fenix_Data_commit_barrier( m_fenix_data_group_id, &version ) );
+    const auto ids = hash_set( members );
+
+    for ( auto &&id : ids )
+    {
+      auto iter = m_registry.find( id );
+      if ( iter != m_registry.end() ) 
+      {
+        std::cout << "Storing member id " << iter->second.m_id << "\n";
+
+        FENIX_SAFE_CALL( Fenix_Data_member_store( fenix_data_group_id, iter->second.m_id, FENIX_DATA_SUBSET_FULL ) );
+
+        // can we safely empty the persistent buffer at this point?
+      }
+    }
+
+    FENIX_SAFE_CALL( Fenix_Data_commit_barrier( fenix_data_group_id, &version ) );
 
     m_latest_version[label] = version;
   }
 
   void
-  FenixMemoryBackend::restart( const std::string &label, int version,
-    const std::vector< KokkosResilience::ViewHolder > &_views )
+  FenixMemoryBackend::register_alias( const std::string &original, const std::string &alias )
   {
-    auto lab = get_canonical_label( label );
+    // TODO double check santization is applied consistently
+    m_alias_map[sanitized_label(alias)] = static_cast< int >( label_hash( sanitized_label( original ) ) );
+  }
 
-    for ( auto &&view : _views )
+  void
+  FenixMemoryBackend::restart( const std::string &label, int version, std::unordered_set< Registration > &members )
+  {
+    int fenix_data_group_id = 1000;
+
+    const auto ids = hash_set( members );
+
+    for ( auto &&id : ids )
     {
-      auto vl = get_canonical_label( view->label() );
-      auto pos = m_registry.find( vl );
-
-      if ( pos != m_registry.end() )
+      auto iter = m_registry.find( id );
+      if ( iter != m_registry.end() ) 
       {
-        // restore data from fenix
-        std::cout << "Restoring memory id " << pos->second.id << " with label " << pos->first << '\n';
-        FENIX_SAFE_CALL( Fenix_Data_member_restore(m_fenix_data_group_id, pos->second.id, pos->second.ptr, pos->second.size * pos->second.element_size, version, NULL) );
+        std::cout << "Restoring member id " << iter->second.m_id << "\n";
 
-        // Check if we need to copy any views from the backing store back to the view
-        if ( !view->span_is_contiguous() || !view->is_host_space() )
-        {
-          assert( pos->second.buff.size() == view->data_type_size() * view->span() );
-          view->deep_copy_from_buffer( pos->second.buff.data() );
-        }
+        std::string temp_buffer;
+        temp_buffer.resize(iter->second.m_size);
+
+        FENIX_SAFE_CALL( Fenix_Data_member_restore( fenix_data_group_id, iter->second.m_id, temp_buffer.data(),
+                                                    iter->second.m_size, version, NULL ) );
+
+        std::istringstream stream( temp_buffer );
+        iter->second.m_deserializer( stream );
       }
     }
   }
@@ -282,29 +293,19 @@ namespace KokkosResilience
   int
   FenixMemoryBackend::latest_version( const std::string &label ) const noexcept
   {
-    auto lab = get_canonical_label( label );
-    auto latest_iter = m_latest_version.find( lab );
-    if ( latest_iter == m_latest_version.end() )
+    int fenix_data_group_id = 1000;
+
+    auto iter = m_latest_version.find( label );
+    if ( iter == m_latest_version.end() )
     {
       int test;
-      FENIX_SAFE_CALL( Fenix_Data_group_get_snapshot_at_position( m_fenix_data_group_id, 0, &test ) );
-      m_latest_version[lab] = test;
+      FENIX_SAFE_CALL( Fenix_Data_group_get_snapshot_at_position( fenix_data_group_id, 0, &test ) );
+      m_latest_version[label] = test;
       return test;
-    } else {
-     return latest_iter->second;
     }
-  }
-
-  std::string
-  FenixMemoryBackend::get_canonical_label( const std::string &_label ) const noexcept
-  {
-    // Possible the view has an alias. If so, make sure that is registered instead
-    auto pos = m_alias_map.find( _label );
-    if ( m_alias_map.end() != pos )
+    else
     {
-      return pos->second;
-    } else {
-      return _label;
+      return iter->second;
     }
   }
 }

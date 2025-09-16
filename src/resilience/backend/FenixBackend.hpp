@@ -45,11 +45,10 @@
 #include <vector>
 #include <memory>
 #include <Kokkos_Core.hpp>
-#include "../view_hooks/ViewHolder.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
-#include "../Cref.hpp"
+#include "resilience/registration/Registration.hpp"
 
 namespace KokkosResilience
 {
@@ -59,15 +58,19 @@ namespace KokkosResilience
   {
     struct ProtectedMemoryBlock
     {
-      explicit ProtectedMemoryBlock( int mid ) : id( mid ) {}
+      using serializer_t   = std::function< bool( std::ostream & ) >;
+      using deserializer_t = std::function< bool( std::istream & ) >;
 
-      int id;
-      std::vector< unsigned char > buff;
-      void *ptr = nullptr;
-      std::size_t size = 0;
-      std::size_t element_size = 0;
-      bool protect = false;
-      bool registered = false;
+      explicit ProtectedMemoryBlock( int id, const serializer_t &serializer, const deserializer_t &deserializer )
+          : m_id( id ), m_serializer( serializer ), m_deserializer( deserializer ) {}
+
+      int m_id;
+      serializer_t m_serializer;
+      deserializer_t m_deserializer;
+      std::vector<char> m_buffer;
+      std::size_t m_size;
+      bool m_protect = false;
+      bool m_registered = false;
     };
   }
 
@@ -84,40 +87,32 @@ namespace KokkosResilience
     FenixMemoryBackend &operator=( const FenixMemoryBackend & ) = delete;
     FenixMemoryBackend &operator=( FenixMemoryBackend && ) = default;
 
-    void checkpoint( const std::string &label, int version,
-                     const std::vector< KokkosResilience::ViewHolder > &views );
+    void register_hashes( const std::unordered_set< Registration > &members );
+
+    void checkpoint( const std::string &label, int version, const std::unordered_set< Registration > &members );
+
+    int latest_version (const std::string &label ) const noexcept;
 
     bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label) const noexcept;
 
-    void restart( const std::string &label, int version,
-                  const std::vector< KokkosResilience::ViewHolder > &views );
+    void restart( const std::string &label, int version, std::unordered_set< Registration > &members );
+
+    void register_alias( const std::string &original, const std::string &alias );
 
     void clear_checkpoints();
 
-    void register_hashes( const std::vector< KokkosResilience::ViewHolder > &views,
-      const std::vector< Detail::CrefImpl > &crefs );
-
     void reset();
-    void register_alias( const std::string &original, const std::string &alias );
 
   private:
-
-    std::string get_canonical_label( const std::string &_label ) const noexcept;
-
-    std::unordered_map< std::string, Detail::ProtectedMemoryBlock > m_registry;
-
-    MPI_Comm m_mpi_comm;
-    int m_mpi_comm_size;
+    std::unordered_set< int > hash_set( const std::unordered_set< Registration > &members );
 
     ContextBase *m_context;
+    MPI_Comm m_mpi_comm;
+
+    std::unordered_map< int, Detail::ProtectedMemoryBlock > m_registry;
 
     mutable std::unordered_map< std::string, int > m_latest_version;
-    std::unordered_map< std::string, std::string > m_alias_map;
-    int m_last_id;
-
-    int m_fenix_data_group_id = 1000;
-    int m_fenix_policy_value[3] = {0};
+    std::unordered_map< std::string, int > m_alias_map;
   };
 }
 
