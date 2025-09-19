@@ -54,6 +54,8 @@ namespace KokkosResilience
 {
   class ContextBase;
 
+  class FenixClient;
+
   namespace Detail
   {
     struct ProtectedMemoryBlock
@@ -107,10 +109,7 @@ namespace KokkosResilience
     std::unordered_set< int > hash_set( const std::unordered_set< Registration > &members );
 
     ContextBase *m_context;
-    MPI_Comm m_mpi_comm;
-
-    std::unordered_map< int, Detail::ProtectedMemoryBlock > m_registry;
-
+    FenixClient *m_client;
     mutable std::unordered_map< std::string, int > m_latest_version;
     std::unordered_map< std::string, int > m_alias_map;
   };
