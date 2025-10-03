@@ -56,26 +56,6 @@ namespace KokkosResilience
 
   class FenixClient;
 
-  namespace Detail
-  {
-    struct ProtectedMemoryBlock
-    {
-      using serializer_t   = std::function< bool( std::ostream & ) >;
-      using deserializer_t = std::function< bool( std::istream & ) >;
-
-      explicit ProtectedMemoryBlock( int id, const serializer_t &serializer, const deserializer_t &deserializer )
-          : m_id( id ), m_serializer( serializer ), m_deserializer( deserializer ) {}
-
-      int m_id;
-      serializer_t m_serializer;
-      deserializer_t m_deserializer;
-      std::vector<char> m_buffer;
-      std::size_t m_size;
-      bool m_protect = false;
-      bool m_registered = false;
-    };
-  }
-
   class FenixMemoryBackend
   {
   public:

@@ -64,6 +64,20 @@ namespace KokkosResilience
   {
     using serializer_t   = std::function< bool( std::ostream & ) >;
     using deserializer_t = std::function< bool( std::istream & ) >;
+
+    struct ProtectedMemoryBlock
+    {
+      explicit ProtectedMemoryBlock( int id, const serializer_t &serializer, const deserializer_t &deserializer )
+          : m_id( id ), m_serializer( serializer ), m_deserializer( deserializer ) {}
+
+      int m_id;
+      serializer_t m_serializer;
+      deserializer_t m_deserializer;
+      std::vector<char> m_buffer;
+      std::size_t m_size;
+      bool m_protect = false;
+      bool m_registered = false;
+    };
     
   public:
     // TODO Enable user configuration options
@@ -101,7 +115,7 @@ namespace KokkosResilience
       auto item = m_registry.find( hash );
       if ( item != m_registry.end() )
       {
-        std::cout << "unprotecting member id " << item->second.m_id << '\n';
+        std::cout << "unprotecting member id " << item->second.m_id << " in data group " << m_data_group_id << '\n';
         Fenix_Data_member_delete( m_data_group_id, item->second.m_id );
         item->second.m_protect = false;
         item->second.m_registered = false;
@@ -131,7 +145,7 @@ namespace KokkosResilience
             std::memcpy(item->second.m_buffer.data(), temp_buffer.data(), item->second.m_size);
             temp_buffer.clear();
 
-            std::cout << "Protecting member id " << item->second.m_id << '\n';
+            std::cout << "protecting member id " << item->second.m_id << " in data group " << m_data_group_id << '\n';
             int status = Fenix_Data_member_create( m_data_group_id, item->second.m_id, item->second.m_buffer.data(),
                                                    item->second.m_size, MPI_CHAR );
 
@@ -146,7 +160,7 @@ namespace KokkosResilience
             item->second.m_registered = true;
           }
 
-          std::cout << "Storing member id " << item->second.m_id << "\n";
+          std::cout << "storing member id " << item->second.m_id << " in data group " << m_data_group_id << '\n';
           int status = Fenix_Data_member_store( m_data_group_id, item->second.m_id, FENIX_DATA_SUBSET_FULL );
 
           if (status != FENIX_SUCCESS)
@@ -162,6 +176,7 @@ namespace KokkosResilience
       }
 
       int status = Fenix_Data_commit_barrier( m_data_group_id, &version );
+      std::cout << "committed version " << version << " of data group " << m_data_group_id << '\n';
 
       if (status != FENIX_SUCCESS)
       {
@@ -182,7 +197,7 @@ namespace KokkosResilience
           std::string temp_buffer;
           temp_buffer.resize(item->second.m_size);
 
-          std::cout << "Restoring member id " << item->second.m_id << "\n";
+          std::cout << "restoring member id " << item->second.m_id << " from version " << version << " in data group " << m_data_group_id << '\n';
           int status = Fenix_Data_member_restore( m_data_group_id, item->second.m_id, temp_buffer.data(),
                                                   item->second.m_size, version, NULL );
           
@@ -262,7 +277,7 @@ namespace KokkosResilience
     int m_comm_size;
     int m_data_group_id;
     int m_data_member_id;
-    std::unordered_map< int, Detail::ProtectedMemoryBlock > m_registry;
+    std::unordered_map< int, ProtectedMemoryBlock > m_registry;
   };
 
   FenixMemoryBackend::FenixMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
