@@ -50,7 +50,7 @@
 #include <resilience/AutomaticCheckpoint.hpp>
 
 #ifdef KR_ENABLE_TRACING
-   #include <Resilience/util/Trace.hpp>
+#include <resilience/util/Trace.hpp>
 #endif
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )

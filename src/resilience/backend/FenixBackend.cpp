@@ -49,7 +49,7 @@
 #include <resilience/AutomaticCheckpoint.hpp>
 
 #ifdef KR_ENABLE_TRACING
-#include <Resilience/util/Trace.hpp>
+#include <resilience/util/Trace.hpp>
 #endif
 
 #include <fenix.h>
@@ -112,7 +112,7 @@ namespace KokkosResilience
       auto item = m_registry.find( hash );
       if ( item != m_registry.end() && item->second.m_registered )
       {
-        std::cout << "unprotecting member " << item->second.m_id << " in group " << m_group_id << '\n';
+        // DEBUG std::cout << "unprotecting member " << item->second.m_id << " in group " << m_group_id << '\n';
         Fenix_Data_member_delete( m_group_id, item->second.m_id );
         item->second.m_protect = false;
         item->second.m_registered = false;
@@ -142,7 +142,7 @@ namespace KokkosResilience
             std::memcpy(item->second.m_buffer.data(), temp_buffer.data(), item->second.m_size);
             temp_buffer.clear();
 
-            std::cout << "protecting member " << item->second.m_id << " in group " << m_group_id << '\n';
+            // DEBUG std::cout << "protecting member " << item->second.m_id << " in group " << m_group_id << '\n';
             int status = Fenix_Data_member_create( m_group_id, item->second.m_id, item->second.m_buffer.data(),
                                                    item->second.m_size, MPI_CHAR );
 
@@ -157,7 +157,7 @@ namespace KokkosResilience
             item->second.m_registered = true;
           }
 
-          std::cout << "storing member " << item->second.m_id << " in group " << m_group_id << '\n';
+          // DEBUG std::cout << "storing member " << item->second.m_id << " in group " << m_group_id << '\n';
           int status = Fenix_Data_member_store( m_group_id, item->second.m_id, FENIX_DATA_SUBSET_FULL );
 
           if (status != FENIX_SUCCESS)
@@ -173,7 +173,7 @@ namespace KokkosResilience
       }
 
       int status = Fenix_Data_commit_barrier( m_group_id, &version );
-      std::cout << "committed version " << version << " of group " << m_group_id << '\n';
+      // DEBUG std::cout << "committed version " << version << " of group " << m_group_id << '\n';
 
       if (status != FENIX_SUCCESS)
       {
@@ -194,8 +194,8 @@ namespace KokkosResilience
           std::string temp_buffer;
           temp_buffer.resize(item->second.m_size);
 
-          std::cout << "restoring member " << item->second.m_id << " from version " << version << " in group "
-                    << m_group_id << '\n';
+          // DEBUG std::cout << "restoring member " << item->second.m_id << " from version " << version << " in group "
+          // DEBUG           << m_group_id << '\n';
           int status = Fenix_Data_member_restore( m_group_id, item->second.m_id, temp_buffer.data(),
                                                   item->second.m_size, version, NULL );
           
@@ -247,7 +247,7 @@ namespace KokkosResilience
       int flag;
 
       m_group_id = g_current_group_id++;
-      std::cout << "creating data group " << m_group_id << '\n';
+      // DEBUG std::cout << "creating data group " << m_group_id << '\n';
       int status = Fenix_Data_group_create( m_group_id, m_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
                                             reinterpret_cast<void *>(policy_value), &flag );
       if ( status != FENIX_SUCCESS ) {
@@ -260,7 +260,7 @@ namespace KokkosResilience
 
     void delete_data_group()
     {
-      std::cout << "deleting data group " << m_group_id << '\n';
+      // DEBUG std::cout << "deleting data group " << m_group_id << '\n';
       Fenix_Data_group_delete( m_group_id );
     }
 
