@@ -83,12 +83,7 @@ namespace KokkosResilience
     // TODO Enable user configuration options
     FenixClient( MPI_Comm comm ) : m_comm( comm )
     {
-      MPI_Comm_size(m_comm, &m_comm_size);
-
-      m_data_group_id = 999;
       create_data_group();
-
-      m_data_member_id = 999;
     }
 
     ~FenixClient()
@@ -99,12 +94,14 @@ namespace KokkosResilience
 
     void protect_member( int hash, serializer_t serializer, deserializer_t deserializer )
     {
+      int member_id = g_current_member_id++;
+
       auto item = m_registry.find( hash );
       if ( item == m_registry.end() )
       {
         item = m_registry.emplace( std::piecewise_construct,
                                    std::forward_as_tuple( hash ),
-                                   std::forward_as_tuple( ++m_data_member_id, serializer, deserializer ) ).first;
+                                   std::forward_as_tuple( member_id, serializer, deserializer ) ).first;
       }
 
       item->second.m_protect = true;
@@ -113,10 +110,10 @@ namespace KokkosResilience
     void unprotect_member( int hash )
     {
       auto item = m_registry.find( hash );
-      if ( item != m_registry.end() )
+      if ( item != m_registry.end() && item->second.m_registered )
       {
-        std::cout << "unprotecting member id " << item->second.m_id << " in data group " << m_data_group_id << '\n';
-        Fenix_Data_member_delete( m_data_group_id, item->second.m_id );
+        std::cout << "unprotecting member " << item->second.m_id << " in group " << m_group_id << '\n';
+        Fenix_Data_member_delete( m_group_id, item->second.m_id );
         item->second.m_protect = false;
         item->second.m_registered = false;
       }
@@ -145,29 +142,29 @@ namespace KokkosResilience
             std::memcpy(item->second.m_buffer.data(), temp_buffer.data(), item->second.m_size);
             temp_buffer.clear();
 
-            std::cout << "protecting member id " << item->second.m_id << " in data group " << m_data_group_id << '\n';
-            int status = Fenix_Data_member_create( m_data_group_id, item->second.m_id, item->second.m_buffer.data(),
+            std::cout << "protecting member " << item->second.m_id << " in group " << m_group_id << '\n';
+            int status = Fenix_Data_member_create( m_group_id, item->second.m_id, item->second.m_buffer.data(),
                                                    item->second.m_size, MPI_CHAR );
 
             if (status != FENIX_SUCCESS)
             {
               std::ostringstream msg;
               msg << "error: failed to create Fenix data member " << item->second.m_id << " in data group "
-                  << m_data_group_id << " (return code = " << status << ")";
+                  << m_group_id << " (return code = " << status << ")";
               FENIX_THROW( msg.str() );
             }
 
             item->second.m_registered = true;
           }
 
-          std::cout << "storing member id " << item->second.m_id << " in data group " << m_data_group_id << '\n';
-          int status = Fenix_Data_member_store( m_data_group_id, item->second.m_id, FENIX_DATA_SUBSET_FULL );
+          std::cout << "storing member " << item->second.m_id << " in group " << m_group_id << '\n';
+          int status = Fenix_Data_member_store( m_group_id, item->second.m_id, FENIX_DATA_SUBSET_FULL );
 
           if (status != FENIX_SUCCESS)
           {
             std::ostringstream msg;
             msg << "error: failed to store Fenix data member " << item->second.m_id << " in data group "
-                << m_data_group_id << " (return code = " << status << ")";
+                << m_group_id << " (return code = " << status << ")";
             FENIX_THROW( msg.str() );
           }
 
@@ -175,13 +172,13 @@ namespace KokkosResilience
         }
       }
 
-      int status = Fenix_Data_commit_barrier( m_data_group_id, &version );
-      std::cout << "committed version " << version << " of data group " << m_data_group_id << '\n';
+      int status = Fenix_Data_commit_barrier( m_group_id, &version );
+      std::cout << "committed version " << version << " of group " << m_group_id << '\n';
 
       if (status != FENIX_SUCCESS)
       {
         std::ostringstream msg;
-        msg << "error: failed to commit data members in data group " << m_data_group_id << " (return code = " << status
+        msg << "error: failed to commit data members in data group " << m_group_id << " (return code = " << status
             << ")";
         FENIX_THROW( msg.str() );
       }
@@ -197,14 +194,15 @@ namespace KokkosResilience
           std::string temp_buffer;
           temp_buffer.resize(item->second.m_size);
 
-          std::cout << "restoring member id " << item->second.m_id << " from version " << version << " in data group " << m_data_group_id << '\n';
-          int status = Fenix_Data_member_restore( m_data_group_id, item->second.m_id, temp_buffer.data(),
+          std::cout << "restoring member " << item->second.m_id << " from version " << version << " in group "
+                    << m_group_id << '\n';
+          int status = Fenix_Data_member_restore( m_group_id, item->second.m_id, temp_buffer.data(),
                                                   item->second.m_size, version, NULL );
           
           if ( status != FENIX_SUCCESS )
           {
             std::ostringstream msg;
-            msg << "error: failed to restore data member " << item->second.m_id << " in data group " << m_data_group_id
+            msg << "error: failed to restore data member " << item->second.m_id << " in data group " << m_group_id
                 << " (return code = " << status << ")";
             FENIX_THROW( msg.str() );
           }
@@ -218,12 +216,12 @@ namespace KokkosResilience
     int latest_version( const std::string &label )
     {
       int test;
-      int status = Fenix_Data_group_get_snapshot_at_position( m_data_group_id, 0, &test );
+      int status = Fenix_Data_group_get_snapshot_at_position( m_group_id, 0, &test );
 
       if ( status != FENIX_SUCCESS )
       {
         std::ostringstream msg;
-        msg << "error: failed to determine latest version for data group " << m_data_group_id << " (return code = "
+        msg << "error: failed to determine latest version for data group " << m_group_id << " (return code = "
             << status << ")";
         FENIX_THROW( msg.str() );
       }
@@ -241,21 +239,29 @@ namespace KokkosResilience
   private:
     void create_data_group()
     {
-      ++m_data_group_id;
+      int comm_size;
+      MPI_Comm_size(m_comm, &comm_size);
 
       // TODO: expose policy as user configuration option
-      int policy_value[3] = {  1, std::max(1, m_comm_size / 2), 0 };
+      int policy_value[3] = {  1, std::max(1, comm_size / 2), 0 };
       int flag;
 
-      std::cout << "creating data group " << m_data_group_id << '\n';
-      int status = Fenix_Data_group_create( m_data_group_id, m_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
+      m_group_id = g_current_group_id++;
+      std::cout << "creating data group " << m_group_id << '\n';
+      int status = Fenix_Data_group_create( m_group_id, m_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
                                             reinterpret_cast<void *>(policy_value), &flag );
       if ( status != FENIX_SUCCESS ) {
         std::ostringstream msg;
-        msg << "error: failed to create Fenix data group " << m_data_group_id << " (return code = " << status
+        msg << "error: failed to create Fenix data group " << m_group_id << " (return code = " << status
             << ", flag = " << flag << ")";
         FENIX_THROW( msg.str() );
       }
+    }
+
+    void delete_data_group()
+    {
+      std::cout << "deleting data group " << m_group_id << '\n';
+      Fenix_Data_group_delete( m_group_id );
     }
 
     void clear_registry()
@@ -267,18 +273,16 @@ namespace KokkosResilience
       m_registry.clear();
     }
 
-    void delete_data_group()
-    {
-      std::cout << "deleting data group " << m_data_group_id << '\n';
-      Fenix_Data_group_delete( m_data_group_id );
-    }
+    static int g_current_group_id;
+    static int g_current_member_id;
 
     MPI_Comm m_comm;
-    int m_comm_size;
-    int m_data_group_id;
-    int m_data_member_id;
+    int m_group_id;
     std::unordered_map< int, ProtectedMemoryBlock > m_registry;
   };
+
+  int FenixClient::g_current_group_id = 1000;
+  int FenixClient::g_current_member_id = 1000;
 
   FenixMemoryBackend::FenixMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
     : m_context(&ctx), m_client(new FenixClient( mpi_comm ))
