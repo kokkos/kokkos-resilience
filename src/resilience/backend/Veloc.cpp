@@ -38,267 +38,173 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "VelocBackend.hpp"
+
+#include "Veloc.hpp"
 
 #include <sstream>
 #include <fstream>
 #include <veloc.h>
 #include <cassert>
-#include <unordered_set>
 
-#include <resilience/context/MPIContext.hpp>
-#include <resilience/AutomaticCheckpoint.hpp>
+#include "resilience/AutomaticCheckpoint.hpp"
 
-#ifdef KR_ENABLE_TRACING
-   #include <Resilience/util/Trace.hpp>
-#endif
+#include "resilience/util/Trace.hpp"
 
-#define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
+#include "resilience/backend/StdFile.hpp"
 
-namespace KokkosResilience
+#define VELOC_SAFE_CALL( call ) KokkosResilience::Impl::BackendImpl::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
+
+namespace KokkosResilience::Impl::BackendImpl
 {
   namespace
   {
-    void veloc_internal_error_throw( int e, const char *name, const char *file, int line = 0 )
+    void veloc_internal_error_throw( bool success, const char *name, const char *file, int line = 0 )
     {
       std::ostringstream out;
-      out << name << " error: VELOC operation failed (" << e << ")";
+      out << name << " error: VELOC operation failed";
       if ( file )
       {
         out << " " << file << ":" << line;
       }
-
+      
       // TODO: implement exception class
       //Kokkos::Impl::throw_runtime_exception( out.str() );
-      // In the meantime, we'll print at least
-      out << "\n";
-      std::cerr << out.str();
     }
-
-    inline void veloc_internal_safe_call( int e, const char *name, const char *file, int line = 0 )
+    
+    inline bool veloc_internal_safe_call( bool success, const char *name, const char *file, int line = 0 )
     {
-      if ( VELOC_SUCCESS != e )
-        veloc_internal_error_throw( e, name, file, line );
+      if ( !success )
+        veloc_internal_error_throw( success, name, file, line );
+      return success;
     }
   }
 
-  VeloCMemoryBackend::VeloCMemoryBackend(ContextBase &ctx, MPI_Comm mpi_comm)
-      : m_context(&ctx), m_mpi_comm(mpi_comm) {
-    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_mpi_comm, vconf);
+  VeloCMemory::VeloCMemory(ContextBase& ctx)
+      : Base(ctx) {
+    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(ctx.pid(), vconf);
   }
 
-  VeloCMemoryBackend::~VeloCMemoryBackend()
+  VeloCMemory::~VeloCMemory()
   {
     veloc_client->checkpoint_wait();
   }
-
-  void VeloCMemoryBackend::checkpoint( const std::string &label, int version,
-                                       std::unordered_set<Registration> &members )
-  {
-    VELOC_SAFE_CALL(veloc_client->checkpoint_wait());
-
-    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
-
-    VELOC_SAFE_CALL( 
-        veloc_client->checkpoint_mem(VELOC_CKPT_SOME, hash_set(members))
-    );
-
-    bool success = true;
-    VELOC_SAFE_CALL( veloc_client->checkpoint_end(success) ); 
-
-    m_latest_version[label] = version;
-  }
-    
-  std::set<int> VeloCMemoryBackend::hash_set(std::unordered_set<Registration> &members){
-    std::set<int> ids;
-    std::transform(members.begin(), members.end(), std::inserter(ids, ids.begin()), 
-        [this](const Registration& member) -> int {
-          auto iter = m_alias_map.find(member->name);
-          if (iter == m_alias_map.end())
-            return static_cast<int>(member->hash());
-          else 
-            return iter->second;
-        });
-    return ids;
-  }
-
+  
   bool
-  VeloCMemoryBackend::restart_available( const std::string &label, int version )
-  {
-    // res is < 0 if no versions available, else it is the latest version
-    return version == latest_version( label );
-  }
+  VeloCMemory::checkpoint(
+    const std::string &label, int version, const Members& members
+  ) {
+    bool success;
+    
+    //Don't handle failure here, might be worth trying to continue
+    VELOC_SAFE_CALL( veloc_client->checkpoint_wait() );
+   
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
 
+    if(success) {
+      std::set<int> ids;
+      for(auto member : members) ids.insert(static_cast<int>(member.hash()));
+
+      success = VELOC_SAFE_CALL( veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids) );
+    }
+  
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_end( success ));
+
+    if(success) m_latest_version[label] = version;
+    return success;
+  }
+  
   int
-  VeloCMemoryBackend::latest_version( const std::string &label ) const noexcept
-  {
+  VeloCMemory::latest_version(const std::string &label, int max) const {
     auto latest_iter = m_latest_version.find( label );
     if ( latest_iter == m_latest_version.end() )
     {
-      auto test = veloc_client->restart_test(label, 0);
-      m_latest_version[label] = test;
+      auto test = veloc_client->restart_test(label, max);
+      
+      //We store the absolute latest version only
+      if(max == 0) m_latest_version[label] = test;
+      
       return test;
+    } else if(max != 0 && latest_iter->second >= max) {
+      return veloc_client->restart_test(label, max);
     } else {
-     return latest_iter->second;
+      return latest_iter->second;
     }
   }
+  
+  bool
+  VeloCMemory::restart(
+    const std::string &label, int version, const Members& members
+  ) {
+    bool success;
+    success = VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
+    
+    if(success){
+      std::set<int> ids;
+      for(auto member : members) ids.insert(static_cast<int>(member.hash()));
 
-  void
-  VeloCMemoryBackend::restart( const std::string &label, int version,
-                               std::unordered_set<Registration> &members )
-  {
-    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
+      success = VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
+    }
+    
+    success = VELOC_SAFE_CALL( veloc_client->restart_end( success ) );
 
-    VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, hash_set(members)) );
-
-    bool status = true;
-    VELOC_SAFE_CALL( veloc_client->restart_end( status ) );
+    return success;
   }
 
   void
-  VeloCMemoryBackend::reset()
+  VeloCMemory::reset()
   {
-    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_mpi_comm, vconf);
+    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
+    veloc_client = veloc::get_client(m_context.pid(), vconf);
 
     m_latest_version.clear();
-    m_alias_map.clear();
   }
-
+  
   void
-  VeloCMemoryBackend::register_hashes( std::unordered_set<Registration> &members )
+  VeloCMemory::register_member(KokkosResilience::Registration member)
   {
-    for ( auto && member : members ) {
-      if(m_alias_map.count(member->name) != 0)
-        continue;
-
-      // Not a "safe" call, since we don't care if this was 
-      //   or wasn't already registered
-      veloc_client->mem_unprotect(
-            static_cast<int>(member.hash())
-      );
-      VELOC_SAFE_CALL(veloc_client->mem_protect(
-            static_cast<int>(member.hash()),
-            member->serializer(),
-            member->deserializer()
-      ));
-    }
-  }
-
-  void
-  VeloCMemoryBackend::register_alias( const std::string &original, const std::string &alias )
-  {
-    m_alias_map[sanitized_label(alias)] = static_cast<int>(
-        label_hash(sanitized_label(original))
+    veloc_client->mem_protect(
+        static_cast<int>(member.hash()), 
+        member->serializer(), 
+        member->deserializer() 
     );
   }
 
   void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version,
-      std::unordered_set<Registration> &members )
+  VeloCMemory::deregister_member(KokkosResilience::Registration member)
   {
-    // No-op, don't do anything
-  }
-
-  void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version,
-      std::unordered_set<Registration> &members)
-  {
-    // No-op, don't do anything
-  }
-
-  VeloCFileBackend::VeloCFileBackend(ContextBase& context, MPI_Comm mpi_comm) 
-    : m_context(&context), m_mpi_comm(mpi_comm) {
-    const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_mpi_comm, vconf);
-  }
-
-  VeloCFileBackend::~VeloCFileBackend()
-  {
-    veloc_client->checkpoint_wait();
-  }
-
-  void
-  VeloCFileBackend::checkpoint( const std::string &label, int version,
-                                std::unordered_set<Registration> &members )
-  {
-    // Wait for previous checkpoint to finish
-    VELOC_SAFE_CALL( veloc_client->checkpoint_wait() );
-
-    // Start new checkpoint
-    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
-
-    bool success = true;
-    try {
-      std::string   fname = veloc_client->route_file(label);
-      std::ofstream vfile( fname, std::ios::binary );
-
-#ifdef KR_ENABLE_TRACING
-      auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >(
-        *m_context, "write"
-      );
-#endif
-      for ( auto& member : members ) {
-        success = member->serialize(vfile);
-        if(!success) break;
-      }
-#ifdef KR_ENABLE_TRACING
-      write_trace.end();
-#endif
-    } catch ( const std::exception& e){
-      success = false;
-      std::cerr << std::string("VelocFileBackend::checkpoint error: ") + e.what();
-    } catch ( ... ) {
-      success = false;
-      std::cerr << "VelocFileBackend::checkpoint error: (unknown exception type)";
-    }
-
-    VELOC_SAFE_CALL( veloc_client->checkpoint_end(success) );
+    veloc_client->mem_unprotect(
+        static_cast<int>(member.hash()) 
+    );
   }
 
   bool
-  VeloCFileBackend::restart_available( const std::string &label, int version )
-  {
-    // res is < 0 if no versions available, else it is the latest version
-    return version <= latest_version(label);
-  }
-
-  int VeloCFileBackend::latest_version( const std::string &label ) const noexcept
-  {
-    return veloc_client->restart_test(label, 0);
-  }
-
-  void VeloCFileBackend::restart( const std::string &label, int version,
-                                  std::unordered_set<Registration> &members )
-  {
-    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
-
-    bool success = true;
-    try {
-      std::string   fname = veloc_client->route_file(label);
-      std::ifstream vfile( fname, std::ios::binary );
-
-#ifdef KR_ENABLE_TRACING
-      auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >(
-        *m_context, "read"
-      );
-#endif
-      for ( auto& member : members ) {
-        success = member->deserialize(vfile);
-        if(!success) break;
-      }
-#ifdef KR_ENABLE_TRACING
-      read_trace.end();
-#endif
-    } catch ( const std::exception& e ){
-      success = false;
-      std::cerr << std::string("VelocFileBackend::restart error: ") + e.what();
-    } catch ( ... ) {
-      success = false;
-      std::cerr << "VelocFileBackend::checkpoint error: (unknown exception type)";
+  VeloCFile::checkpoint(
+    const std::string &label, int version, const Members& members
+  ) {
+    // Wait for previous checkpoint to finish
+    VELOC_SAFE_CALL( veloc_client->checkpoint_wait());
+    
+    bool success = false;
+    if(VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ))){
+      std::string fname = veloc_client->route_file("");
+      success = StdFile::write_to_file(fname, members);
     }
+    success = VELOC_SAFE_CALL( veloc_client->checkpoint_end( success ));
 
-    VELOC_SAFE_CALL( veloc_client->restart_end(success) );
+    if(success) m_latest_version[label] = version;
+    return success;
+  }
+  
+  bool
+  VeloCFile::restart(
+    const std::string &label, int version, const Members& members
+  ) {
+    bool success = false;
+    if(VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ))){
+      std::string fname = veloc_client->route_file("");
+      success = StdFile::read_from_file(fname, members);
+    }
+    return VELOC_SAFE_CALL( veloc_client->restart_end( success ));
   }
 }

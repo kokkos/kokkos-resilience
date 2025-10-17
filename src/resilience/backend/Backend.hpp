@@ -39,8 +39,72 @@
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
 
-#include "StdFileBackend.hpp"
+#ifndef INC_RESILIENCE_BACKEND_BASE_HPP
+#define INC_RESILIENCE_BACKEND_BASE_HPP
 
-#ifdef KR_ENABLE_VELOC_BACKEND
-#include "VelocBackend.hpp"
+#include "resilience/registration/Registration.hpp"
+#include <unordered_set>
+#include <memory>
+
+//Avoiding cyclic dependency.
+namespace KokkosResilience {
+  class ContextBase;
+}
+
+namespace KokkosResilience::Impl::BackendImpl {
+  class Base {
+  public:
+    using Members = std::unordered_set<Registration>;
+
+    explicit Base(ContextBase& ctx) : m_context(ctx) {};
+
+    virtual ~Base() = default;
+
+    //All members should be registered before being checkpointed or restarted
+    virtual void register_member(Registration member) = 0;
+    virtual void deregister_member(Registration member) = 0;
+
+    //as_global to checkpoint indepently of process (PID)
+    virtual bool checkpoint(
+      const std::string& label, int version, const Members& members
+    ) = 0;
+
+    //Get the highest version available which is still less than max
+    //  (or just the highest, if max=0)
+    virtual int latest_version(const std::string& label, int max = 0) const = 0;
+
+    //Returns failure flag for recovering the specified members.
+    //as_global to restart independently of PID
+    virtual bool restart(
+      const std::string& label, int version, const Members& members
+    ) = 0;
+
+    //Reset any state, allowing for compatibility with a new process joining
+    virtual void reset() = 0;
+
+    virtual bool restart_available(const std::string& label, int version){
+std::cerr << "latest restart (max = " << version+1 << ") = " << latest_version(label, version+1) << std::endl;
+      return latest_version(label, version+1) == version;
+    };
+
+    ContextBase& m_context;
+
+    //Delete potentially problematic functions for maintaining consistent state
+    Base(const Base&) = delete;
+    Base &operator=(const Base &) = delete;
+
+    Base(Base&&) noexcept = default;
+    Base &operator=(Base &&) = default;
+  };
+}
+
+namespace KokkosResilience {
+  using Backend = std::shared_ptr<Impl::BackendImpl::Base>;
+
+  namespace Impl {
+    Backend make_backend(ContextBase& ctx);
+  }
+}
+
+
 #endif

@@ -64,28 +64,93 @@
 #include "resilience/util/Trace.hpp"
 #endif
 
+#include "resilience/backend/Backend.hpp"
+
 namespace KokkosResilience
 {
   class ContextBase
   {
   public:
+    using FilterFunc = std::function<bool(int)>;
+    using Members = std::unordered_set<Registration>;
 
-    explicit ContextBase( Config cfg );
+    //Lets us use map<string,Members> elements with sane names
+    struct Region
+    {
+      Region(std::pair<const std::string, Members>& map_elem)
+        : label(map_elem.first), members(map_elem.second) { };
+      const std::string& label;
+      Members& members;
+    };
 
+    ContextBase( Config cfg, int proc_id );
     virtual ~ContextBase() = default;
-    virtual void register_hashes(std::unordered_set<Registration> &members) = 0;
-    virtual bool restart_available( const std::string &label, int version ) = 0;
-    virtual void restart( const std::string &label, int version,
-                          std::unordered_set<Registration> &members) = 0;
-    virtual void checkpoint( const std::string &label, int version,
-                             std::unordered_set<Registration> &members) = 0;
 
-    virtual int latest_version( const std::string &label ) const noexcept = 0;
-    virtual void register_alias( const std::string &original, const std::string &alias ) = 0;
+    virtual bool restart_available(const std::string& label, int version) = 0;
+    virtual void restart(
+      const std::string& label, int version, Members& members
+    ) = 0;
+    virtual void checkpoint(
+      const std::string& label, int version, Members& members
+    ) = 0;
+    virtual int latest_version( const std::string& label ) const noexcept = 0;
 
-    virtual void reset() = 0;
+    void reset();
+    virtual void reset_impl() = 0;
+   
+    virtual void register_alias(
+      const std::string& original, const std::string& alias
+    ) {
+      //TODO: Best way to do this?
+    };
 
-    const std::function< bool( int ) > &default_filter() const noexcept { return m_default_filter; }
+    virtual void enter_region(Region region, int version) { };
+    virtual void  exit_region(Region region, int version) { };
+
+    template<typename F>
+    void run_in_region(const std::string& region_label, int version, F&& fun){
+      auto last_region = active_region;
+      active_region.emplace(get_region(region_label));
+      enter_region(active_region.value(), version);
+      try {
+        fun();
+      } catch (...) {
+        exit_region(active_region.value(), version);
+        if(last_region)active_region.emplace(*last_region);
+        else active_region.reset();
+        throw;
+      }
+      exit_region(active_region.value(), version);
+      if(last_region)active_region.emplace(*last_region);
+      else active_region.reset();
+    }
+
+    void register_to(const std::string& region_label, Registration member){
+      this->register_member(get_region(region_label), member);
+    }
+    bool register_if_active(Registration member){
+      if(!active_region) return false;
+      this->register_member(active_region.value(), member);
+      return true;
+    }
+    void register_to_active(Registration member){
+      this->register_member(active_region.value(), member);
+    }
+
+    void deregister_from(const std::string& region_label, Registration member){
+      this->deregister_member(get_region(region_label), member);
+    }
+    bool deregister_if_active(Registration member){
+      if(!active_region) return false;
+      this->deregister_member(active_region.value(), member);
+      return true;
+    }
+    void deregister_from_active(Registration member){
+      assert(active_region);
+      this->deregister_member(active_region.value(), member);
+    }
+    
+    const FilterFunc& default_filter() const noexcept { return m_default_filter; }
 
     Config &config() noexcept { return m_config; }
     const Config &config() const noexcept { return m_config; }
@@ -97,25 +162,50 @@ namespace KokkosResilience
     //Pointer not guaranteed to remain valid, use immediately & discard.
     char* get_scratch_buffer(size_t minimum_size);
 
+    int pid() { return m_pid; }
+
+    Backend& backend() { return m_backend; }
+
+  protected:
+    int m_pid;
+
   private:
-    
     //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
     std::vector<char> m_scratch_buffer;
 
+
     Config m_config;
 
-    std::function< bool( int ) > m_default_filter;
+    FilterFunc m_default_filter;
 
 #ifdef KR_ENABLE_TRACING
     Util::detail::TraceStack  m_trace;
 #endif
+  protected:
+    // Track usage of member (by hash)
+    std::unordered_map<size_t, int> use_counts;
+
+    std::unordered_map<std::string, Members> regions;
+    //Get or construct and get a region
+    Region get_region(const std::string& label);
+    
+    std::optional<Region> active_region;
+
+    std::optional<FilterFunc> active_filter;
+
+    Backend m_backend = Impl::make_backend(*this);
+    
+    //Adds member to the region & informs backend if backend hasn't already
+    //registered this member through another region
+    virtual void   register_member(Region region, Registration& member);
+    virtual void deregister_member(Region region, Registration& member);
   };
 
-  std::unique_ptr< ContextBase > make_context( const std::string &config );
-  std::unique_ptr< ContextBase > make_context( const Config &config );
+  std::unique_ptr< ContextBase > make_context( const std::string &config, int pid );
+  std::unique_ptr< ContextBase > make_context( Config cfg, int pid );
 #ifdef KR_ENABLE_MPI_CONTEXT
   std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const std::string &cfg );
-  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, const Config &cfg );
+  std::unique_ptr< ContextBase > make_context( MPI_Comm comm, Config cfg );
 #endif
 }
 

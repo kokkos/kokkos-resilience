@@ -46,7 +46,7 @@
 #include "resilience/view_hooks/ViewHolder.hpp"
 #include "resilience/context/Context.hpp"
 
-namespace KokkosResilience::Impl::Registration {
+namespace KokkosResilience::Impl::RegistrationImpl {
   class ViewHolder : public Base {
   public:
     ViewHolder() = delete;
@@ -59,6 +59,7 @@ namespace KokkosResilience::Impl::Registration {
 
     const serializer_t serializer() const override{
       return [&, this](std::ostream& stream){
+fprintf(stderr, "Serializing view %s of size %lu span %lu type_size %lu\n", m_view->label().c_str(), m_view->size(), m_view->span(), m_view->data_type_size());
         size_t buffer_size = 
           need_buffer ? m_view->data_type_size()*m_view->size() : 0;
         char* buf = m_ctx.get_scratch_buffer(buffer_size);
@@ -70,6 +71,7 @@ namespace KokkosResilience::Impl::Registration {
 
     const deserializer_t deserializer() const override{
       return [&, this](std::istream& stream){
+fprintf(stderr, "Deserializing view %s of size %lu span %lu type_size %lu\n", m_view->label().c_str(), m_view->size(), m_view->span(), m_view->data_type_size());
         size_t buffer_size = 
           need_buffer ? m_view->data_type_size()*m_view->size() : 0;
         char* buf = m_ctx.get_scratch_buffer(buffer_size);

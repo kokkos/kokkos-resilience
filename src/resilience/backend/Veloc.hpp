@@ -38,115 +38,84 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_VELOC_VELOCBACKEND_HPP
-#define INC_RESILIENCE_VELOC_VELOCBACKEND_HPP
+#ifndef INC_RESILIENCE_BACKEND_VELOC_HPP
+#define INC_RESILIENCE_BACKEND_VELOC_HPP
 
 #include <string>
-#include <vector>
+#include <set>
 #include <memory>
-#include <Kokkos_Core.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <mpi.h>
+#include "veloc.hpp"
+
+#include <Kokkos_Core.hpp>
+
 #include "resilience/registration/Registration.hpp"
+#include "resilience/backend/Backend.hpp"
 
-#include <veloc.hpp>
-
-namespace KokkosResilience
+namespace KokkosResilience::Impl::BackendImpl
 {
-  class ContextBase;
-
-  template< typename Backend >
-  class MPIContext;
-}
-
-
-namespace KokkosResilience
-{
-  class VeloCMemoryBackend
-  {
-  public:
-
-    VeloCMemoryBackend( ContextBase &ctx, MPI_Comm mpi_comm );
-    ~VeloCMemoryBackend();
-
-    VeloCMemoryBackend( const VeloCMemoryBackend & ) = delete;
-    VeloCMemoryBackend( VeloCMemoryBackend && ) noexcept = default;
-
-    VeloCMemoryBackend &operator=( const VeloCMemoryBackend & ) = delete;
-    VeloCMemoryBackend &operator=( VeloCMemoryBackend && ) = default;
-
-    void checkpoint( const std::string &label, int version,
-                     std::unordered_set<Registration> &members );
-
-    bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label) const noexcept;
-
-    void restart( const std::string &label, int version,
-                  std::unordered_set<Registration> &members );
-
-    void clear_checkpoints();
-
-    void register_hashes( std::unordered_set<Registration> &members );
-
-    void reset();
-    void register_alias( const std::string &original, const std::string &alias );
-
-    std::set<int> hash_set(std::unordered_set<Registration> &members);
-
-  private:
-    ContextBase *m_context;
-    MPI_Comm m_mpi_comm;
-
-    veloc::client_t *veloc_client;
-
-    mutable std::unordered_map< std::string, int > m_latest_version;
-    std::unordered_map< std::string, int > m_alias_map;
-  };
-
-  class VeloCRegisterOnlyBackend : public VeloCMemoryBackend
+  class VeloCMemory : public Base
   {
    public:
+    VeloCMemory(ContextBase& ctx);
+    ~VeloCMemory();
 
-    using VeloCMemoryBackend::VeloCMemoryBackend;
-    ~VeloCRegisterOnlyBackend() = default;
-
-    VeloCRegisterOnlyBackend( const VeloCRegisterOnlyBackend & ) = delete;
-    VeloCRegisterOnlyBackend( VeloCRegisterOnlyBackend && ) noexcept = default;
-
-    VeloCRegisterOnlyBackend &operator=( const VeloCRegisterOnlyBackend & ) = delete;
-    VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
-
-    void checkpoint( const std::string &label, int version,
-                     std::unordered_set<Registration> &members );
-
-    void restart( const std::string &label, int version,
-                  std::unordered_set<Registration> &members );
-  };
-
-  class VeloCFileBackend
-  {
-  public:
-
-    VeloCFileBackend(ContextBase &ctx, MPI_Comm mpi_comm);
-    ~VeloCFileBackend();
-
-    void checkpoint( const std::string &label, int version,
-                     std::unordered_set<Registration> &members );
-
-    bool restart_available( const std::string &label, int version );
-    int latest_version (const std::string &label) const noexcept;
-
-    void restart( const std::string &label, int version,
-                  std::unordered_set<Registration> &members );
-
-    void register_hashes( std::unordered_set<Registration> &members ) {} // Do nothing
+    bool checkpoint(
+      const std::string &label, int version, const Members& members
+    ) override;
     
+    int latest_version(const std::string &label, int max) const override;
+ 
+    bool restart(
+      const std::string &label, int version, const Members& members
+    ) override;
+
+    void register_member(Registration member) override;
+    void deregister_member(Registration member) override;
+
+    void reset() override;
+
+   protected:
     veloc::client_t *veloc_client;
     
-    ContextBase *m_context;
-    MPI_Comm m_mpi_comm;
+    mutable std::unordered_map< std::string, int > m_latest_version;
+
+    int m_last_id = 0;
+  };
+
+  class VeloCRegisterOnly : public VeloCMemory
+  {
+   public:
+    using VeloCMemory::VeloCMemory;
+
+    bool checkpoint(const std::string&, int, const Members&) override {
+      return true;
+    }
+
+    bool restart(const std::string&, int, const Members&) override {
+      return true;
+    }
+  };
+ 
+  class VeloCFile : public VeloCMemory
+  {
+   public:
+    using VeloCMemory::VeloCMemory;
+    ~VeloCFile();
+  
+    bool checkpoint(
+      const std::string &label, int version, const Members& members
+    ) override;
+
+    bool restart(
+      const std::string &label, int version, const Members& members
+    ) override;
+  
+    void register_member(Registration) override {} // Do nothing
+    void deregister_member(Registration) override {} // Do nothing
   };
 }
 
-#endif  // INC_RESILIENCE_VELOC_VELOCBACKEND_HPP
+#endif  // INC_RESILIENCE_BACKEND_VELOC_HPP
