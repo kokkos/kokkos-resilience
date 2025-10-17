@@ -46,15 +46,14 @@
 #ifdef KR_ENABLE_MPI_CONTEXT
 #include "MPIContext.hpp"
 #endif
-#include "../backend/StdFileBackend.hpp"
-#ifdef KR_ENABLE_VELOC_BACKEND  
-#include "resilience/backend/VelocBackend.hpp"
-#endif
+
+#include "resilience/backend/Backend.hpp"
 
 namespace KokkosResilience
 {
-  ContextBase::ContextBase( Config cfg )
-      : m_config( std::move( cfg ) ),
+  ContextBase::ContextBase( Config cfg, int proc_id )
+      : m_pid( proc_id ),
+        m_config( std::move( cfg ) ),
         m_default_filter{ Filter::DefaultFilter{} }
   {
     auto filter_opt = m_config.get( "filter" );
@@ -82,53 +81,54 @@ namespace KokkosResilience
     return m_scratch_buffer.data();
   }
 
-  std::unique_ptr< ContextBase >
-  make_context( const std::string &config )
-  {
-    return make_context( Config{ config } );
+  ContextBase::Region ContextBase::get_region(const std::string& label){
+    return *regions.try_emplace(label).first;
+  }
+
+  void ContextBase::register_member(Region region, Registration& member){
+    int& use_count = use_counts[member.hash()];
+    if(region.members.insert(member).second) use_count++;
+    if(use_count == 1) m_backend->register_member(member);
+  }
+
+  void ContextBase::deregister_member(Region region, Registration& member){
+    int& use_count = use_counts[member.hash()];
+    if(region.members.erase(member)){
+      use_count--;
+      assert(use_count >= 0);
+    }
+    if(use_count == 0){
+      m_backend->deregister_member(member);
+      use_counts.erase(member.hash());
+    }
+  }
+
+  void ContextBase::reset() {
+    this->reset_impl();
+    regions = {};
+    use_counts = {};
+    active_region.reset();
+    active_filter.reset();
   }
 
   std::unique_ptr< ContextBase >
-  make_context( const Config &cfg )
-  {
-    using fun_type = std::function<std::unique_ptr<ContextBase>()>;
-    static std::unordered_map<std::string, fun_type> backends = {
-        {"stdfile", [&]() -> std::unique_ptr<ContextBase> {
-           return std::make_unique<StdFileContext<StdFileBackend> >(cfg);
-         }}};
+  make_context( const std::string &config, int pid ){
+    return make_context(Config{ config }, pid);
+  }
   
-    auto pos = backends.find(cfg["backend"].as<std::string>());
-    if (pos == backends.end()) return {};
-  
-    return pos->second();
+  std::unique_ptr< ContextBase >
+  make_context( Config config, int pid ){
+    return std::make_unique<StdFileContext>(config, pid);
   }
 
 #ifdef KR_ENABLE_MPI_CONTEXT
   std::unique_ptr< ContextBase >
-  make_context( MPI_Comm comm, const std::string &config )
-  {
-    return make_context( comm, Config{ config } );
+  make_context( MPI_Comm comm, const std::string &config ){
+    return make_context(comm, Config{ config });
   }
-
   std::unique_ptr< ContextBase >
-  make_context( MPI_Comm comm, const Config &cfg )
-  {
-    using fun_type = std::function<std::unique_ptr<ContextBase>()>;
-    static std::unordered_map<std::string, fun_type> backends = {
-#ifdef KR_ENABLE_VELOC_BACKEND
-        {"veloc", [&]() -> std::unique_ptr<ContextBase> {
-          return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
-        }},
-        {"veloc-noop", [&]() -> std::unique_ptr<ContextBase> {
-          return std::make_unique<MPIContext<VeloCRegisterOnlyBackend> >(comm, cfg);
-        }}
-#endif
-      };
-
-    auto pos = backends.find(cfg["backend"].as<std::string>());
-    if (pos == backends.end()) return {};
-
-    return pos->second();
+  make_context( MPI_Comm comm, Config config ){
+    return std::make_unique<MPIContext>(comm, config);
   }
 #endif
 }

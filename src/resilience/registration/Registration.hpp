@@ -61,7 +61,7 @@ namespace KokkosResilience
   class ContextBase;
 }
 
-namespace KokkosResilience::Impl::Registration
+namespace KokkosResilience::Impl::RegistrationImpl
 {
   class Registration;
 
@@ -145,14 +145,14 @@ namespace KokkosResilience::Impl::Registration
   private:
     std::shared_ptr<Base> base;
   };
-} //namespace KokkosResilience::Registration
+} //namespace KokkosResilience::Impl::RegistrationImpl
 
 namespace KokkosResilience
 {
-  using Impl::Registration::Registration;
+  using Impl::RegistrationImpl::Registration;
 
   template<typename T>
-  using RegistrationInfo = Impl::Registration::Info<T>;
+  using RegistrationInfo = Impl::RegistrationImpl::Info<T>;
 }
 
 template<>

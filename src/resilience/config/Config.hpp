@@ -65,6 +65,9 @@ namespace KokkosResilience
     ConfigValueError()
         : std::runtime_error( "value error" )
     {}
+    ConfigValueError(const std::string& str)
+        : std::runtime_error(str)
+    {}
   };
 
   class Config

@@ -53,12 +53,12 @@ main( int argc, char **argv )
 {
   Kokkos::initialize( argc, argv );
   {
-    auto ctx = KokkosResilience::make_context( "config_file.json" );
+    auto ctx = KokkosResilience::make_context( "config_file.json", 0 );
 
     int  dim0 = 5, dim1 = 5;
     auto view = KokkosResilience::View< double ** >( "test_view", dim0, dim1 );
 
-    KokkosResilience::checkpoint( *ctx, "test_checkpoint", 0, [=]() {
+    KokkosResilience::checkpoint( ctx, "test_checkpoint", 0, [=]() {
       Kokkos::parallel_for( dim0, KOKKOS_LAMBDA( int i ) {
         for ( int j = 0; j < dim1; ++j )
           view( i, j ) = 3.0;

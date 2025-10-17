@@ -38,48 +38,84 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_BACKEND_VELOC_HPP
+#define INC_RESILIENCE_BACKEND_VELOC_HPP
 
-#ifndef INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
-#define INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
+#include <string>
+#include <set>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <mpi.h>
+#include "veloc.hpp"
 
-#include "Registration.hpp"
+#include <Kokkos_Core.hpp>
 
-namespace KokkosResilience::Impl::RegistrationImpl {
-  class Custom : public Base {
-  public:
-    Custom() = delete;
-    Custom(serializer_t&& ser, deserializer_t&& deser, const std::string name) :
-        Base(name),
-        m_serializer(ser),
-        m_deserializer(deser) {};
+#include "resilience/registration/Registration.hpp"
+#include "resilience/backend/Backend.hpp"
 
-    const serializer_t serializer() const override{
-        return m_serializer;
+namespace KokkosResilience::Impl::BackendImpl
+{
+  class VeloCMemory : public Base
+  {
+   public:
+    VeloCMemory(ContextBase& ctx);
+    ~VeloCMemory();
+
+    bool checkpoint(
+      const std::string &label, int version, const Members& members
+    ) override;
+    
+    int latest_version(const std::string &label, int max) const override;
+ 
+    bool restart(
+      const std::string &label, int version, const Members& members
+    ) override;
+
+    void register_member(Registration member) override;
+    void deregister_member(Registration member) override;
+
+    void reset() override;
+
+   protected:
+    veloc::client_t *veloc_client;
+    
+    mutable std::unordered_map< std::string, int > m_latest_version;
+
+    int m_last_id = 0;
+  };
+
+  class VeloCRegisterOnly : public VeloCMemory
+  {
+   public:
+    using VeloCMemory::VeloCMemory;
+
+    bool checkpoint(const std::string&, int, const Members&) override {
+      return true;
     }
 
-    const deserializer_t deserializer() const override{
-        return m_deserializer;
+    bool restart(const std::string&, int, const Members&) override {
+      return true;
     }
+  };
+ 
+  class VeloCFile : public VeloCMemory
+  {
+   public:
+    using VeloCMemory::VeloCMemory;
+    ~VeloCFile();
+  
+    bool checkpoint(
+      const std::string &label, int version, const Members& members
+    ) override;
 
-    const bool is_same_reference(const Registration& other_reg) const override{
-      auto other = dynamic_cast<Custom*>(other_reg.get());
-      
-      if(!other){
-        fprintf(stderr,
-          "KokkosResilience: Warning, member name %s is shared by more than 1"
-          " registration type\n", name.c_str()
-        );
-        return false;
-      }
-
-      return (&m_serializer == &(other->m_serializer)) && 
-           (&m_deserializer == &(other->m_deserializer));
-    }
-
-  private:
-    const serializer_t m_serializer;
-    const deserializer_t m_deserializer;
+    bool restart(
+      const std::string &label, int version, const Members& members
+    ) override;
+  
+    void register_member(Registration) override {} // Do nothing
+    void deregister_member(Registration) override {} // Do nothing
   };
 }
 
-#endif //INC_RESILIENCE_REGISTRATION_CUSTOM_HPP
+#endif  // INC_RESILIENCE_BACKEND_VELOC_HPP
