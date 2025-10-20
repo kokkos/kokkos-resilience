@@ -81,7 +81,7 @@ namespace KokkosResilience
     return m_scratch_buffer.data();
   }
 
-  ContextBase::Region ContextBase::get_region(const std::string& label){
+  ContextBase::Region ContextBase::get_region(const std::string& label) {
     return *regions.try_emplace(label).first;
   }
 
@@ -93,11 +93,41 @@ namespace KokkosResilience
     region.members.erase(member);
   }
 
+  bool ContextBase::restart_available(const std::string& label, int version){
+    return this->restart_available(get_region(label), version);
+  }
+  int  ContextBase::latest_version(const std::string& label){
+    return this->latest_version(get_region(label)); 
+  }
+  void ContextBase::restart(const std::string& label, int version){
+    this->restart(get_region(label), version);
+    // TODO: warn if failed (print error? throw?)
+  }
+  void ContextBase::checkpoint(const std::string& label, int version){
+    this->checkpoint(get_region(label), version);
+    // TODO: warn if failed (print error? throw?)
+  }
   void ContextBase::reset() {
     this->reset_impl();
     regions = {};
     active_region.reset();
     active_filter.reset();
+  }
+
+  bool ContextBase::restart_available(Region region, int version){
+    return m_backend->restart_available(region.label, version);
+  }
+  int  ContextBase::latest_version(Region region){
+    return m_backend->latest_version(region.label);
+  }
+  bool ContextBase::restart(Region region, int version){
+    return m_backend->restart(region.label, version, region.members);
+  }
+  bool ContextBase::checkpoint(Region region, int version){
+    return m_backend->checkpoint(region.label, version, region.members);
+  }
+  void ContextBase::reset_impl(){
+    m_backend->reset();
   }
 
   std::unique_ptr< ContextBase >

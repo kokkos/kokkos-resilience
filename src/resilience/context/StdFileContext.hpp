@@ -78,28 +78,6 @@ class StdFileContext : public ContextBase {
                                     true);
 #endif
   }
-
-  bool restart_available(const std::string &label, int version) override {
-    return m_backend->restart_available(label, version);
-  }
-
-  void restart(const std::string &label, int version,
-               std::unordered_set<Registration> &members) override {
-    m_backend->restart(label, version, members);
-  }
-
-  void checkpoint(const std::string &label, int version,
-                  std::unordered_set<Registration> &members) override {
-    m_backend->checkpoint(label, version, members);
-  }
-
-  int latest_version(const std::string &label) const noexcept override {
-    return m_backend->latest_version(label);
-  }
-
-  void reset_impl() override {
-    m_backend->reset();
-  }
 };
 
 }  // namespace KokkosResilience

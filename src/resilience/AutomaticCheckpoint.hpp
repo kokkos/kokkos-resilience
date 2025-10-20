@@ -99,15 +99,14 @@ namespace KokkosResilience
 
   namespace Detail
   {
-    template<typename RegionFunc, typename... T>
+    template<typename RegionFunc>
     void autodetect_members(
-      ContextBase& ctx, RegionFunc&& fun,
-      std::unordered_set<Registration>& members
+      ContextBase& ctx, const std::string& label, RegionFunc&& fun
     ) {
         //Enable ViewHolder copy constructor hooks to register the views
         KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback(
-          [&ctx, &members](const KokkosResilience::ViewHolder &view) {
-            members.insert(Registration(ctx, view));
+          [&ctx, &label](const KokkosResilience::ViewHolder &view) {
+            ctx.register_to(label, Registration(ctx, view));
           }
         );
           
@@ -117,6 +116,19 @@ namespace KokkosResilience
 
         //Disable ViewHolder hook
         KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
+    }
+
+    inline void register_explicit_members(
+      ContextBase& ctx, const std::string& label
+    ){ }
+
+    template<typename T, typename... U>
+    void register_explicit_members(
+      ContextBase& ctx, const std::string& label, RegistrationInfo<T> info,
+      RegistrationInfo<U>... others
+    ) {
+      ctx.register_to(label, Registration(ctx, info));
+      register_explicit_members(ctx, label, others...);
     }
 
     template< typename RegionFunc, typename FilterFunc, typename... T>
@@ -129,28 +141,16 @@ namespace KokkosResilience
       KR_TRACE_ITERATION(ctx, label, iteration);
       KR_TRACE(overhead, ctx);
      
-      // Avoid initialization overhead on non-checkpoint iterations
-      std::optional<std::unordered_set<Registration>> members;
-
       bool is_checkpoint_iter = filter(iteration);
-std::cerr << "checkpoint_impl: is_checkpoint_iter? " << is_checkpoint_iter << std::endl;
       if(is_checkpoint_iter){
         //Gather up explicitly requested members and any autodetectable.
         KR_TRACE(registration, ctx);
-          // Weird initialization for case with no explicit members to ensure we
-          // are initializing a set, not an empty optional
-          members.emplace(std::move(
-              std::unordered_set<Registration> { Registration(ctx, explicit_members)... }
-          ));
-          autodetect_members(ctx, fun, *members);
-          for(auto& member : *members){
-            ctx.register_to(label, member);
-          }
+          register_explicit_members(ctx, label, explicit_members...);
+          autodetect_members(ctx, label, std::forward<RegionFunc>(fun));
         KR_TRACE_END(registration);
 
         KR_TRACE(check_restart, ctx);
           bool restart_available = ctx.restart_available( label, iteration );
-std::cerr << "checkpoint_impl: restart_available? " << restart_available << std::endl;
         KR_TRACE_END(check_restart);
 
         if ( restart_available ){
@@ -158,7 +158,7 @@ std::cerr << "checkpoint_impl: restart_available? " << restart_available << std:
 
           // Load views with data
           KR_TRACE(restart, ctx);
-            ctx.restart( label, iteration, *members );
+            ctx.restart( label, iteration );
           KR_TRACE_END(restart);
           return;
         }
@@ -178,8 +178,7 @@ std::cerr << "checkpoint_impl: restart_available? " << restart_available << std:
           );
           std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" )
             << "] initiating checkpoint\n";
-std::cerr << "checkpoint_impl: checkpointing " << members->size() << " members" << std::endl;
-          ctx.checkpoint( label, iteration, *members );
+          ctx.checkpoint( label, iteration );
         KR_TRACE_END(checkpoint);
       }
     }

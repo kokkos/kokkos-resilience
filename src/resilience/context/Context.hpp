@@ -73,12 +73,16 @@ namespace KokkosResilience
   public:
     using FilterFunc = std::function<bool(int)>;
     using Members = std::unordered_set<Registration>;
+    using RegionMap = std::unordered_map<std::string, Members>;
+    using RegionMapValue = typename RegionMap::value_type;
 
     //Lets us use map<string,Members> elements with sane names
     struct Region
     {
-      Region(std::pair<const std::string, Members>& map_elem)
-        : label(map_elem.first), members(map_elem.second) { };
+      Region(RegionMapValue& map_elem)
+        : label(map_elem.first),
+          members(map_elem.second)
+      { };
       const std::string& label;
       Members& members;
     };
@@ -86,26 +90,26 @@ namespace KokkosResilience
     ContextBase( Config cfg, int proc_id );
     virtual ~ContextBase() = default;
 
-    virtual bool restart_available(const std::string& label, int version) = 0;
-    virtual void restart(
-      const std::string& label, int version, Members& members
-    ) = 0;
-    virtual void checkpoint(
-      const std::string& label, int version, Members& members
-    ) = 0;
-    virtual int latest_version( const std::string& label ) const noexcept = 0;
-
+    bool restart_available(const std::string& label, int version);
+    int  latest_version(const std::string& label);
+    void restart(const std::string& label, int version);
+    void checkpoint(const std::string& label, int version);
     void reset();
-    virtual void reset_impl() = 0;
+
+    virtual bool restart_available(Region region, int version);
+    virtual int  latest_version(Region region);
+    virtual bool restart(Region region, int version);
+    virtual bool checkpoint(Region region, int version);
+    virtual void reset_impl();
+
+    virtual void enter_region(Region region, int version) { };
+    virtual void  exit_region(Region region, int version) { };
    
     virtual void register_alias(
       const std::string& original, const std::string& alias
     ) {
       //TODO: Best way to do this?
     };
-
-    virtual void enter_region(Region region, int version) { };
-    virtual void  exit_region(Region region, int version) { };
 
     template<typename F>
     void run_in_region(const std::string& region_label, int version, F&& fun){
@@ -173,7 +177,6 @@ namespace KokkosResilience
     //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
     std::vector<char> m_scratch_buffer;
 
-
     Config m_config;
 
     FilterFunc m_default_filter;
@@ -182,7 +185,7 @@ namespace KokkosResilience
     Util::detail::TraceStack  m_trace;
 #endif
   protected:
-    std::unordered_map<std::string, Members> regions;
+    RegionMap regions;
     //Get or construct and get a region
     Region get_region(const std::string& label);
     

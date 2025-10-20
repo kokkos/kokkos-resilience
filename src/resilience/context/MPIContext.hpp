@@ -85,35 +85,30 @@ public:
 
   MPI_Comm comm() const noexcept { return m_comm; }
 
-  bool restart_available(const std::string &label, int version) override {
-    int avail = m_backend->restart_available(label, version);
+  bool restart_available(Region region, int version) override {
+    int avail = m_backend->restart_available(region.label, version);
     MPI_Allreduce(MPI_IN_PLACE, &avail, 1, MPI_INT, MPI_LAND, m_comm);
     return avail;
   }
 
-  void restart(
-    const std::string &label, int version, Members& members
+  bool checkpoint(
+    Region region, int version
   ) override {
-    m_backend->restart(label, version, members);
-  }
-
-  void checkpoint(
-    const std::string &label, int version, Members& members
-  ) override {
-    m_backend->checkpoint(label, version, members);
+    m_backend->checkpoint(region.label, version, region.members);
     // TODO: Make barriers configurable
     MPI_Barrier(m_comm);
+    return true;
   }
 
-  int latest_version(const std::string &label) const noexcept override {
-    int latest = m_backend->latest_version(label);
+  int latest_version(Region region) override {
+    int latest = m_backend->latest_version(region.label);
     MPI_Allreduce(MPI_IN_PLACE, &latest, 1, MPI_INT, MPI_MIN, m_comm);
     return latest;
   }
 
   void reset_impl() override {
-    m_backend->reset();
     MPI_Comm_rank(m_comm, &m_pid);
+    m_backend->reset();
   }
 
 private:
