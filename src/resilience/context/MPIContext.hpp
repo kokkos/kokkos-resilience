@@ -94,10 +94,9 @@ public:
   bool checkpoint(
     Region region, int version
   ) override {
-    m_backend->checkpoint(region.label, version, region.members);
-    // TODO: Make barriers configurable
-    MPI_Barrier(m_comm);
-    return true;
+    int success = m_backend->checkpoint(region.label, version, region.members);
+    MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_LAND, m_comm);
+    return success;
   }
 
   int latest_version(Region region) override {
