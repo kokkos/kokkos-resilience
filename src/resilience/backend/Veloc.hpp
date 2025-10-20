@@ -53,14 +53,15 @@
 
 #include "resilience/registration/Registration.hpp"
 #include "resilience/backend/Backend.hpp"
+#include "resilience/config/Config.hpp"
 
 namespace KokkosResilience::Impl::BackendImpl
 {
-  class VeloCMemory : public Base
+  class VeloC : public Base
   {
    public:
-    VeloCMemory(ContextBase& ctx);
-    ~VeloCMemory();
+    VeloC(ContextBase& ctx);
+    ~VeloC();
 
     bool checkpoint(
       const std::string &label, int version, const Members& members
@@ -72,49 +73,20 @@ namespace KokkosResilience::Impl::BackendImpl
       const std::string &label, int version, const Members& members
     ) override;
 
-    void register_member(Registration member) override;
-    void deregister_member(Registration member) override;
-
     void reset() override;
 
    protected:
+    // Register the members and return the set of their IDs to checkpoint
+    std::set<int> register_members(const Members& members);
+    void deregister_members(const std::set<int>& ids);
+
     veloc::client_t *veloc_client;
     
     mutable std::unordered_map< std::string, int > m_latest_version;
 
-    int m_last_id = 0;
-  };
-
-  class VeloCRegisterOnly : public VeloCMemory
-  {
-   public:
-    using VeloCMemory::VeloCMemory;
-
-    bool checkpoint(const std::string&, int, const Members&) override {
-      return true;
-    }
-
-    bool restart(const std::string&, int, const Members&) override {
-      return true;
-    }
-  };
- 
-  class VeloCFile : public VeloCMemory
-  {
-   public:
-    using VeloCMemory::VeloCMemory;
-    ~VeloCFile();
-  
-    bool checkpoint(
-      const std::string &label, int version, const Members& members
-    ) override;
-
-    bool restart(
-      const std::string &label, int version, const Members& members
-    ) override;
-  
-    void register_member(Registration) override {} // Do nothing
-    void deregister_member(Registration) override {} // Do nothing
+    Config m_conf;
+    const std::string& veloc_config_file = m_conf["config"].as<std::string>();
+    const bool checkpoint_to_file = m_conf.get("file", false);
   };
 }
 

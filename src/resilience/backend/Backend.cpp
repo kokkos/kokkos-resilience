@@ -17,7 +17,7 @@ namespace KokkosResilience::Impl {
       
 #ifdef KR_ENABLE_VELOC_BACKEND
     if(backend == "veloc"){
-      return std::make_shared<BackendImpl::VeloCMemory>(ctx);
+      return std::make_shared<BackendImpl::VeloC>(ctx);
     }
 #endif
 

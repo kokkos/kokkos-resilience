@@ -79,33 +79,55 @@ namespace KokkosResilience::Impl::BackendImpl
     }
   }
 
-  VeloCMemory::VeloCMemory(ContextBase& ctx)
-      : Base(ctx) {
-    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(ctx.pid(), vconf);
+  VeloC::VeloC(ContextBase& ctx)
+      : Base(ctx), m_conf(ctx.config()["backends"]["veloc"]) {
+    veloc_client = veloc::get_client(ctx.pid(), veloc_config_file);
   }
 
-  VeloCMemory::~VeloCMemory()
+  VeloC::~VeloC()
   {
     veloc_client->checkpoint_wait();
   }
+
+  std::set<int> VeloC::register_members(const Members& members)
+  {
+    std::set<int> ids;
+    for(auto& member : members){
+      int id = static_cast<int>(member.hash());
+      ids.insert(id);
+      
+      bool inserted = veloc_client->mem_protect(
+        id, member->serializer(), member->deserializer()
+      );
+      if(!inserted) fprintf(stderr,
+        "WARNING KokkosResilience:VeloC memory region %d already existed. "
+        "Metadata overwritten by member %s.\n", id, member->name.c_str()
+      );
+    }
+    return ids;
+  }
+
+  void VeloC::deregister_members(const std::set<int>& ids)
+  {
+    for(auto& id : ids){
+      veloc_client->mem_unprotect(id);
+    }
+  }
   
   bool
-  VeloCMemory::checkpoint(
+  VeloC::checkpoint(
     const std::string &label, int version, const Members& members
   ) {
     bool success;
-    
-    //Don't handle failure here, might be worth trying to continue
-    VELOC_SAFE_CALL( veloc_client->checkpoint_wait() );
-   
     success = VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
 
-    if(success) {
-      std::set<int> ids;
-      for(auto member : members) ids.insert(static_cast<int>(member.hash()));
-
-      success = VELOC_SAFE_CALL( veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids) );
+    if(success && checkpoint_to_file) {
+      success = StdFile::write_to_file(veloc_client->route_file(""), members);
+    } else if(success) {
+      auto ids = register_members(members);
+      success =
+        VELOC_SAFE_CALL(veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids));
+      deregister_members(ids);
     }
   
     success = VELOC_SAFE_CALL( veloc_client->checkpoint_end( success ));
@@ -115,7 +137,7 @@ namespace KokkosResilience::Impl::BackendImpl
   }
   
   int
-  VeloCMemory::latest_version(const std::string &label, int max) const {
+  VeloC::latest_version(const std::string &label, int max) const {
     auto latest_iter = m_latest_version.find( label );
     if ( latest_iter == m_latest_version.end() )
     {
@@ -133,17 +155,19 @@ namespace KokkosResilience::Impl::BackendImpl
   }
   
   bool
-  VeloCMemory::restart(
+  VeloC::restart(
     const std::string &label, int version, const Members& members
   ) {
     bool success;
     success = VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
     
-    if(success){
-      std::set<int> ids;
-      for(auto member : members) ids.insert(static_cast<int>(member.hash()));
-
-      success = VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
+    if(success && checkpoint_to_file) {
+      success = StdFile::read_from_file(veloc_client->route_file(""), members);
+    } else if(success) {
+      auto ids = register_members(members);
+      success =
+        VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, ids) );
+      deregister_members(ids);
     }
     
     success = VELOC_SAFE_CALL( veloc_client->restart_end( success ) );
@@ -152,59 +176,9 @@ namespace KokkosResilience::Impl::BackendImpl
   }
 
   void
-  VeloCMemory::reset()
+  VeloC::reset()
   {
-    const auto &vconf = m_context.config()["backends"]["veloc"]["config"].as< std::string >();
-    veloc_client = veloc::get_client(m_context.pid(), vconf);
-
+    veloc_client = veloc::get_client(m_context.pid(), veloc_config_file);
     m_latest_version.clear();
-  }
-  
-  void
-  VeloCMemory::register_member(KokkosResilience::Registration member)
-  {
-    veloc_client->mem_protect(
-        static_cast<int>(member.hash()), 
-        member->serializer(), 
-        member->deserializer() 
-    );
-  }
-
-  void
-  VeloCMemory::deregister_member(KokkosResilience::Registration member)
-  {
-    veloc_client->mem_unprotect(
-        static_cast<int>(member.hash()) 
-    );
-  }
-
-  bool
-  VeloCFile::checkpoint(
-    const std::string &label, int version, const Members& members
-  ) {
-    // Wait for previous checkpoint to finish
-    VELOC_SAFE_CALL( veloc_client->checkpoint_wait());
-    
-    bool success = false;
-    if(VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ))){
-      std::string fname = veloc_client->route_file("");
-      success = StdFile::write_to_file(fname, members);
-    }
-    success = VELOC_SAFE_CALL( veloc_client->checkpoint_end( success ));
-
-    if(success) m_latest_version[label] = version;
-    return success;
-  }
-  
-  bool
-  VeloCFile::restart(
-    const std::string &label, int version, const Members& members
-  ) {
-    bool success = false;
-    if(VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ))){
-      std::string fname = veloc_client->route_file("");
-      success = StdFile::read_from_file(fname, members);
-    }
-    return VELOC_SAFE_CALL( veloc_client->restart_end( success ));
   }
 }
