@@ -136,7 +136,7 @@ public:
 
 TYPED_TEST_SUITE( TestStdFileBackend, enabled_exec_spaces );
 
-TYPED_TEST( TestStdFileBackend, StdFileContext )
+TYPED_TEST( TestStdFileBackend, UncoordinatedContext )
 {
   using namespace std::string_literals;
   KokkosResilience::Config cfg;

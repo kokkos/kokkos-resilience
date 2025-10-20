@@ -38,8 +38,8 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
-#define INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#ifndef INC_KOKKOS_RESILIENCE_UNCOORDINATEDCONTEXT_HPP
+#define INC_KOKKOS_RESILIENCE_UNCOORDINATEDCONTEXT_HPP
 
 #include "Context.hpp"
 
@@ -47,18 +47,18 @@
 
 namespace KokkosResilience {
 
-class StdFileContext : public ContextBase {
+class UncoordinatedContext : public ContextBase {
  public:
-  explicit StdFileContext(const Config &cfg, int pid)
+  explicit UncoordinatedContext(const Config &cfg, int pid)
       : ContextBase(cfg, pid) {}
 
-  StdFileContext(const StdFileContext &) = delete;
-  StdFileContext(StdFileContext &&)      = default;
+  UncoordinatedContext(const UncoordinatedContext &) = delete;
+  UncoordinatedContext(UncoordinatedContext &&)      = default;
 
-  StdFileContext &operator=(const StdFileContext &) = delete;
-  StdFileContext &operator=(StdFileContext &&) = default;
+  UncoordinatedContext &operator=(const UncoordinatedContext &) = delete;
+  UncoordinatedContext &operator=(UncoordinatedContext &&) = default;
 
-  virtual ~StdFileContext() {
+  virtual ~UncoordinatedContext() {
 #ifdef KR_ENABLE_TRACING
     std::ostringstream fname;
     fname << "trace.json";
@@ -82,4 +82,4 @@ class StdFileContext : public ContextBase {
 
 }  // namespace KokkosResilience
 
-#endif  // INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#endif  // INC_KOKKOS_RESILIENCE_UNCOORDINATEDCONTEXT_HPP

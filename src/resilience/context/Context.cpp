@@ -42,7 +42,7 @@
 #include <fstream>
 #include <chrono>
 #include <stdexcept>
-#include "StdFileContext.hpp"
+#include "UncoordinatedContext.hpp"
 #ifdef KR_ENABLE_MPI_CONTEXT
 #include "MPIContext.hpp"
 #endif
@@ -137,7 +137,7 @@ namespace KokkosResilience
   
   std::unique_ptr< ContextBase >
   make_context( Config config, int pid ){
-    return std::make_unique<StdFileContext>(config, pid);
+    return std::make_unique<UncoordinatedContext>(config, pid);
   }
 
 #ifdef KR_ENABLE_MPI_CONTEXT
