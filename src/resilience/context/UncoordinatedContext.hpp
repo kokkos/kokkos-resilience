@@ -38,8 +38,8 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
-#define INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#ifndef INC_KOKKOS_RESILIENCE_UNCOORDINATEDCONTEXT_HPP
+#define INC_KOKKOS_RESILIENCE_UNCOORDINATEDCONTEXT_HPP
 
 #include "Context.hpp"
 
@@ -47,19 +47,18 @@
 
 namespace KokkosResilience {
 
-template <typename Backend>
-class StdFileContext : public ContextBase {
+class UncoordinatedContext : public ContextBase {
  public:
-  explicit StdFileContext(const Config &cfg)
-      : ContextBase(cfg), m_filename(get_filename(cfg)), m_backend(*this, m_filename) {}
+  explicit UncoordinatedContext(const Config &cfg, int pid)
+      : ContextBase(cfg, pid) {}
 
-  StdFileContext(const StdFileContext &) = delete;
-  StdFileContext(StdFileContext &&)      = default;
+  UncoordinatedContext(const UncoordinatedContext &) = delete;
+  UncoordinatedContext(UncoordinatedContext &&)      = default;
 
-  StdFileContext &operator=(const StdFileContext &) = delete;
-  StdFileContext &operator=(StdFileContext &&) = default;
+  UncoordinatedContext &operator=(const UncoordinatedContext &) = delete;
+  UncoordinatedContext &operator=(UncoordinatedContext &&) = default;
 
-  virtual ~StdFileContext() {
+  virtual ~UncoordinatedContext() {
 #ifdef KR_ENABLE_TRACING
     std::ostringstream fname;
     fname << "trace.json";
@@ -79,51 +78,8 @@ class StdFileContext : public ContextBase {
                                     true);
 #endif
   }
-
-  std::string const &filename() const noexcept { return m_filename; }
-
-  Backend &backend() { return m_backend; }
-
-  void register_hashes(std::unordered_set<Registration> &members) override {
-    m_backend.register_hashes(members);
-  }
-
-  bool restart_available(const std::string &label, int version) override {
-    return m_backend.restart_available(label, version);
-  }
-
-  void restart(const std::string &label, int version,
-               std::unordered_set<Registration> &members) override {
-    m_backend.restart(label, version, members);
-  }
-
-  void checkpoint(const std::string &label, int version,
-                  std::unordered_set<Registration> &members) override {
-    m_backend.checkpoint(label, version, members);
-  }
-
-  int latest_version(const std::string &label) const noexcept override {
-    return m_backend.latest_version(label);
-  }
-
-  void reset() override {
-    m_backend.reset();
-  }
-
-  void register_alias( const std::string &original, const std::string &alias ) override {
-
-  }
-
- private:
-
-  static std::string get_filename(const Config &cfg) {
-    return cfg["backends"]["stdfile"]["file"].as<std::string>();
-  }
-
-  std::string m_filename;
-  Backend m_backend;
 };
 
 }  // namespace KokkosResilience
 
-#endif  // INC_KOKKOS_RESILIENCE_STDFILECONTEXT_HPP
+#endif  // INC_KOKKOS_RESILIENCE_UNCOORDINATEDCONTEXT_HPP

@@ -42,19 +42,18 @@
 #include <fstream>
 #include <chrono>
 #include <stdexcept>
-#include "StdFileContext.hpp"
+#include "UncoordinatedContext.hpp"
 #ifdef KR_ENABLE_MPI_CONTEXT
 #include "MPIContext.hpp"
 #endif
-#include "../backend/StdFileBackend.hpp"
-#ifdef KR_ENABLE_VELOC_BACKEND  
-#include "resilience/backend/VelocBackend.hpp"
-#endif
+
+#include "resilience/backend/Backend.hpp"
 
 namespace KokkosResilience
 {
-  ContextBase::ContextBase( Config cfg )
-      : m_config( std::move( cfg ) ),
+  ContextBase::ContextBase( Config cfg, int proc_id )
+      : m_pid( proc_id ),
+        m_config( std::move( cfg ) ),
         m_default_filter{ Filter::DefaultFilter{} }
   {
     auto filter_opt = m_config.get( "filter" );
@@ -82,53 +81,85 @@ namespace KokkosResilience
     return m_scratch_buffer.data();
   }
 
-  std::unique_ptr< ContextBase >
-  make_context( const std::string &config )
-  {
-    return make_context( Config{ config } );
+  ContextBase::Region ContextBase::get_region(const std::string& label) {
+    return *regions.try_emplace(label).first;
   }
 
+  void ContextBase::register_member(Region region, Registration& member){
+    region.members.insert(member);
+  }
+
+  void ContextBase::deregister_member(Region region, Registration& member){
+    region.members.erase(member);
+  }
+
+  bool ContextBase::restart_available(const std::string& label, int version){
+    return this->restart_available(get_region(label), version);
+  }
+  int  ContextBase::latest_version(const std::string& label){
+    return this->latest_version(get_region(label)); 
+  }
+  void ContextBase::restart(const std::string& label, int version){
+    this->restart(get_region(label), version);
+    // TODO: warn if failed (print error? throw?)
+  }
+  void ContextBase::checkpoint(const std::string& label, int version){
+    this->checkpoint(get_region(label), version);
+    // TODO: warn if failed (print error? throw?)
+  }
+  void ContextBase::reset() {
+    this->reset_impl();
+    regions = {};
+    active_region.reset();
+    active_filter.reset();
+  }
+
+  bool ContextBase::restart_available(Region region, int version){
+    return m_backend->restart_available(region.label, version);
+  }
+  int  ContextBase::latest_version(Region region){
+    return m_backend->latest_version(region.label);
+  }
+  bool ContextBase::restart(Region region, int version){
+    return m_backend->restart(region.label, version, region.members);
+  }
+  bool ContextBase::checkpoint(Region region, int version){
+    return m_backend->checkpoint(region.label, version, region.members);
+  }
+  void ContextBase::reset_impl(){
+    m_backend->reset();
+  }
+
+#ifdef KR_ENABLE_MPI_CONTEXT
+  void ContextBase::reset(MPI_Comm comm){
+    this->reset_impl(comm);
+    regions = {};
+    active_region.reset();
+    active_filter.reset();
+  }
+  void ContextBase::reset_impl(MPI_Comm comm){
+    m_backend->reset();
+  }
+#endif
+
   std::unique_ptr< ContextBase >
-  make_context( const Config &cfg )
-  {
-    using fun_type = std::function<std::unique_ptr<ContextBase>()>;
-    static std::unordered_map<std::string, fun_type> backends = {
-        {"stdfile", [&]() -> std::unique_ptr<ContextBase> {
-           return std::make_unique<StdFileContext<StdFileBackend> >(cfg);
-         }}};
+  make_context( const std::string &config, int pid ){
+    return make_context(Config{ config }, pid);
+  }
   
-    auto pos = backends.find(cfg["backend"].as<std::string>());
-    if (pos == backends.end()) return {};
-  
-    return pos->second();
+  std::unique_ptr< ContextBase >
+  make_context( Config config, int pid ){
+    return std::make_unique<UncoordinatedContext>(config, pid);
   }
 
 #ifdef KR_ENABLE_MPI_CONTEXT
   std::unique_ptr< ContextBase >
-  make_context( MPI_Comm comm, const std::string &config )
-  {
-    return make_context( comm, Config{ config } );
+  make_context( MPI_Comm comm, const std::string &config ){
+    return make_context(comm, Config{ config });
   }
-
   std::unique_ptr< ContextBase >
-  make_context( MPI_Comm comm, const Config &cfg )
-  {
-    using fun_type = std::function<std::unique_ptr<ContextBase>()>;
-    static std::unordered_map<std::string, fun_type> backends = {
-#ifdef KR_ENABLE_VELOC_BACKEND
-        {"veloc", [&]() -> std::unique_ptr<ContextBase> {
-          return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
-        }},
-        {"veloc-noop", [&]() -> std::unique_ptr<ContextBase> {
-          return std::make_unique<MPIContext<VeloCRegisterOnlyBackend> >(comm, cfg);
-        }}
-#endif
-      };
-
-    auto pos = backends.find(cfg["backend"].as<std::string>());
-    if (pos == backends.end()) return {};
-
-    return pos->second();
+  make_context( MPI_Comm comm, Config config ){
+    return std::make_unique<MPIContext>(comm, config);
   }
 #endif
 }

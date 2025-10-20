@@ -63,7 +63,30 @@
 #include <sstream>
 #endif
 
-#define KR_CHECKPOINT(x) KokkosResilience::RegistrationInfo(x, std::string(#x))
+#define KR_CHECKPOINT(x) KokkosResilience::Impl::RegistrationImpl::Info(x, std::string(#x))
+
+#ifdef KR_ENABLE_TRACING
+# define KR_TRACE_OBJ(name) _ ## name ## _trace
+
+# define KR_TRACE_ITERATION(ctx, label, iter) \
+  auto KR_TRACE_OBJ(iter) = \
+    Util::begin_trace<Itil::IterTimingTrace<std::string>>( \
+      ctx, "checkpoint_" + label, iter \
+    )
+
+# define KR_TRACE(name, ctx) \
+    auto KR_TRACE_OBJ(name) = \
+      Util::begin_trace<Util::TimingTrace<std::string>>( ctx, #name )
+# define KR_TRACE_END(name) KR_TRACE_OBJ(name) .end()
+# define KR_TRACE_END_FENCE(name) \
+    do { Kokkos::fence(); KR_TRACE_END(name); } while (0)
+
+#else
+# define KR_TRACE_ITERATION(label, ctx, iter)
+# define KR_TRACE(name, ctx)
+# define KR_TRACE_END(name)
+# define KR_TRACE_END_FENCE(name)
+#endif
 
 namespace KokkosResilience
 {
@@ -71,21 +94,19 @@ namespace KokkosResilience
   template< typename Context >
   int latest_version( Context &ctx, const std::string &label )
   {
-
     return ctx.latest_version( label );
   }
 
   namespace Detail
   {
-    template<typename RegionFunc, typename... T>
+    template<typename RegionFunc>
     void autodetect_members(
-      ContextBase& ctx, RegionFunc&& fun,
-      std::unordered_set<Registration>& members
+      ContextBase& ctx, const std::string& label, RegionFunc&& fun
     ) {
         //Enable ViewHolder copy constructor hooks to register the views
         KokkosResilience::DynamicViewHooks::copy_constructor_set.set_callback(
-          [&ctx, &members](const KokkosResilience::ViewHolder &view) {
-            members.insert(Registration(ctx, view));
+          [&ctx, &label](const KokkosResilience::ViewHolder &view) {
+            ctx.register_to(label, Registration(ctx, view));
           }
         );
           
@@ -97,6 +118,19 @@ namespace KokkosResilience
         KokkosResilience::DynamicViewHooks::copy_constructor_set.reset();
     }
 
+    inline void register_explicit_members(
+      ContextBase& ctx, const std::string& label
+    ){ }
+
+    template<typename T, typename... U>
+    void register_explicit_members(
+      ContextBase& ctx, const std::string& label, RegistrationInfo<T> info,
+      RegistrationInfo<U>... others
+    ) {
+      ctx.register_to(label, Registration(ctx, info));
+      register_explicit_members(ctx, label, others...);
+    }
+
     template< typename RegionFunc, typename FilterFunc, typename... T>
     void checkpoint_impl(
       ContextBase &ctx, const std::string &label, int iteration,
@@ -104,76 +138,48 @@ namespace KokkosResilience
       RegistrationInfo<T>... explicit_members
     ) {
       // Trace if enabled
-  #ifdef KR_ENABLE_TRACING
-      std::ostringstream oss;
-      oss << "checkpoint_" << label;
-      auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( ctx, oss.str(), iteration );
-
-      auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "overhead" );
-  #endif
-
-      if ( filter( iteration ) )
-      {
+      KR_TRACE_ITERATION(ctx, label, iteration);
+      KR_TRACE(overhead, ctx);
+     
+      bool is_checkpoint_iter = filter(iteration);
+      if(is_checkpoint_iter){
         //Gather up explicitly requested members and any autodetectable.
-        std::unordered_set<Registration> members = { Registration(ctx, explicit_members)... };
-        autodetect_members(ctx, fun, members);
+        KR_TRACE(registration, ctx);
+          register_explicit_members(ctx, label, explicit_members...);
+          autodetect_members(ctx, label, std::forward<RegionFunc>(fun));
+        KR_TRACE_END(registration);
 
-  #ifdef KR_ENABLE_TRACING
-        auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
-  #endif
-        // Register any views that haven't already been registered
-        ctx.register_hashes( members );
+        KR_TRACE(check_restart, ctx);
+          bool restart_available = ctx.restart_available( label, iteration );
+        KR_TRACE_END(check_restart);
 
-  #ifdef KR_ENABLE_TRACING
-        reg_hashes.end();
-        auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
-  #endif
+        if ( restart_available ){
+          KR_TRACE_END(overhead);
 
-        bool restart_available = ctx.restart_available( label, iteration );
-  #ifdef KR_ENABLE_TRACING
-        check_restart.end();
-        overhead_trace.end();
-  #endif
-
-        if ( restart_available )
-        {
           // Load views with data
-  #ifdef KR_ENABLE_TRACING
-          auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
-  #endif
-          ctx.restart( label, iteration, members );
-        } else
-        {
-          // Execute functor and checkpoint
-  #ifdef KR_ENABLE_TRACING
-          auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
-  #endif
-          fun();
-  #ifdef KR_ENABLE_TRACING
-          Kokkos::fence();  // Get accurate measurements for function_trace end
-          function_trace.end();
-  #endif
-
-          {
-  #ifdef KR_ENABLE_TRACING
-            auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
-  #endif
-            Kokkos::fence();
-            auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-            std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
-            ctx.checkpoint( label, iteration, members );
-          }
+          KR_TRACE(restart, ctx);
+            ctx.restart( label, iteration );
+          KR_TRACE_END(restart);
+          return;
         }
-      } else {  // Iteration is filtered, just execute
-  #ifdef KR_ENABLE_TRACING
-        overhead_trace.end();
-        auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
-  #endif
-        fun();
-  #ifdef KR_ENABLE_TRACING
-        Kokkos::fence();  // Get accurate measurements for function_trace end
-        function_trace.end();
-  #endif
+      }
+      KR_TRACE_END(overhead);
+
+      // Execute functor and checkpoint
+      KR_TRACE(function, ctx);
+        ctx.run_in_region(label, iteration, std::forward<RegionFunc>(fun));
+      KR_TRACE_END_FENCE(function);
+
+      if(is_checkpoint_iter){
+        KR_TRACE(checkpoint, ctx);
+          Kokkos::fence();
+          auto ts = std::chrono::system_clock::to_time_t(
+            std::chrono::system_clock::now()
+          );
+          std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" )
+            << "] initiating checkpoint\n";
+          ctx.checkpoint( label, iteration );
+        KR_TRACE_END(checkpoint);
       }
     }
   }
@@ -184,16 +190,16 @@ namespace KokkosResilience
     bool
   >;
 
-  template< typename Context, typename F, typename FilterFunc, typename... T, std::enable_if_t<is_filter_v<FilterFunc>>* = nullptr>
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, RegistrationInfo<T>... explicit_members)
+  template<typename F, typename FilterFunc, typename... T, std::enable_if_t<is_filter_v<FilterFunc>>* = nullptr>
+  void checkpoint( std::unique_ptr<ContextBase>& ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, RegistrationInfo<T>... explicit_members)
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), explicit_members...);
+    Detail::checkpoint_impl( *ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), explicit_members...);
   }
 
-  template< typename Context, typename F, typename... T>
-  void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, RegistrationInfo<T>... explicit_members)
+  template<typename F, typename... T>
+  void checkpoint( std::unique_ptr<ContextBase>& ctx, const std::string &label, int iteration, F &&fun, RegistrationInfo<T>... explicit_members)
   {
-    Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), ctx.default_filter(), explicit_members... );
+    Detail::checkpoint_impl( *ctx, label, iteration, std::forward< F >( fun ), ctx->default_filter(), explicit_members... );
   }
 
 }

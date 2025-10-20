@@ -46,11 +46,10 @@
 
 namespace KokkosResilience {
 
-template <typename Backend>
 class MPIContext : public ContextBase {
 public:
  explicit MPIContext(MPI_Comm comm, const Config &cfg)
-     : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
+     : ContextBase(cfg, comm_rank(comm)), m_comm(comm) {}
 
  MPIContext(const MPIContext &)     = delete;
  MPIContext(MPIContext &&) noexcept = default;
@@ -86,39 +85,44 @@ public:
 
   MPI_Comm comm() const noexcept { return m_comm; }
 
-  Backend &backend() { return m_backend; }
-
-  void register_hashes(std::unordered_set<Registration> &members) override {
-    m_backend.register_hashes(members);
+  bool restart_available(Region region, int version) override {
+    int avail = m_backend->restart_available(region.label, version);
+    MPI_Allreduce(MPI_IN_PLACE, &avail, 1, MPI_INT, MPI_LAND, m_comm);
+    return avail;
   }
 
-  bool restart_available(const std::string &label, int version) override {
-    return m_backend.restart_available(label, version);
+  bool checkpoint(
+    Region region, int version
+  ) override {
+    int success = m_backend->checkpoint(region.label, version, region.members);
+    MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_LAND, m_comm);
+    return success;
   }
 
-  void restart(const std::string &label, int version,
-               std::unordered_set<Registration> &members) override {
-    m_backend.restart(label, version, members);
+  int latest_version(Region region) override {
+    int latest = m_backend->latest_version(region.label);
+    MPI_Allreduce(MPI_IN_PLACE, &latest, 1, MPI_INT, MPI_MIN, m_comm);
+    return latest;
   }
 
-  void checkpoint(const std::string &label, int version,
-                  std::unordered_set<Registration> &members) override {
-    m_backend.checkpoint(label, version, members);
+  void reset_impl() override {
+    MPI_Comm_rank(m_comm, &m_pid);
+    m_backend->reset();
   }
 
-  int latest_version(const std::string &label) const noexcept override {
-    return m_backend.latest_version(label);
+  void reset_impl(MPI_Comm comm) override {
+    m_comm = comm;
+    reset_impl();
   }
-
-  void register_alias( const std::string &original, const std::string &alias ) override {
-    return m_backend.register_alias( original, alias );
-  }
-
-  void reset() override { m_backend.reset(); }
 
 private:
   MPI_Comm m_comm;
-  Backend m_backend;
+
+  int comm_rank(MPI_Comm& comm){
+    int ret;
+    MPI_Comm_rank(comm, &ret);
+    return ret;
+  }
 };
 
 } // namespace KokkosResilience
