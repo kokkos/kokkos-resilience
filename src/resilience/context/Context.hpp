@@ -182,9 +182,6 @@ namespace KokkosResilience
     Util::detail::TraceStack  m_trace;
 #endif
   protected:
-    // Track usage of member (by hash)
-    std::unordered_map<size_t, int> use_counts;
-
     std::unordered_map<std::string, Members> regions;
     //Get or construct and get a region
     Region get_region(const std::string& label);

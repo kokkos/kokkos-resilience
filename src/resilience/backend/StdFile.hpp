@@ -53,10 +53,6 @@ namespace KokkosResilience::Impl::BackendImpl {
 
     StdFile(ContextBase& ctx);
 
-    //No state to manage
-    void register_member(Registration) override {};
-    void deregister_member(Registration) override {};
-
     bool checkpoint(
       const std::string& label, int version, const Members& members
     ) override;

@@ -60,10 +60,6 @@ namespace KokkosResilience::Impl::BackendImpl {
 
     virtual ~Base() = default;
 
-    //All members should be registered before being checkpointed or restarted
-    virtual void register_member(Registration member) {};
-    virtual void deregister_member(Registration member) {};
-
     //as_global to checkpoint indepently of process (PID)
     virtual bool checkpoint(
       const std::string& label, int version, const Members& members

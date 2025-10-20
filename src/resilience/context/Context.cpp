@@ -86,27 +86,16 @@ namespace KokkosResilience
   }
 
   void ContextBase::register_member(Region region, Registration& member){
-    int& use_count = use_counts[member.hash()];
-    if(region.members.insert(member).second) use_count++;
-    if(use_count == 1) m_backend->register_member(member);
+    region.members.insert(member);
   }
 
   void ContextBase::deregister_member(Region region, Registration& member){
-    int& use_count = use_counts[member.hash()];
-    if(region.members.erase(member)){
-      use_count--;
-      assert(use_count >= 0);
-    }
-    if(use_count == 0){
-      m_backend->deregister_member(member);
-      use_counts.erase(member.hash());
-    }
+    region.members.erase(member);
   }
 
   void ContextBase::reset() {
     this->reset_impl();
     regions = {};
-    use_counts = {};
     active_region.reset();
     active_filter.reset();
   }
