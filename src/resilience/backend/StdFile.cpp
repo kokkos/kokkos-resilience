@@ -51,7 +51,7 @@ namespace KokkosResilience::Impl::BackendImpl {
 StdFile::StdFile(ContextBase& ctx)
   : Base(ctx) {
   
-  auto config = m_context.config()["backends"]["stdfile"];
+  Config config = m_context.config()["backends"]["stdfile"];
   auto config_dir = config.get("directory");
   auto config_prefix = config.get("filename_prefix");
 
@@ -62,10 +62,10 @@ StdFile::StdFile(ContextBase& ctx)
 
     std::error_code err;
     create_directories(checkpoint_dir, err);
-    if(err) throw ConfigValueError("backends:stdfile:directory invalid " + err.message());
+    if(err) throw ConfigError("backends:stdfile:directory invalid " + err.message());
 
     if(status(checkpoint_dir).type() != file_type::directory){
-      throw ConfigValueError("backends:stdfile:directory not actually a directory");
+      throw ConfigError("backends:stdfile:directory not actually a directory");
     }
   }
 
@@ -74,12 +74,9 @@ StdFile::StdFile(ContextBase& ctx)
   }
 }
 
-
-
 bool StdFile::checkpoint(
   const std::string& label, int version, const Members& members
 ) {
-std::cerr << "Checkpointing " << members.size() << " members to " << label << std::endl;
   auto write_trace =
     Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "write");
 
@@ -181,7 +178,6 @@ bool StdFile::write_to_file(
         );
         success = false;
       }
-std::cerr << "Writing member " << member->name << " (" << member.hash() << ") to offset " << member_offsets[index] << std::endl;
       index++;
     }
 
@@ -232,8 +228,6 @@ read_header(std::istream& file, const std::unordered_set<Registration>& registra
     members[idx].start = start;
     if(idx > 0) members[idx-1].stop = start;
     
-std::cerr << "Reading member header (" << hash << ") has offset " << start << std::endl;
-
     hash_to_member[hash] = idx;
 
     //Fix estimate after we pull the first member info.
@@ -273,13 +267,11 @@ bool StdFile::read_from_file(path filename, const Members& members) noexcept {
     auto file_members = read_header(file, members, filename);
   
     for(auto& member : file_members){
-std::cerr << "Member header at " << member.start << "-" << member.stop << " has registration ptr " << member.registration << std::endl;
       if(member.registration == nullptr) continue;
 
       file.seekg(member.start);
       
       const Registration& reg = *(member.registration);
-std::cerr << "Reading member " << reg->name << " (" << reg.hash() << ") at offset " << member.start << std::endl;
       if(!reg->deserializer()(file)) fprintf(stderr,
         "Warning: In restart from file %s, member %s deserialization failed!\n",
         filename.string().c_str(), reg->name.c_str()
