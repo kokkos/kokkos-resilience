@@ -102,6 +102,11 @@ namespace KokkosResilience
     virtual bool checkpoint(Region region, int version);
     virtual void reset_impl();
 
+#ifdef KR_ENABLE_MPI_CONTEXT
+    void reset(MPI_Comm comm);
+    virtual void reset_impl(MPI_Comm comm);
+#endif
+
     virtual void enter_region(Region region, int version) { };
     virtual void  exit_region(Region region, int version) { };
    

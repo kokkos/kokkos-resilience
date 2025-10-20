@@ -111,6 +111,11 @@ public:
     m_backend->reset();
   }
 
+  void reset_impl(MPI_Comm comm) override {
+    m_comm = comm;
+    reset_impl();
+  }
+
 private:
   MPI_Comm m_comm;
 

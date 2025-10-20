@@ -130,6 +130,18 @@ namespace KokkosResilience
     m_backend->reset();
   }
 
+#ifdef KR_ENABLE_MPI_CONTEXT
+  void ContextBase::reset(MPI_Comm comm){
+    this->reset_impl(comm);
+    regions = {};
+    active_region.reset();
+    active_filter.reset();
+  }
+  void ContextBase::reset_impl(MPI_Comm comm){
+    m_backend->reset();
+  }
+#endif
+
   std::unique_ptr< ContextBase >
   make_context( const std::string &config, int pid ){
     return make_context(Config{ config }, pid);
