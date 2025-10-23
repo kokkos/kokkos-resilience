@@ -69,3 +69,9 @@ RUN . /opt/spack/share/spack/setup-env.sh \
   && cmake --build Fenix-build/ --target install \
   && cd /opt/ \
   && rm -rf /opt/build/
+
+# Create a non-root user to avoid running MPI as root
+RUN groupadd --gid 1234 kruser \
+  && useradd --uid 1234 --gid kruser -m kruser
+
+USER kruser

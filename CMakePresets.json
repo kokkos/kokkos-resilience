@@ -62,7 +62,7 @@
     {
       "name": "ci",
       "inherits": ["kr_auto_checkpoint_veloc", "kr_auto_checkpoint_fenix", "kr_release"],
-      "binaryDir": "/opt/build/kokkos-resilience",
+      "binaryDir": "/home/kruser/kokkos-resilience-build",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "/usr/bin/gcc-11",
         "CMAKE_CXX_COMPILER": "/usr/bin/g++-11",
