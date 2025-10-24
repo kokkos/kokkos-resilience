@@ -21,6 +21,16 @@
       }
     },
     {
+      "name": "kr_auto_checkpoint_fenix",
+      "hidden": true,
+      "cacheVariables": {
+        "KR_ENABLE_FENIX_BACKEND": {
+          "type": "BOOL",
+          "value": "ON"
+        }
+      }
+    },
+    {
       "name": "kr_debug",
       "hidden": true,
       "cacheVariables": {
@@ -51,8 +61,8 @@
     },
     {
       "name": "ci",
-      "inherits": ["kr_auto_checkpoint_veloc", "kr_release"],
-      "binaryDir": "/opt/build/kokkos-resilience",
+      "inherits": ["kr_auto_checkpoint_veloc", "kr_auto_checkpoint_fenix", "kr_release"],
+      "binaryDir": "/home/kruser/kokkos-resilience-build",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "/usr/bin/gcc-11",
         "CMAKE_CXX_COMPILER": "/usr/bin/g++-11",
@@ -66,12 +76,14 @@
         "er_ROOT": "/opt/view/gcc-11.4.0/er/0.5.0/",
         "axl_ROOT": "/opt/view/gcc-11.4.0/axl/0.9.0/",
         "veloc_ROOT": "/opt/view/gcc-11.4.0/veloc/1.7/",
+        "fenix_ROOT": "/home/kruser/fenix",
         "KR_ENABLE_TESTS": "ON",
         "KR_ENABLE_EXAMPLES": "ON",
         "KR_ALL_WARNINGS": "ON",
         "KR_WARNINGS_AS_ERRORS": "ON",
         "KR_ENABLE_EXEC_SPACES": "ON",
-        "KR_ENABLE_OPENMP_EXEC_SPACE": "ON"
+        "KR_ENABLE_OPENMP_EXEC_SPACE": "ON",
+        "KR_ENABLE_CI_BUILD": "ON"
       }
     }
   ],

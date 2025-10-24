@@ -58,3 +58,8 @@ RUN . /opt/spack/share/spack/setup-env.sh \
   && spack install --show-log-on-error --fail-fast \
   && spack gc -y
 
+# Create a non-root user to avoid running MPI as root
+RUN groupadd --gid 1234 kruser \
+  && useradd --uid 1234 --gid kruser -m kruser
+
+USER kruser

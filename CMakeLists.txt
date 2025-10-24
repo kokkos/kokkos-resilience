@@ -32,7 +32,6 @@ macro(KR_OPTION OPT DESC DEFAULT)
   KR_EXPOSE_OPTION(${OPT})
 endmacro()
 
-
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
 option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
 
@@ -70,6 +69,7 @@ endforeach()
 kr_option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
 option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
+option(KR_ENABLE_CI_BUILD "Enable flags for a CI build" OFF)
 
 #Automatic checkpointing options
 kr_option(KR_ENABLE_AUTOMATIC_CHECKPOINTING "Compile automatic checkpointing contexts and backends" ON)
@@ -78,6 +78,7 @@ kr_option(KR_ENABLE_MPI_CONTEXT "Compile MPI checkpointing context" ON KR_ENABLE
 #Backends
 kr_option(KR_ENABLE_VELOC_BACKEND "Compile VeloC checkpointing backend" ON KR_ENABLE_MPI_CONTEXT)
 kr_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF KR_ENABLE_VELOC)
+kr_option(KR_ENABLE_FENIX_BACKEND "Compile Fenix checkpointing backend" ON KR_ENABLE_MPI_CONTEXT)
 
 #Data space options
 kr_option(KR_ENABLE_DATA_SPACES "Enable Kokkos memory spaces for manual view checkpointing" OFF)
@@ -110,6 +111,12 @@ kr_option(KR_KERNEL_FUSING "enable kernel fusing" OFF "KR_ENABLE_OPENMP_EXEC_SPA
 if (KR_ENABLE_VELOC_BACKEND)
   find_package(veloc REQUIRED)
   target_link_libraries(resilience PUBLIC veloc::client)
+endif()
+
+# Fenix backend
+if (KR_ENABLE_FENIX_BACKEND)
+  find_package(fenix REQUIRED)
+  target_link_libraries(resilience PRIVATE fenix)
 endif()
 
 if (KR_ENABLE_HDF5_DATA_SPACE)
