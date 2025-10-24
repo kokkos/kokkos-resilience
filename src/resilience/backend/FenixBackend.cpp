@@ -80,7 +80,7 @@ namespace KokkosResilience
     };
     
   public:
-    // TODO Enable user configuration options
+    // TODO Enable user configuration options, especially in regards to data group policy
     FenixClient( MPI_Comm comm ) : m_comm( comm )
     {
       create_data_group();
@@ -112,11 +112,11 @@ namespace KokkosResilience
       auto item = m_registry.find( hash );
       if ( item != m_registry.end() && item->second.m_registered )
       {
-        // DEBUG std::cout << "unprotecting member " << item->second.m_id << " in group " << m_group_id << '\n';
         Fenix_Data_member_delete( m_group_id, item->second.m_id );
         item->second.m_protect = false;
         item->second.m_registered = false;
       }
+      m_registry.erase( item );
     }
 
     void checkpoint( const std::unordered_set< int > &hashes, int &version )
@@ -142,7 +142,6 @@ namespace KokkosResilience
             std::memcpy(item->second.m_buffer.data(), temp_buffer.data(), item->second.m_size);
             temp_buffer.clear();
 
-            // DEBUG std::cout << "protecting member " << item->second.m_id << " in group " << m_group_id << '\n';
             int status = Fenix_Data_member_create( m_group_id, item->second.m_id, item->second.m_buffer.data(),
                                                    item->second.m_size, MPI_CHAR );
 
@@ -157,7 +156,6 @@ namespace KokkosResilience
             item->second.m_registered = true;
           }
 
-          // DEBUG std::cout << "storing member " << item->second.m_id << " in group " << m_group_id << '\n';
           int status = Fenix_Data_member_store( m_group_id, item->second.m_id, FENIX_DATA_SUBSET_FULL );
 
           if (status != FENIX_SUCCESS)
@@ -173,7 +171,6 @@ namespace KokkosResilience
       }
 
       int status = Fenix_Data_commit_barrier( m_group_id, &version );
-      // DEBUG std::cout << "committed version " << version << " of group " << m_group_id << '\n';
 
       if (status != FENIX_SUCCESS)
       {
@@ -194,8 +191,6 @@ namespace KokkosResilience
           std::string temp_buffer;
           temp_buffer.resize(item->second.m_size);
 
-          // DEBUG std::cout << "restoring member " << item->second.m_id << " from version " << version << " in group "
-          // DEBUG           << m_group_id << '\n';
           int status = Fenix_Data_member_restore( m_group_id, item->second.m_id, temp_buffer.data(),
                                                   item->second.m_size, version, NULL );
           
@@ -242,12 +237,10 @@ namespace KokkosResilience
       int comm_size;
       MPI_Comm_size(m_comm, &comm_size);
 
-      // TODO: expose policy as user configuration option
       int policy_value[3] = {  1, std::max(1, comm_size / 2), 0 };
       int flag;
 
       m_group_id = g_current_group_id++;
-      // DEBUG std::cout << "creating data group " << m_group_id << '\n';
       int status = Fenix_Data_group_create( m_group_id, m_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
                                             reinterpret_cast<void *>(policy_value), &flag );
       if ( status != FENIX_SUCCESS ) {
@@ -260,7 +253,6 @@ namespace KokkosResilience
 
     void delete_data_group()
     {
-      // DEBUG std::cout << "deleting data group " << m_group_id << '\n';
       Fenix_Data_group_delete( m_group_id );
     }
 
@@ -312,7 +304,7 @@ namespace KokkosResilience
       std::inserter( ids, ids.begin() ),
       [this]( const Registration &member ) -> int
       {
-        auto iter = m_alias_map.find( member-> name );
+        auto iter = m_alias_map.find( member->name );
         if ( iter == m_alias_map.end() )
           return static_cast<int>( member->hash() );
         else
@@ -331,7 +323,7 @@ namespace KokkosResilience
         continue;
 
       auto hash = static_cast<int>( member->hash() );
-      // m_client->unprotect_member( hash ); // we don't need this?
+      m_client->unprotect_member( hash );
       m_client->protect_member( hash, member->serializer(), member->deserializer() );
     }
   }
@@ -346,7 +338,6 @@ namespace KokkosResilience
   void
   FenixMemoryBackend::register_alias( const std::string &original, const std::string &alias )
   {
-    // TODO double check santization is applied consistently
     m_alias_map[sanitized_label(alias)] = static_cast< int >( label_hash( sanitized_label( original ) ) );
   }
 
