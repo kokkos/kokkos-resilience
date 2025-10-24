@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: ci/ubuntu20.04-gcc11-x64.dockerfile
     volumes:
-      - .:/home/kruser/kokkos-resilience
+      - .:/home/kruser/kokkos-resilience-src
     user: kruser
-    working_dir: /home/kruser/kokkos-resilience
-    command: /bin/bash "/home/kruser/kokkos-resilience/ci/build-and-test.sh"
+    working_dir: /home/kruser
+    command: /bin/bash "/home/kruser/kokkos-resilience-src/ci/build-and-test.sh"

@@ -76,7 +76,7 @@
         "er_ROOT": "/opt/view/gcc-11.4.0/er/0.5.0/",
         "axl_ROOT": "/opt/view/gcc-11.4.0/axl/0.9.0/",
         "veloc_ROOT": "/opt/view/gcc-11.4.0/veloc/1.7/",
-        "fenix_ROOT": "/opt/fenix",
+        "fenix_ROOT": "/home/kruser/fenix",
         "KR_ENABLE_TESTS": "ON",
         "KR_ENABLE_EXAMPLES": "ON",
         "KR_ALL_WARNINGS": "ON",
