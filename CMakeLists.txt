@@ -32,7 +32,6 @@ macro(KR_OPTION OPT DESC DEFAULT)
   KR_EXPOSE_OPTION(${OPT})
 endmacro()
 
-
 option(KR_ALL_WARNINGS "Enable all warnings" ON)
 option(KR_WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
 
@@ -70,6 +69,7 @@ endforeach()
 kr_option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
 option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
+option(KR_ENABLE_CI_BUILD "Enable flags for a CI build" OFF)
 
 #Automatic checkpointing options
 kr_option(KR_ENABLE_AUTOMATIC_CHECKPOINTING "Compile automatic checkpointing contexts and backends" ON)

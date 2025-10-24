@@ -82,7 +82,8 @@
         "KR_ALL_WARNINGS": "ON",
         "KR_WARNINGS_AS_ERRORS": "ON",
         "KR_ENABLE_EXEC_SPACES": "ON",
-        "KR_ENABLE_OPENMP_EXEC_SPACE": "ON"
+        "KR_ENABLE_OPENMP_EXEC_SPACE": "ON",
+        "KR_ENABLE_CI_BUILD": "ON"
       }
     }
   ],

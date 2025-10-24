@@ -71,6 +71,12 @@ configure_file(data/veloc_test.cfg.in data/veloc_test.cfg @ONLY)
 # fenix tests
 
 if (KR_ENABLE_FENIX_BACKEND)
+  if (KR_ENABLE_CI_BUILD)
+    set(MPIEXEC_CI_EXTRA_ARGS "--map-by" ":OVERSUBSCRIBE")
+  else ()
+    set(MPIEXEC_CI_EXTRA_ARGS "")
+  endif ()
+
   add_executable(resilience_fenix_tests
                  TestFenixMemoryBackend.cpp
                  )
@@ -94,30 +100,30 @@ if (KR_ENABLE_FENIX_BACKEND)
   if(KR_SERIAL_DEVICE_ENABLED)
     add_test(
       NAME "TestFenixMemoryBackend.Serial.np1"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 1 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 1 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
     add_test(
       NAME "TestFenixMemoryBackend.Serial.np2"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
     add_test(
       NAME "TestFenixMemoryBackend.Serial.np3.prockill"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
     add_test(
       NAME "TestFenixMemoryBackend.Serial.np4.prockill"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.Serial")
   endif()
 
   if(KR_OPENMP_DEVICE_ENABLED)
     add_test(
       NAME "TestFenixMemoryBackend.OpenMP.np1"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 1 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 1 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
     add_test(
       NAME "TestFenixMemoryBackend.OpenMP.np2"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 2 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
     add_test(
       NAME "TestFenixMemoryBackend.OpenMP.np3.prockill"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 3 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
     add_test(
       NAME "TestFenixMemoryBackend.OpenMP.np4.prockill"
-      COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
+      COMMAND ${MPIEXEC_EXECUTABLE} -np 4 --with-ft mpi ${MPIEXEC_CI_EXTRA_ARGS} $<TARGET_FILE:resilience_fenix_tests> --gtest_filter="TestFenixMemoryBackend.OpenMP")
   endif()
 endif()
