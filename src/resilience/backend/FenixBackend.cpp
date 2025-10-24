@@ -80,7 +80,7 @@ namespace KokkosResilience
     };
     
   public:
-    // TODO Enable user configuration options, especially in regards to data group policy
+    // TODO Enable user configuration options, especially in regards to data group policy and checkpoint depth
     FenixClient( MPI_Comm comm ) : m_comm( comm )
     {
       create_data_group();
@@ -119,7 +119,7 @@ namespace KokkosResilience
       m_registry.erase( item );
     }
 
-    void checkpoint( const std::unordered_set< int > &hashes, int &version )
+    void checkpoint( const std::unordered_set< int > &hashes, int version )
     {
       for ( auto &&hash : hashes )
       {
@@ -170,7 +170,8 @@ namespace KokkosResilience
         }
       }
 
-      int status = Fenix_Data_commit_barrier( m_group_id, &version );
+      int timestamp;
+      int status = Fenix_Data_commit_barrier( m_group_id, &timestamp );
 
       if (status != FENIX_SUCCESS)
       {
@@ -179,10 +180,21 @@ namespace KokkosResilience
             << ")";
         FENIX_THROW( msg.str() );
       }
+
+      m_version_to_timestamp[version] = timestamp;
+      m_timestamp_to_version[timestamp] = version;
     }
 
     void restart( const std::unordered_set< int > &hashes, int version )
     {
+      const auto iter = m_version_to_timestamp.find( version );
+      if (iter == m_version_to_timestamp.end() )
+      {
+        FENIX_THROW( "error: could not find request version of checkpoint" );
+      }
+
+      const auto timestamp = iter->second;
+
       for ( auto &&hash : hashes )
       {
         auto item = m_registry.find( hash );
@@ -192,7 +204,7 @@ namespace KokkosResilience
           temp_buffer.resize(item->second.m_size);
 
           int status = Fenix_Data_member_restore( m_group_id, item->second.m_id, temp_buffer.data(),
-                                                  item->second.m_size, version, NULL );
+                                                  item->second.m_size, timestamp, NULL );
           
           if ( status != FENIX_SUCCESS )
           {
@@ -210,8 +222,8 @@ namespace KokkosResilience
 
     int latest_version( const std::string &label )
     {
-      int test;
-      int status = Fenix_Data_group_get_snapshot_at_position( m_group_id, 0, &test );
+      int timestamp;
+      int status = Fenix_Data_group_get_snapshot_at_position( m_group_id, 0, &timestamp );
 
       if ( status != FENIX_SUCCESS )
       {
@@ -221,7 +233,7 @@ namespace KokkosResilience
         FENIX_THROW( msg.str() );
       }
 
-      return test;
+      return m_timestamp_to_version[timestamp];
     }
 
     void reset()
@@ -237,12 +249,15 @@ namespace KokkosResilience
       int comm_size;
       MPI_Comm_size(m_comm, &comm_size);
 
+      int initial_timestamp = 0;
+      int checkpoint_depth = 0;
       int policy_value[3] = {  1, std::max(1, comm_size / 2), 0 };
       int flag;
 
       m_group_id = g_current_group_id++;
-      int status = Fenix_Data_group_create( m_group_id, m_comm, 0, 0, FENIX_DATA_POLICY_IN_MEMORY_RAID,
-                                            reinterpret_cast<void *>(policy_value), &flag );
+      int status = Fenix_Data_group_create( m_group_id, m_comm, initial_timestamp, checkpoint_depth,
+                                            FENIX_DATA_POLICY_IN_MEMORY_RAID, reinterpret_cast<void *>(policy_value),
+                                            &flag );
       if ( status != FENIX_SUCCESS ) {
         std::ostringstream msg;
         msg << "error: failed to create Fenix data group " << m_group_id << " (return code = " << status
@@ -271,6 +286,8 @@ namespace KokkosResilience
     MPI_Comm m_comm;
     int m_group_id;
     std::unordered_map< int, ProtectedMemoryBlock > m_registry;
+    std::unordered_map< int, int > m_version_to_timestamp; // version -> fenix_timestamp
+    std::unordered_map< int, int > m_timestamp_to_version; // fenix_timestamp -> version
   };
 
   int FenixClient::g_current_group_id = 1000;
