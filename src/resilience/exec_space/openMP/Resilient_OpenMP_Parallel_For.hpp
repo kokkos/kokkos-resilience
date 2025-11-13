@@ -165,7 +165,7 @@ class ParallelFor< FunctorType
       closure1.execute();
       closure2.execute();
 
-#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION
+#if defined KR_ERROR_INJECTION
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
@@ -196,7 +196,7 @@ class ParallelFor< FunctorType
       closure0.execute();
       closure1.execute();
 
-#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION
+#if defined KR_ERROR_INJECTION
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
@@ -216,7 +216,7 @@ class ParallelFor< FunctorType
 
         Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(functor_copy_1 , wrapper_policy );
 
-#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION	
+#if defined KR_ERROR_INJECTION	
         start=std::chrono::steady_clock::now();
         KokkosResilience::inject_error_duplicates();
         stop=std::chrono::steady_clock::now();

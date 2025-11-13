@@ -61,14 +61,14 @@ namespace KokkosResilience{
     // Combines all duplicates
     // Go over the Subscriber map, execute all the CombinerBase elements
     // If any duplicate fails to find a match, breaks
-    for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-      success = combiner.second->execute();
+    for (auto& [ key, combiner ] : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+      success = combiner->execute();
       if(!success) break;
     }
     return success;
   }
  
-#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION  
+#if defined KR_ERROR_INJECTION  
   inline void inject_error_duplicates() {
 
     if (global_error_settings){
@@ -77,8 +77,8 @@ namespace KokkosResilience{
 	      = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInjectionTracking::random_gen);
       // Inject error into duplicates, deterministically or randomly chosen at compile time
       // Go over the Subscriber map, inject into all the CombinerBase elements
-      for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-        combiner.second->inject_error();
+      for (auto& [ key, combiner ] : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
+        combiner->inject_error();
       }
     }
   }

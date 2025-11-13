@@ -390,7 +390,7 @@ TEST(TestResOpenMP, TestMiniMDKernel)
   KokkosResilience::clear_duplicates_cache();
 
   std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively\n. ";
-  std::cout << "This test should have resulted in 50 and 1500, in these integrations, respectively." << std::endl;
+  std::cout << "This test should have resulted in 150 and 1500, in these integrations, respectively." << std::endl;
 
   for ( int i = 0; i < M; i++) {
     ASSERT_EQ(y(i,0), 15*test_const );
@@ -510,12 +510,10 @@ TEST(TestResOpenMP, TestKokkosReduceDouble)
     update += x ( i ) * y ( i );
   }, dot_product);
 
-  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
-
   ASSERT_EQ(dot_product, N);
 
 }
-//#if 0
+
 // gTest runs parallel_reduce with resilient Kokkos to get a dot product.
 TEST(TestResOpenMP, TestResilientReduceDouble)
 {
@@ -534,9 +532,6 @@ TEST(TestResOpenMP, TestResilientReduceDouble)
     update += x ( i ) * y ( i );
   }, dot_product);
 
-  std::cout << "Dot product was " << dot_product << " and should have been " << N << "." << std::endl;
-
   ASSERT_EQ(dot_product, N);
   KokkosResilience::clear_duplicates_cache();
 }
-//#endif

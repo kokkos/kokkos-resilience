@@ -65,21 +65,15 @@ class ParallelReduce< CombinedFunctorReducerType
 
  private:
   using Policy      = Kokkos::RangePolicy<Traits...>;
-  //using FunctorType = typename CombinedFunctorReducerType::functor_type;
   using WorkTag     = typename Policy::work_tag;
-  //TODO: may need to access reducer_view and may need in unieque pointer
-  //using ReducerType = typename CombinedFuctorReducerType::reducor_type; 
 
   const CombinedFunctorReducerType m_functor_reducer;
- //const ReducerType& reducer = m_functor_reducer.get_reducer();
-  //FunctorType m_functor;
   const Policy m_policy;
   using surrogate_policy = Kokkos::RangePolicy < Kokkos::OpenMP, WorkTag >;
 
   ParallelReduce() = delete;
   ParallelReduce & operator = ( const ParallelReduce & ) = delete;
   
-  //primary template
   struct ReduceResultCombinerBase
   {
 
@@ -92,7 +86,6 @@ class ParallelReduce< CombinedFunctorReducerType
 #endif
 
     virtual bool combine_reducers () = 0;
-    virtual void print() = 0;
   };
 
   // Unique pointer to combinerbase struct
@@ -132,7 +125,6 @@ class ParallelReduce< CombinedFunctorReducerType
                                     , const surrogate_policy & pass_policy) override
     {
 
-      //Impl::ParallelReduce< CombinedFunctorReducerType, surrogate_policy, Kokkos::OpenMP > closure2{ functor, policy, reducer };
       Impl::ParallelReduce< decltype(m_functor_reducer), surrogate_policy, Kokkos::OpenMP > closure1{ f, pass_policy, original };
       Impl::ParallelReduce< decltype(m_functor_reducer), surrogate_policy, Kokkos::OpenMP > closure2{ f0, pass_policy, reducer_copy[0] };
       Impl::ParallelReduce< decltype(m_functor_reducer), surrogate_policy, Kokkos::OpenMP > closure3{ f1, pass_policy, reducer_copy[1] };
@@ -164,16 +156,6 @@ class ParallelReduce< CombinedFunctorReducerType
       success = false;
       return success;
     }
-
-    void print() override {
-
-      std::cout << std::endl;
-      std::cout << original() << std::endl;
-      std::cout << reducer_copy[0]() << std::endl;
-      std::cout << reducer_copy[1]() << std::endl;
-      std::cout << std::endl;
-
-    }
   };
 
  public:
@@ -198,7 +180,6 @@ class ParallelReduce< CombinedFunctorReducerType
       auto &handler = KokkosResilience::get_unrecoverable_data_corruption_handler();
       handler(0);
     }
-    m_combiner->print();
 
     success = KokkosResilience::combine_resilient_duplicates();
 

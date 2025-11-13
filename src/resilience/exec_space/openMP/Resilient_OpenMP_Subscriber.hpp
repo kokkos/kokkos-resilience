@@ -136,9 +136,7 @@ struct CombineDuplicatesBase
   virtual ~CombineDuplicatesBase() = default;
   virtual void clear() = 0;
   virtual bool execute() = 0;
-#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION
   virtual void inject_error() = 0;
-#endif
 
 };
 
@@ -159,7 +157,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
   static constexpr size_t rank = View::rank();
 
-#if defined KR_DETERMINISTIC_ERROR_INJECTION || defined KR_GEOMETRIC_ERROR_INJECTION  
+#if defined KR_ERROR_INJECTION  
   void inject_error() override{
     error_injection(original, copy[0], copy[1]);
   }
