@@ -57,14 +57,16 @@ template <template <class, class...> class ViewType, class DataType,
           class... Properties>
 struct unmanaged_view_type_like_impl<ViewType<DataType, Properties...>> {
   using original_type = ViewType<DataType, Properties...>;
+  using original_layout = typename original_type::traits::array_layout;
+  using layout = 
+      std::conditional_t<std::is_same_v<original_layout, Kokkos::LayoutStride>,
+                         Kokkos::LayoutRight, original_layout>;
   using type =
-      ViewType<typename original_type::traits::non_const_data_type,
-               typename original_type::traits::array_layout, Kokkos::HostSpace,
-               Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+      ViewType<typename original_type::traits::non_const_data_type, layout,
+               Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
   using const_type =
-      ViewType<typename original_type::traits::const_data_type,
-               typename original_type::traits::array_layout, Kokkos::HostSpace,
-               Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+      ViewType<typename original_type::traits::const_data_type, layout,
+               Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 };
 
 template <class ViewType>
@@ -233,7 +235,7 @@ class ViewHolderImpl : public ViewHolderImplBase {
       deep_copy_to_buffer(buf);
       stream.write(buf, data_type_size() * size());
     } else {
-      stream.write(data(), data_type_size() * size());
+      stream.write(data(), data_type_size() * span());
     }
   }
   void deserialize(std::istream& stream, char *buf) override{
@@ -241,7 +243,7 @@ class ViewHolderImpl : public ViewHolderImplBase {
       stream.read(buf, data_type_size() * size());
       deep_copy_from_buffer(buf);
     } else {
-      stream.read(data(), data_type_size() * size());
+      stream.read(data(), data_type_size() * span());
     }
   }
 
@@ -279,7 +281,7 @@ class ViewHolderImpl<View, typename std::enable_if<std::is_const<
       deep_copy_to_buffer(buf);
       stream.write(buf, data_type_size() * size());
     } else {
-      stream.write(data(), data_type_size() * size());
+      stream.write(data(), data_type_size() * span());
     }
   }
 
