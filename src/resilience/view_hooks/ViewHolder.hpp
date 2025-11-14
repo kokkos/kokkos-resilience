@@ -231,14 +231,27 @@ class ViewHolderImpl : public ViewHolderImplBase {
   void serialize(std::ostream& stream, char *buf) override {
     if(!span_is_contiguous() || !is_host_space()){
       deep_copy_to_buffer(buf);
-      stream.write(buf, data_type_size() * size());
+
+      auto ss = dynamic_cast<std::stringstream*>(&stream);
+      if(ss && ss->view().data() == buf){
+        // optimize to skip in-place copy
+        stream.seekp(data_type_size() * size());
+      } else {
+        stream.write(buf, data_type_size() * size());
+      }
     } else {
       stream.write(data(), data_type_size() * size());
     }
   }
   void deserialize(std::istream& stream, char *buf) override{
     if(!span_is_contiguous() || !is_host_space()){
-      stream.read(buf, data_type_size() * size());
+      auto ss = dynamic_cast<std::stringstream*>(&stream);
+      if(ss && ss->view().data() == buf){
+        // optimize to skip in-place copy
+        stream.seekg(data_type_size() * size());
+      } else {
+        stream.read(buf, data_type_size() * size());
+      }
       deep_copy_from_buffer(buf);
     } else {
       stream.read(data(), data_type_size() * size());
@@ -277,7 +290,14 @@ class ViewHolderImpl<View, typename std::enable_if<std::is_const<
   void serialize(std::ostream& stream, char *buf = nullptr) override {
     if(!span_is_contiguous() || !is_host_space()){
       deep_copy_to_buffer(buf);
-      stream.write(buf, data_type_size() * size());
+
+      auto ss = dynamic_cast<std::stringstream*>(&stream);
+      if(ss && ss->view().data() == buf){
+        // optimize to skip in-place copy
+        stream.seekp(data_type_size() * size());
+      } else {
+        stream.write(buf, data_type_size() * size());
+      }
     } else {
       stream.write(data(), data_type_size() * size());
     }
