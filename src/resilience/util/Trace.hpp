@@ -41,6 +41,31 @@
 #ifndef INC_RESILIENCE_UTIL_TRACE_HPP
 #define INC_RESILIENCE_UTIL_TRACE_HPP
 
+#ifndef KR_ENABLE_TRACING
+
+# define KR_TRACE_ITERATION(label, ctx, iter)
+# define KR_TRACE(name, ctx)
+# define KR_TRACE_END(name)
+# define KR_TRACE_END_FENCE(name)
+
+#else
+
+# define KR_TRACE_OBJ(name) _ ## name ## _trace
+
+# define KR_TRACE_ITERATION(ctx, label, iter) \
+  auto KR_TRACE_OBJ(iter) = \
+    Util::begin_trace<Itil::IterTimingTrace<std::string>>( \
+      ctx, "checkpoint_" + label, iter \
+    )
+
+# define KR_TRACE(name, ctx) \
+    auto KR_TRACE_OBJ(name) = \
+      Util::begin_trace<Util::TimingTrace<std::string>>( ctx, #name )
+# define KR_TRACE_END(name) KR_TRACE_OBJ(name) .end()
+# define KR_TRACE_END_FENCE(name) \
+    do { Kokkos::fence(); KR_TRACE_END(name); } while (0)
+
+
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -403,4 +428,5 @@ namespace KokkosResilience
   }
 }
 
+#endif  // KR_ENABLE_TRACING
 #endif  // INC_RESILIENCE_UTIL_TRACE_HPP

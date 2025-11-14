@@ -57,11 +57,7 @@
 #include "resilience/registration/Specialized.hpp"
 #include "resilience/context/CheckpointFilter.hpp"
 
-// Tracing support
-#ifdef KR_ENABLE_TRACING
 #include "util/Trace.hpp"
-#include <sstream>
-#endif
 
 #define KR_CHECKPOINT(x) KokkosResilience::RegistrationInfo(x, std::string(#x))
 
@@ -88,7 +84,7 @@ namespace KokkosResilience
             members.insert(Registration(ctx, view));
           }
         );
-          
+
         //Copy the lambda/functor to trigger copy-constructor hooks
         using FuncType = typename std::remove_reference<RegionFunc>::type;
         [[maybe_unused]] FuncType f = fun;
@@ -103,84 +99,54 @@ namespace KokkosResilience
       RegionFunc &&fun, FilterFunc &&filter,
       RegistrationInfo<T>... explicit_members
     ) {
-      // Trace if enabled
-  #ifdef KR_ENABLE_TRACING
-      std::ostringstream oss;
-      oss << "checkpoint_" << label;
-      auto chk_trace = Util::begin_trace< Util::IterTimingTrace< std::string > >( ctx, oss.str(), iteration );
+      KR_TRACE_ITERATION(ctx, label, iteration);
 
-      auto overhead_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "overhead" );
-  #endif
+      KR_TRACE(overhead, ctx);
+      std::optional<std::unordered_set<Registration>> members;
+      bool is_checkpoint_iter = filter(iteration);
+      bool restart_available = false;
+      if (is_checkpoint_iter) {
+        KR_TRACE(registration, ctx);
+          // Weird initialization for case with no explicit members to ensure we
+          // are initializing a set, not an empty optional
+          members.emplace(std::move(
+              std::unordered_set<Registration> { Registration(ctx, explicit_members)... }
+          ));
+          autodetect_members(ctx, fun, *members);
+          ctx.register_hashes(*members);
+        KR_TRACE_END(registration);
 
-      if ( filter( iteration ) )
-      {
-        //Gather up explicitly requested members and any autodetectable.
-        std::unordered_set<Registration> members = { Registration(ctx, explicit_members)... };
-        autodetect_members(ctx, fun, members);
+        KR_TRACE(check_restart, ctx);
+         restart_available = ctx.restart_available( label, iteration );
+        KR_TRACE_END(check_restart);
+      }
+      KR_TRACE_END(overhead);
 
-  #ifdef KR_ENABLE_TRACING
-        auto reg_hashes = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "register" );
-  #endif
-        // Register any views that haven't already been registered
-        ctx.register_hashes( members );
+      if (restart_available) {
+        KR_TRACE(restart, ctx);
+          ctx.restart( label, iteration, *members );
+        KR_TRACE_END(restart);
+        return;
+      }
 
-  #ifdef KR_ENABLE_TRACING
-        reg_hashes.end();
-        auto check_restart = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "check" );
-  #endif
-
-        bool restart_available = ctx.restart_available( label, iteration );
-  #ifdef KR_ENABLE_TRACING
-        check_restart.end();
-        overhead_trace.end();
-  #endif
-
-        if ( restart_available )
-        {
-          // Load views with data
-  #ifdef KR_ENABLE_TRACING
-          auto restart_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "restart" );
-  #endif
-          ctx.restart( label, iteration, members );
-        } else
-        {
-          // Execute functor and checkpoint
-  #ifdef KR_ENABLE_TRACING
-          auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
-  #endif
-          fun();
-  #ifdef KR_ENABLE_TRACING
-          Kokkos::fence();  // Get accurate measurements for function_trace end
-          function_trace.end();
-  #endif
-
-          {
-  #ifdef KR_ENABLE_TRACING
-            auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "checkpoint" );
-  #endif
-            Kokkos::fence();
-            auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-            std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
-            ctx.checkpoint( label, iteration, members );
-          }
-        }
-      } else {  // Iteration is filtered, just execute
-  #ifdef KR_ENABLE_TRACING
-        overhead_trace.end();
-        auto function_trace = Util::begin_trace< Util::TimingTrace< std::string > >( ctx, "function" );
-  #endif
+      KR_TRACE(function, ctx);
         fun();
-  #ifdef KR_ENABLE_TRACING
-        Kokkos::fence();  // Get accurate measurements for function_trace end
-        function_trace.end();
-  #endif
+      KR_TRACE_END_FENCE(function);
+
+      if (is_checkpoint_iter) {
+        KR_TRACE(checkpoint, ctx);
+          Kokkos::fence();
+          auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
+          std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
+          ctx.checkpoint( label, iteration, *members );
+        KR_TRACE_END(checkpoint);
       }
     }
   }
 
   template<typename FilterFunc>
   constexpr bool is_filter_v = std::is_same_v<
-    std::invoke_result<FilterFunc, int>, 
+    std::invoke_result<FilterFunc, int>,
     bool
   >;
 
