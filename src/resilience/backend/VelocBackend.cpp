@@ -59,10 +59,10 @@ namespace KokkosResilience
 {
   namespace
   {
-    void veloc_internal_error_throw( int e, const char *name, const char *file, int line = 0 )
+    void veloc_internal_error_throw( const char *name, const char *file, int line = 0 )
     {
       std::ostringstream out;
-      out << name << " error: VELOC operation failed (" << e << ")";
+      out << name << " error: VELOC operation failed";
       if ( file )
       {
         out << " " << file << ":" << line;
@@ -75,10 +75,11 @@ namespace KokkosResilience
       std::cerr << out.str();
     }
 
-    inline void veloc_internal_safe_call( int e, const char *name, const char *file, int line = 0 )
+    inline bool veloc_internal_safe_call( bool success, const char *name, const char *file, int line = 0 )
     {
-      if ( VELOC_SUCCESS != e )
-        veloc_internal_error_throw( e, name, file, line );
+      if ( ! success )
+        veloc_internal_error_throw( name, file, line );
+      return success;
     }
   }
 
@@ -98,31 +99,21 @@ namespace KokkosResilience
   {
     VELOC_SAFE_CALL(veloc_client->checkpoint_wait());
 
-    VELOC_SAFE_CALL( veloc_client->checkpoint_begin( label, version ) );
+    bool success;
+    success = VELOC_SAFE_CALL(veloc_client->checkpoint_begin(label, version));
+    
+    if(success){
+      std::set<int> ids = protect_members(members);
+      success = VELOC_SAFE_CALL(
+        veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids)
+      );
+      unprotect_members(ids);
+    }
 
-    VELOC_SAFE_CALL( 
-        veloc_client->checkpoint_mem(VELOC_CKPT_SOME, hash_set(members))
-    );
-
-    bool success = true;
-    VELOC_SAFE_CALL( veloc_client->checkpoint_end(success) ); 
-
-    m_latest_version[label] = version;
+    success = VELOC_SAFE_CALL(veloc_client->checkpoint_end(success));
+    if(success) m_latest_version[label] = version;
   }
     
-  std::set<int> VeloCMemoryBackend::hash_set(std::unordered_set<Registration> &members){
-    std::set<int> ids;
-    std::transform(members.begin(), members.end(), std::inserter(ids, ids.begin()), 
-        [this](const Registration& member) -> int {
-          auto iter = m_alias_map.find(member->name);
-          if (iter == m_alias_map.end())
-            return static_cast<int>(member->hash());
-          else 
-            return iter->second;
-        });
-    return ids;
-  }
-
   bool
   VeloCMemoryBackend::restart_available( const std::string &label, int version )
   {
@@ -148,12 +139,18 @@ namespace KokkosResilience
   VeloCMemoryBackend::restart( const std::string &label, int version,
                                std::unordered_set<Registration> &members )
   {
-    VELOC_SAFE_CALL( veloc_client->restart_begin( label, version ));
+    bool success;
+    success = VELOC_SAFE_CALL(veloc_client->restart_begin(label, version));
 
-    VELOC_SAFE_CALL( veloc_client->recover_mem(VELOC_RECOVER_SOME, hash_set(members)) );
+    if(success){
+      std::set<int> ids = protect_members(members);
+      success = VELOC_SAFE_CALL(
+        veloc_client->recover_mem(VELOC_RECOVER_SOME, ids)
+      );
+      unprotect_members(ids);
+    }
 
-    bool status = true;
-    VELOC_SAFE_CALL( veloc_client->restart_end( status ) );
+    VELOC_SAFE_CALL( veloc_client->restart_end( success ) );
   }
 
   void
@@ -166,46 +163,48 @@ namespace KokkosResilience
     m_alias_map.clear();
   }
 
-  void
-  VeloCMemoryBackend::register_hashes( std::unordered_set<Registration> &members )
+  int
+  VeloCMemoryBackend::protect_member( Registration member )
   {
-    for ( auto && member : members ) {
-      if(m_alias_map.count(member->name) != 0)
-        continue;
+    auto alias = m_alias_map.find(member->name);
+    if(alias != m_alias_map.end()){
+      return protect_member(alias->second);
+    }
+    
+    int id = member.hash();
+    bool inserted = veloc_client->mem_protect(
+      id, member->serializer(), member->deserializer()
+    );
+    if(!inserted) fprintf(stderr,
+      "WARNING KokkosResilience:VeloC memory region %d already existed. "
+      "Metadata overwritten by member %s.\n", id, member->name.c_str()
+    );
 
-      // Not a "safe" call, since we don't care if this was 
-      //   or wasn't already registered
-      veloc_client->mem_unprotect(
-            static_cast<int>(member.hash())
-      );
-      VELOC_SAFE_CALL(veloc_client->mem_protect(
-            static_cast<int>(member.hash()),
-            member->serializer(),
-            member->deserializer()
-      ));
+    return id;
+  }
+
+  std::set<int>
+  VeloCMemoryBackend::protect_members(std::unordered_set<Registration>& members)
+  {
+    std::set<int> ids;
+    for ( auto && member : members ) {
+      ids.insert(protect_member(member));
+    }
+    return ids;
+  }
+
+  void
+  VeloCMemoryBackend::unprotect_members(const std::set<int>& ids)
+  {
+    for(auto& id : ids){
+      veloc_client->mem_unprotect(id);
     }
   }
 
   void
-  VeloCMemoryBackend::register_alias( const std::string &original, const std::string &alias )
+  VeloCMemoryBackend::register_alias( Registration& member, const std::string &alias )
   {
-    m_alias_map[sanitized_label(alias)] = static_cast<int>(
-        label_hash(sanitized_label(original))
-    );
-  }
-
-  void
-  VeloCRegisterOnlyBackend::checkpoint( const std::string &label, int version,
-      std::unordered_set<Registration> &members )
-  {
-    // No-op, don't do anything
-  }
-
-  void
-  VeloCRegisterOnlyBackend::restart(const std::string &label, int version,
-      std::unordered_set<Registration> &members)
-  {
-    // No-op, don't do anything
+    m_alias_map.try_emplace(alias, member);
   }
 
   VeloCFileBackend::VeloCFileBackend(ContextBase& context, MPI_Comm mpi_comm) 

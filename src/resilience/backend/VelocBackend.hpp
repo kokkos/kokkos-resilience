@@ -87,41 +87,21 @@ namespace KokkosResilience
 
     void clear_checkpoints();
 
-    void register_hashes( std::unordered_set<Registration> &members );
-
     void reset();
-    void register_alias( const std::string &original, const std::string &alias );
-
-    std::set<int> hash_set(std::unordered_set<Registration> &members);
+    void register_alias( Registration& member, const std::string &alias );
 
   private:
+    int protect_member(Registration member);
+    std::set<int> protect_members(std::unordered_set<Registration>& members);
+    void unprotect_members(const std::set<int>& ids);
+
     ContextBase *m_context;
     MPI_Comm m_mpi_comm;
 
     veloc::client_t *veloc_client;
 
     mutable std::unordered_map< std::string, int > m_latest_version;
-    std::unordered_map< std::string, int > m_alias_map;
-  };
-
-  class VeloCRegisterOnlyBackend : public VeloCMemoryBackend
-  {
-   public:
-
-    using VeloCMemoryBackend::VeloCMemoryBackend;
-    ~VeloCRegisterOnlyBackend() = default;
-
-    VeloCRegisterOnlyBackend( const VeloCRegisterOnlyBackend & ) = delete;
-    VeloCRegisterOnlyBackend( VeloCRegisterOnlyBackend && ) noexcept = default;
-
-    VeloCRegisterOnlyBackend &operator=( const VeloCRegisterOnlyBackend & ) = delete;
-    VeloCRegisterOnlyBackend &operator=( VeloCRegisterOnlyBackend && ) = default;
-
-    void checkpoint( const std::string &label, int version,
-                     std::unordered_set<Registration> &members );
-
-    void restart( const std::string &label, int version,
-                  std::unordered_set<Registration> &members );
+    std::unordered_map< std::string, Registration > m_alias_map;
   };
 
   class VeloCFileBackend
@@ -140,8 +120,6 @@ namespace KokkosResilience
     void restart( const std::string &label, int version,
                   std::unordered_set<Registration> &members );
 
-    void register_hashes( std::unordered_set<Registration> &members ) {} // Do nothing
-    
     veloc::client_t *veloc_client;
     
     ContextBase *m_context;

@@ -73,7 +73,7 @@ namespace KokkosResilience
     explicit ContextBase( Config cfg );
 
     virtual ~ContextBase() = default;
-    virtual void register_hashes(std::unordered_set<Registration> &members) = 0;
+    virtual void register_hashes(std::unordered_set<Registration> &members) {};
     virtual bool restart_available( const std::string &label, int version ) = 0;
     virtual void restart( const std::string &label, int version,
                           std::unordered_set<Registration> &members) = 0;
