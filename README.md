@@ -9,6 +9,16 @@ and checkpointing to scientific applications.
 compilers such as GCC 11.2.0 and LLVM/Clang 11.0.0. It should work on any C++14 supporting compiler, but your mileage
 may vary.
 
+### Spack
+
+*Kokkos Resilience* maintains a spack package for simplified installation of *Kokkos Resilience* and dependencies with just a few commands.
+
+```bash
+spack repo add --name kr https://github.com/kokkos/kokkos-resilience.git
+spack info kokkos-resilience # Optionally, check the Spack variants/versions/dependencies
+spack install kokkos-resilience
+```
+
 ### Dependencies
 
 #### Kokkos
