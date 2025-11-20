@@ -136,8 +136,9 @@ struct CombineDuplicatesBase
   virtual ~CombineDuplicatesBase() = default;
   virtual void clear() = 0;
   virtual bool execute() = 0;
+#ifdef KR_ERROR_INJECTION   
   virtual void inject_error() = 0;
-
+#endif
 };
 
 template< typename View >
