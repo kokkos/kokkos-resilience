@@ -144,7 +144,7 @@ void error_injection(View& original, View& copy_0, View& copy_1)
     }
     if(total_extent != 1){
       next_inject = next_inject - total_extent;
-  }
+    }
 #elif defined KR_DETERMINISTIC_ERROR_INJECTION
       next_inject++;
     }
