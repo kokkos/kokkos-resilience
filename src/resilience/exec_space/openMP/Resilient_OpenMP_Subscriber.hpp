@@ -93,8 +93,23 @@ auto make_md_range_policy( const View &view, std::index_sequence< Ranks... >){
   return Kokkos::MDRangePolicy<Kokkos::Rank<View::rank()>>({ get_start_index < 0 > ( Ranks ) ... }, { static_cast<std::int64_t>( view.extent ( Ranks ))... });
 }
 
-template <class Type, class Enabled = void>
-struct CheckDuplicateEquality;
+//template <class Type, class Enabled = void>
+//struct CheckDuplicateEquality;
+
+// Checks on non-floating points, user can create own checker for custom structs
+template <class Type, typename Enable=void>
+struct CheckDuplicateEquality{
+//Type, typename std::enable_if< !std::is_floating_point < Type >::value, void >::type > {
+
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  CheckDuplicateEquality(const CheckDuplicateEquality& cde) {}
+
+  KOKKOS_INLINE_FUNCTION
+  bool compare(Type a, Type b) const { return (a == b); }
+};
 
 // Checks equality of individual element on floating points
 template <class Type>
@@ -109,21 +124,6 @@ Type, typename std::enable_if< std::is_floating_point < Type >::value, void >::t
 
   KOKKOS_INLINE_FUNCTION
   bool compare(Type a, Type b) const { return (abs(a - b) < 0.00000001); }
-};
-
-// Checks on non-floating points, user can create own checker for custom structs
-template <class Type>
-struct CheckDuplicateEquality<
-Type, typename std::enable_if< !std::is_floating_point < Type >::value, void >::type > {
-
-  KOKKOS_INLINE_FUNCTION
-  CheckDuplicateEquality() = default;
-
-  KOKKOS_INLINE_FUNCTION
-  CheckDuplicateEquality(const CheckDuplicateEquality& cde) {}
-
-  KOKKOS_INLINE_FUNCTION
-  bool compare(Type a, Type b) const { return (a == b); }
 };
 
 } // namespace KokkosResilience

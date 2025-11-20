@@ -134,6 +134,9 @@ TEST(TestResOpenMP, TestResilientForDouble)
 // Expect counter to count iterations.
 TEST(TestResOpenMP, TestResilientForInteger)
 {
+
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+  
   // Allocate y, x vectors.
   ResilientView<int*> y( "y", N );
   ResilientView<int*> x( "x", N );
@@ -149,7 +152,10 @@ TEST(TestResOpenMP, TestResilientForInteger)
     Kokkos::atomic_inc(&counter(0));
   });
   
+  KokkosResilience::print_total_error_time();
   KokkosResilience::clear_duplicates_cache();
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
   
   Kokkos::deep_copy(x, y);
   
