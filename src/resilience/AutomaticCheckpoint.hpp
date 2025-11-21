@@ -99,47 +99,50 @@ namespace KokkosResilience
       RegionFunc &&fun, FilterFunc &&filter,
       RegistrationInfo<T>... explicit_members
     ) {
-      KR_TRACE_ITERATION(ctx, label, iteration);
+      using namespace KokkosResilience::Util::Trace;
+      auto iter_trace =
+        begin_trace<IterTimingTrace>(ctx, "checkpoint_" + label, iteration);
 
-      KR_TRACE(overhead, ctx);
       std::optional<std::unordered_set<Registration>> members;
-      bool is_checkpoint_iter = filter(iteration);
-      bool restart_available = false;
-      if (is_checkpoint_iter) {
-        KR_TRACE(registration, ctx);
-          // Weird initialization for case with no explicit members to ensure we
-          // are initializing a set, not an empty optional
-          members.emplace(std::move(
-              std::unordered_set<Registration> { Registration(ctx, explicit_members)... }
-          ));
-          autodetect_members(ctx, fun, *members);
-          ctx.register_hashes(*members);
-        KR_TRACE_END(registration);
+      bool is_checkpoint_iter, restart_available = false;
 
-        KR_TRACE(check_restart, ctx);
-         restart_available = ctx.restart_available( label, iteration );
-        KR_TRACE_END(check_restart);
-      }
-      KR_TRACE_END(overhead);
+      auto overhead_trace = begin_trace(ctx, "overhead");
+        is_checkpoint_iter = filter(iteration);
+        if (is_checkpoint_iter) {
+          auto reg_trace = begin_trace(ctx, "registration");
+            // Weird initialization for case with no explicit members to ensure we
+            // are initializing a set, not an empty optional
+            members.emplace(std::move(
+                std::unordered_set<Registration> { Registration(ctx, explicit_members)... }
+            ));
+            autodetect_members(ctx, fun, *members);
+            ctx.register_hashes(*members);
+          reg_trace.end();
+
+          auto check_trace = begin_trace(ctx, "check_restart");
+            restart_available = ctx.restart_available( label, iteration );
+          check_trace.end();
+        }
+      overhead_trace.end();
 
       if (restart_available) {
-        KR_TRACE(restart, ctx);
+        auto restart_trace = begin_trace(ctx, "restart");
           ctx.restart( label, iteration, *members );
-        KR_TRACE_END(restart);
+        restart_trace.end();
         return;
       }
 
-      KR_TRACE(function, ctx);
+      auto function_trace = begin_trace(ctx, "function");
         fun();
-      KR_TRACE_END_FENCE(function);
+      function_trace.end();
 
       if (is_checkpoint_iter) {
-        KR_TRACE(checkpoint, ctx);
+        auto checkpoint_trace = begin_trace(ctx, "checkpoint_trace");
           Kokkos::fence();
           auto ts = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
           std::cout << '[' << std::put_time( std::localtime( &ts ), "%c" ) << "] initiating checkpoint\n";
           ctx.checkpoint( label, iteration, *members );
-        KR_TRACE_END(checkpoint);
+        checkpoint_trace.end();
       }
     }
   }

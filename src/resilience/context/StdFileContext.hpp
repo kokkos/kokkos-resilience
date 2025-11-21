@@ -60,24 +60,7 @@ class StdFileContext : public ContextBase {
   StdFileContext &operator=(StdFileContext &&) = default;
 
   virtual ~StdFileContext() {
-#ifdef KR_ENABLE_TRACING
-    std::ostringstream fname;
-    fname << "trace.json";
-
-    std::ofstream out(fname.str());
-
-    std::cout << "writing trace to " << fname.str() << '\n';
-
-    trace().write(out);
-
-    // Metafile
-    picojson::object root;
-    root["num_ranks"] = picojson::value( 1.0 );
-
-    std::ofstream meta_out("meta.json");
-    picojson::value(root).serialize(std::ostream_iterator<char>(meta_out),
-                                    true);
-#endif
+    trace().write(0);
   }
 
   std::string const &filename() const noexcept { return m_filename; }

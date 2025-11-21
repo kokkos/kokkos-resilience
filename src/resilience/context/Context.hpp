@@ -51,17 +51,13 @@
 #include <functional>
 #include <chrono>
 #include <unordered_set>
+#include "resilience/util/Trace.hpp"
 #include "resilience/config/Config.hpp"
 #include "resilience/registration/Registration.hpp"
 #include "CheckpointFilter.hpp"
 #include <Kokkos_Core.hpp>
 #ifdef KR_ENABLE_MPI_CONTEXT
 #include <mpi.h>
-#endif
-
-// Tracing support
-#ifdef KR_ENABLE_TRACING
-#include "resilience/util/Trace.hpp"
 #endif
 
 namespace KokkosResilience
@@ -90,9 +86,7 @@ namespace KokkosResilience
     Config &config() noexcept { return m_config; }
     const Config &config() const noexcept { return m_config; }
 
-#ifdef KR_ENABLE_TRACING
-    Util::detail::TraceStack  &trace() { return m_trace; };
-#endif
+    Util::TraceStack &trace() { return m_trace; };
 
     //Pointer not guaranteed to remain valid, use immediately & discard.
     char* get_scratch_buffer(size_t minimum_size);
@@ -106,9 +100,7 @@ namespace KokkosResilience
 
     std::function< bool( int ) > m_default_filter;
 
-#ifdef KR_ENABLE_TRACING
-    Util::detail::TraceStack  m_trace;
-#endif
+    Util::TraceStack m_trace;
   };
 
   std::unique_ptr< ContextBase > make_context( const std::string &config );
