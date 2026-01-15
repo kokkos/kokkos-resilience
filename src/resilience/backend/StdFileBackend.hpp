@@ -72,8 +72,6 @@ class StdFileBackend {
 
   void reset() {}
 
-  void register_hashes(std::unordered_set<Registration> &members) {}
-
  private:
   std::string m_filename;
   StdFileContext<StdFileBackend> &m_context;
