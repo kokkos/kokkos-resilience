@@ -3,6 +3,7 @@ build/
 .idea/
 *.swp
 build-*/
+__pycache__
 
 CMakeUserPresets.json
 *.user
