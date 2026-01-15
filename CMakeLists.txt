@@ -55,10 +55,9 @@ target_include_directories(resilience PUBLIC
                            )
 
 find_package(Kokkos 4.0 REQUIRED)
-find_package(Boost REQUIRED)
 
 set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
-target_link_libraries(resilience PUBLIC Kokkos::kokkos Boost::boost)
+target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
 #Make individual variables for available Kokkos devices
 foreach(DEVICE ${Kokkos_DEVICES})
@@ -76,8 +75,8 @@ kr_option(KR_ENABLE_AUTOMATIC_CHECKPOINTING "Compile automatic checkpointing con
 #Consistency contexts
 kr_option(KR_ENABLE_MPI_CONTEXT "Compile MPI checkpointing context" ON KR_ENABLE_AUTOMATIC_CHECKPOINTING)
 #Backends
-kr_option(KR_ENABLE_VELOC_BACKEND "Compile VeloC checkpointing backend" ON KR_ENABLE_MPI_CONTEXT)
-kr_option(KR_VELOC_BAREBONE "Use the barebone branch of VeloC" OFF KR_ENABLE_VELOC)
+find_package(veloc QUIET)
+kr_option(KR_ENABLE_VELOC_BACKEND "Compile VeloC checkpointing backend" ${veloc_FOUND} KR_ENABLE_MPI_CONTEXT)
 
 #Data space options
 kr_option(KR_ENABLE_DATA_SPACES "Enable Kokkos memory spaces for manual view checkpointing" OFF)
@@ -108,19 +107,26 @@ kr_option(KR_KERNEL_FUSING "enable kernel fusing" OFF "KR_ENABLE_OPENMP_EXEC_SPA
 
 # VeloC backend
 if (KR_ENABLE_VELOC_BACKEND)
-  find_package(veloc REQUIRED)
+  if (NOT veloc_FOUND)
+    message(FATAL_ERROR "Veloc backend requested, but veloc not found!")
+  endif()
   target_link_libraries(resilience PUBLIC veloc::client)
 endif()
 
+if (KR_ENABLE_DATA_SPACES)
+  find_package(Boost REQUIRED)
+  target_link_libraries(resilience PUBLIC Boost::boost)
+endif()
+
 if (KR_ENABLE_HDF5_DATA_SPACE)
-   find_package(HDF5 REQUIRED)
-   target_link_libraries(resilience PUBLIC HDF5::HDF5)
+  find_package(HDF5 REQUIRED)
+  target_link_libraries(resilience PUBLIC HDF5::HDF5)
 endif()
 
 # MPI requirement
 if (KR_ENABLE_MPI_CONTEXT OR KR_ENABLE_HDF5_PARALLEL)
-   find_package(MPI REQUIRED)
-   target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
+  find_package(MPI REQUIRED)
+  target_link_libraries(resilience PRIVATE MPI::MPI_CXX)
 endif()
 
 if (KR_ENABLE_OPENMP_EXEC_SPACE)
