@@ -49,40 +49,20 @@ namespace KokkosResilience {
 template <typename Backend>
 class MPIContext : public ContextBase {
 public:
- explicit MPIContext(MPI_Comm comm, const Config &cfg)
+  explicit MPIContext(MPI_Comm comm, const Config &cfg)
      : ContextBase(cfg), m_comm(comm), m_backend(*this, comm) {}
 
- MPIContext(const MPIContext &)     = delete;
- MPIContext(MPIContext &&) noexcept = default;
+  MPIContext(const MPIContext &)     = delete;
+  MPIContext(MPIContext &&) noexcept = default;
 
- MPIContext &operator=(const MPIContext &) = delete;
- MPIContext &operator=(MPIContext &&) noexcept = default;
+  MPIContext &operator=(const MPIContext &) = delete;
+  MPIContext &operator=(MPIContext &&) noexcept = default;
 
- virtual ~MPIContext() {
-#ifdef KR_ENABLE_TRACING
+  virtual ~MPIContext() {
     int rank = -1;
     MPI_Comm_rank(m_comm, &rank);
-    int size = -1;
-    MPI_Comm_size(m_comm, &size);
-
-    std::ostringstream fname;
-    fname << "trace" << rank << ".json";
-
-    std::ofstream out(fname.str());
-
-    std::cout << "writing trace to " << fname.str() << '\n';
-
-    trace().write(out);
-
-    // Metafile
-    picojson::object root;
-    root["num_ranks"] = picojson::value(static_cast<double>(size));
-
-    std::ofstream meta_out("meta.json");
-    picojson::value(root).serialize(std::ostream_iterator<char>(meta_out),
-                                    true);
-#endif
- }
+    trace().write(rank);
+  }
 
   MPI_Comm comm() const noexcept { return m_comm; }
 

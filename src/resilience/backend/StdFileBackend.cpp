@@ -48,9 +48,7 @@
 
 #include "../AutomaticCheckpoint.hpp"
 
-#ifdef KR_ENABLE_TRACING
-#include "../util/Trace.hpp"
-#endif
+#include "resilience/util/Trace.hpp"
 
 namespace KokkosResilience {
 
@@ -79,16 +77,10 @@ void StdFileBackend::checkpoint(
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ofstream file(filename, std::ios::binary);
 
-#ifdef KR_ENABLE_TRACING
-    auto write_trace =
-        Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "write");
-#endif
+    auto write_trace = Util::begin_trace(m_context, "write");
     for (auto &&member : members) {
       member->serialize(file);
     }
-#ifdef KR_ENABLE_TRACING
-    write_trace.end();
-#endif
   } catch (...) {
   }
 }
@@ -133,16 +125,10 @@ void StdFileBackend::restart(
     std::string filename = detail::full_filename(m_filename, label, version);
     std::ifstream file(filename, std::ios::binary);
 
-#ifdef KR_ENABLE_TRACING
-    auto read_trace =
-        Util::begin_trace<Util::TimingTrace<std::string>>(m_context, "read");
-#endif
+    auto read_trace = Util::begin_trace(m_context, "read");
     for (auto &&member : members) {
       member->deserialize(file);
     }
-#ifdef KR_ENABLE_TRACING
-    read_trace.end();
-#endif
   } catch (...) {
   }
 }
