@@ -5,9 +5,9 @@ and checkpointing to scientific applications.
 
 ## Building
 
-*Kokkos Resilience* is built using [CMake](https://cmake.org) version 3.17 or later. It has been tested on
-compilers such as GCC 11.2.0 and LLVM/Clang 11.0.0. It should work on any C++14 supporting compiler, but your mileage
-may vary.
+*Kokkos Resilience* is built using [CMake](https://cmake.org) version 3.17 or later.
+Any compiler that supports C++20 should work, but your mileage may vary.
+Automatic CI testing verifies compatibility with GCC 11.4.0.
 
 ### Spack
 

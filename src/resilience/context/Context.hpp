@@ -97,10 +97,24 @@ namespace KokkosResilience
     //Pointer not guaranteed to remain valid, use immediately & discard.
     char* get_scratch_buffer(size_t minimum_size);
 
+    //Contents not guaranteed to remain valid, write and use immediately.
+    //Note: since this stringstream is reused, its view() may be longer than the
+    //  number of bytes written since obtaining the stream. Use tellp() to get
+    //  the size of written data
+    std::stringstream& get_scratch_stream();
+
+    // Get view of the scratch stream sized correctly with tellp()
+    // Not guaranteed to remain valid, use immediately & discard.
+    std::string_view cur_scratch_view() {
+      return m_scratch_buffer.view().substr(0, m_scratch_buffer.tellp());
+    }
+
   private:
     
     //Hold onto a buffer per context for de/serializing non-contiguous or non-host views.
-    std::vector<char> m_scratch_buffer;
+    std::stringstream m_scratch_buffer{
+      std::ios_base::in | std::ios_base::out | std::ios_base::binary
+    };
 
     Config m_config;
 

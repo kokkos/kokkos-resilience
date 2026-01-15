@@ -75,11 +75,31 @@ namespace KokkosResilience
     }
   }
 
-  char* ContextBase::get_scratch_buffer(size_t minimum_size){
-    if(m_scratch_buffer.size() < minimum_size){
-      m_scratch_buffer.resize(minimum_size);
+  char* ContextBase::get_scratch_buffer(size_t minimum_size)
+  {
+    auto view = m_scratch_buffer.view();
+    // view size is the number of characters ever initialized in the stream's
+    // internal buffer, independent of current tellp/tellg values
+    if(view.size() < minimum_size)
+    {
+      // Write any character to force buffer space to grow, or force more
+      // characters to be initialized in existing buffer
+      auto pos = m_scratch_buffer.tellp();
+      m_scratch_buffer.seekp(minimum_size-1);
+      m_scratch_buffer.put('\0');
+      view = m_scratch_buffer.view();
+      m_scratch_buffer.seekp(pos);
     }
-    return m_scratch_buffer.data();
+    assert(view.size() >= minimum_size);
+
+    return const_cast<char*>(view.data());
+  }
+
+  std::stringstream& ContextBase::get_scratch_stream()
+  {
+    m_scratch_buffer.seekp(0);
+    m_scratch_buffer.seekg(0);
+    return m_scratch_buffer;
   }
 
   std::unique_ptr< ContextBase >
