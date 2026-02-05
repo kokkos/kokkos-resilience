@@ -48,10 +48,7 @@
 
 #include <resilience/context/MPIContext.hpp>
 #include <resilience/AutomaticCheckpoint.hpp>
-
-#ifdef KR_ENABLE_TRACING
-   #include <Resilience/util/Trace.hpp>
-#endif
+#include <resilience/util/Trace.hpp>
 
 #define VELOC_SAFE_CALL( call ) KokkosResilience::veloc_internal_safe_call( call, #call, __FILE__, __LINE__ )
 
@@ -234,18 +231,11 @@ namespace KokkosResilience
       std::string   fname = veloc_client->route_file(label);
       std::ofstream vfile( fname, std::ios::binary );
 
-#ifdef KR_ENABLE_TRACING
-      auto write_trace = Util::begin_trace< Util::TimingTrace< std::string > >(
-        *m_context, "write"
-      );
-#endif
+      auto write_trace = Util::begin_trace(*m_context, "write");
       for ( auto& member : members ) {
         success = member->serialize(vfile);
         if(!success) break;
       }
-#ifdef KR_ENABLE_TRACING
-      write_trace.end();
-#endif
     } catch ( const std::exception& e){
       success = false;
       std::cerr << std::string("VelocFileBackend::checkpoint error: ") + e.what();
@@ -279,18 +269,11 @@ namespace KokkosResilience
       std::string   fname = veloc_client->route_file(label);
       std::ifstream vfile( fname, std::ios::binary );
 
-#ifdef KR_ENABLE_TRACING
-      auto read_trace = Util::begin_trace< Util::TimingTrace< std::string > >(
-        *m_context, "read"
-      );
-#endif
+      auto read_trace = Util::begin_trace(*m_context, "read");
       for ( auto& member : members ) {
         success = member->deserialize(vfile);
         if(!success) break;
       }
-#ifdef KR_ENABLE_TRACING
-      read_trace.end();
-#endif
     } catch ( const std::exception& e ){
       success = false;
       std::cerr << std::string("VelocFileBackend::restart error: ") + e.what();

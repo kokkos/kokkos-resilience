@@ -57,7 +57,7 @@ target_include_directories(resilience PUBLIC
 find_package(Kokkos 4.0 REQUIRED)
 find_package(Boost REQUIRED)
 
-set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
+target_compile_features(resilience PUBLIC cxx_std_20)
 target_link_libraries(resilience PUBLIC Kokkos::kokkos Boost::boost)
 
 #Make individual variables for available Kokkos devices
