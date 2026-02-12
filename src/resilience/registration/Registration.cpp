@@ -35,7 +35,7 @@ namespace KokkosResilience {
   }
 }
 
-namespace KokkosResilience::Impl::Registration {
+namespace KokkosResilience::Impl::RegistrationImpl {
   Base::Base(const std::string member_name) :
     name(sanitized_label(member_name)) {
   }

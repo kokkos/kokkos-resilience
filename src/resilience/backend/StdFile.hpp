@@ -38,47 +38,49 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#ifndef INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
-#define INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+#ifndef INC_RESILIENCE_BACKEND_STDFILE_HPP
+#define INC_RESILIENCE_BACKEND_STDFILE_HPP
 
-#include <Kokkos_Core.hpp>
-#include "../view_hooks/ViewHolder.hpp"
+#include "resilience/backend/Backend.hpp"
 
-#include <memory>
-#include <string>
-#include <vector>
+#include <filesystem>
+#include <unordered_map>
 
-#include "resilience/context/StdFileContext.hpp"
-#include <unordered_set>
+namespace KokkosResilience::Impl::BackendImpl {
+  class StdFile : public Base {
+   public:
+    using path = std::filesystem::path;
 
-namespace KokkosResilience {
+    StdFile(ContextBase& ctx);
 
-class StdFileBackend {
- public:
-  StdFileBackend(StdFileContext<StdFileBackend> &ctx,
-                 std::string const &filename);
-  ~StdFileBackend();
+    bool checkpoint(
+      const std::string& label, int version, const Members& members
+    ) override;
 
-  void checkpoint(
-      const std::string &label, int version,
-      std::unordered_set<Registration> &members);
+    int latest_version(const std::string& label, int max) const override;
 
-  bool restart_available(const std::string &label, int version);
-  int latest_version(const std::string &label) const noexcept;
+    bool restart_available(const std::string& label, int version) override;
 
-  void restart(
-      const std::string &label, int version,
-      std::unordered_set<Registration> &members);
+    bool restart(
+      const std::string& label, int version, const Members& members
+    ) override;
 
-  void reset() {}
+    //No state to reset
+    void reset() override {};
 
-  void register_hashes(std::unordered_set<Registration> &members) {}
+    //Exposed to reuse logic for VeloCFile. Returns success
+    static bool write_to_file(path filename, const Members& members) noexcept;
+    static bool read_from_file(path filename, const Members& members) noexcept;
 
- private:
-  std::string m_filename;
-  StdFileContext<StdFileBackend> &m_context;
-};
+   protected:
+    path checkpoint_dir = "./";
+    std::string checkpoint_prefix = "kr_chkpt_";
 
+    mutable std::unordered_map<std::string, int> latest_versions;
+
+    //The file to checkpoint/recover with
+    path checkpoint_file(const std::string& label, int version) const;
+  };
 }  // namespace KokkosResilience
 
-#endif  // INC_RESILIENCE_STDFILE_STDFILEBACKEND_HPP
+#endif  // INC_RESILIENCE_BACKEND_STDFILEBACKEND_HPP

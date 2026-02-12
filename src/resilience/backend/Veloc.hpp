@@ -38,5 +38,56 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
-#include "StdFileContext.hpp"
+#ifndef INC_RESILIENCE_BACKEND_VELOC_HPP
+#define INC_RESILIENCE_BACKEND_VELOC_HPP
 
+#include <string>
+#include <set>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <mpi.h>
+#include "veloc.hpp"
+
+#include <Kokkos_Core.hpp>
+
+#include "resilience/registration/Registration.hpp"
+#include "resilience/backend/Backend.hpp"
+#include "resilience/config/Config.hpp"
+
+namespace KokkosResilience::Impl::BackendImpl
+{
+  class VeloC : public Base
+  {
+   public:
+    VeloC(ContextBase& ctx);
+    ~VeloC();
+
+    bool checkpoint(
+      const std::string &label, int version, const Members& members
+    ) override;
+    
+    int latest_version(const std::string &label, int max) const override;
+ 
+    bool restart(
+      const std::string &label, int version, const Members& members
+    ) override;
+
+    void reset() override;
+
+   protected:
+    // Register the members and return the set of their IDs to checkpoint
+    std::set<int> register_members(const Members& members);
+    void deregister_members(const std::set<int>& ids);
+
+    veloc::client_t *veloc_client;
+    
+    mutable std::unordered_map< std::string, int > m_latest_version;
+
+    Config m_conf;
+    const std::string& veloc_config_file = m_conf["config"].as<std::string>();
+    const bool checkpoint_to_file = m_conf.get("file", false);
+  };
+}
+
+#endif  // INC_RESILIENCE_BACKEND_VELOC_HPP

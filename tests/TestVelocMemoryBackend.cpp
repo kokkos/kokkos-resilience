@@ -40,9 +40,7 @@
  */
 #include "TestCommon.hpp"
 
-#include <resilience/backend/VelocBackend.hpp>
-#include <resilience/AutomaticCheckpoint.hpp>
-#include <resilience/context/MPIContext.hpp>
+#include <resilience/Resilience.hpp>
 #include <resilience/util/filesystem/Filesystem.hpp>
 
 #include <string>
@@ -59,7 +57,7 @@ public:
   template< typename Layout, typename Context >
   static void test_layout( Context &ctx, std::size_t dimx, std::size_t dimy )
   {
-    ctx.backend().reset();
+    ctx->reset();
     using memory_space = typename exec_space::memory_space;
     using view_type = KokkosResilience::View< double **, Layout, memory_space >;
 
@@ -139,7 +137,7 @@ TYPED_TEST( TestVelocMemoryBackend, veloc_mem )
   KokkosResilience::Config cfg;
   cfg["backend"].set( "veloc"s );
   cfg["backends"]["veloc"]["config"].set( KR_TEST_DATADIR "/veloc_test.cfg" );
-  KokkosResilience::MPIContext< KokkosResilience::VeloCMemoryBackend > ctx( MPI_COMM_WORLD, cfg );
+  auto ctx = KokkosResilience::make_context(MPI_COMM_WORLD, cfg);
 
   for ( std::size_t dimx = 1; dimx < 5; ++dimx )
   {

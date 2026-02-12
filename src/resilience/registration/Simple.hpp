@@ -1,6 +1,6 @@
 #include "resilience/registration/Registration.hpp"
 
-namespace KokkosResilience::Impl::Registration {
+namespace KokkosResilience::Impl::RegistrationImpl {
   template <typename MemberType>
   class Simple : public Base {
   public:

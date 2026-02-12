@@ -53,17 +53,27 @@
 
 namespace KokkosResilience
 {
-  struct ConfigKeyError : std::runtime_error
+  struct ConfigError : std::runtime_error
   {
-    explicit ConfigKeyError( const std::string &key )
-      : std::runtime_error( "key error: " + key )
+    ConfigError()
+      : std::runtime_error( "KokkosResilience::ConfigError" )
+    {}
+    explicit ConfigError( const std::string& str )
+      : std::runtime_error( "KokkosResilience::ConfigError: " + str )
     {}
   };
 
-  struct ConfigValueError : std::runtime_error
+  struct ConfigKeyError : ConfigError
+  {
+    explicit ConfigKeyError( const std::string &key )
+      : ConfigError( "invalid key " + key )
+    {}
+  };
+
+  struct ConfigValueError : ConfigError
   {
     ConfigValueError()
-        : std::runtime_error( "value error" )
+        : ConfigError( "invalid value type" )
     {}
   };
 
@@ -202,8 +212,19 @@ namespace KokkosResilience
       std::variant< map_type, array_type, Value > m_variant;
     };
 
-    Config() = default;
-    explicit Config( const std::filesystem::path &p );
+    Config()
+      : m_root(m_root_base)
+    {}
+    explicit Config( const std::filesystem::path &p )
+      : m_root_base(from_file(p)), m_root(m_root_base)
+    {}
+    Config(Entry& root)
+      : m_root(root)
+    {
+      if(!m_root.is_object()){
+        throw ConfigError("Cannot construct Config from value");
+      }
+    };
 
     const Entry &operator[]( const std::string &key ) const
     {
@@ -226,9 +247,21 @@ namespace KokkosResilience
       m_root.set( key, std::forward< T >( val ) );
     }
 
-  private:
+    template< typename T >
+    const T& get( const std::string &key, const T& default_val ) const
+    {
+      auto entry = m_root.get( key );
+      if ( !entry ) return default_val;
+      else return entry->as<T>();
+    }
 
-    Entry m_root;
+  private:
+    Entry from_file( const std::filesystem::path &p );
+
+    // The base config holds the actual root entry
+    Entry m_root_base;
+    // All configs hold a reference to their root
+    Entry &m_root;
   };
 }
 
