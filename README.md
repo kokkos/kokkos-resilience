@@ -30,24 +30,12 @@ other software (such as Trilinos) or as a package on a machine.
 
 #### Boost
 
-Kokkos-resilience uses Boost for a replacement for some C++17 features such as the filesystem library, `std::optional`, and `std::variant`.
-This dependency will likely be removed in the future when Kokkos requires C++17.
+*Kokkos Resilience* depends on Boost when KR_ENABLE_DATA_SPACES is enabled.
 
 #### VeloC
 
-Additionally, *Kokkos Resilience* uses the [Veloc](https://github.com/ECP-VeloC/VELOC) library for efficient asynchronous
-checkpointing. If you desire automatic checkpointing to be available this library (and additionally MPI) must be installed.
-
-We are maintaining a special spack package for VeloC since the main one is not up-to-date. It can be found
-[here](https://gitlab-ex.sandia.gov/kokkos-resilience/kr-spack) and can be installed via:
-
-```sh
-git clone git@gitlab-ex.sandia.gov:kokkos-resilience/kr-spack.git
-spack repo add kr-spack
-spack install veloc@barebone
-```
-
-It is recommended to install the "barebone" variant/branch of VeloC since it has reduced dependencies.
+*Kokkos Resilience* optionally uses the [Veloc](https://github.com/ECP-VeloC/VELOC) library for efficient asynchronous
+checkpointing.
 
 ### CMake Invocation
 
@@ -70,7 +58,6 @@ need at least CMake 3.21.
 | Variable                | Default | Description                                        |
 | ----------------------- | ------- | -------------------------------------------------- |
 | KR_ENABLE_VELOC         | ON      | Enables the VeloC backend                          |
-| KR_VELOC_BAREBONE       | OFF     | Enable VeloC barebone mode                         |
 | KR_ENABLE_TRACING       | OFF     | Enable performance tracing of resilience functions |
 | KR_ENABLE_STDIO         | OFF     | Use stdio for manual checkpoint                    |
 | KR_ENABLE_HDF5          | OFF     | Add HDF5 support for manual checkpoint             |

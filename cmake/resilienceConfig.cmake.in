@@ -23,10 +23,12 @@ if (KR_ENABLE_VELOC_BACKEND)
    find_dependency(veloc REQUIRED)
 endif()
 
+if (KR_ENABLE_DATA_SPACES)
+   set(Boost_DIR @Boost_DIR@)
+   find_dependency(Boost REQUIRED)
+endif()
+
 if (KR_ENABLE_HDF5_DATA_SPACE)
    set(HDF5_DIR @HDF5_DIR@)
    find_dependency(HDF5 REQUIRED)
 endif()
-
-set(Boost_DIR @Boost_DIR@)
-find_dependency(Boost REQUIRED)
