@@ -99,8 +99,7 @@ namespace KokkosResilience
   {
     VELOC_SAFE_CALL(veloc_client->checkpoint_wait());
 
-    bool success;
-    success = VELOC_SAFE_CALL(veloc_client->checkpoint_begin(label, version));
+    bool success = VELOC_SAFE_CALL(veloc_client->checkpoint_begin(label, version));
     
     if(success){
       std::set<int> ids = protect_members(members);
@@ -139,8 +138,7 @@ namespace KokkosResilience
   VeloCMemoryBackend::restart( const std::string &label, int version,
                                std::unordered_set<Registration> &members )
   {
-    bool success;
-    success = VELOC_SAFE_CALL(veloc_client->restart_begin(label, version));
+    bool success = VELOC_SAFE_CALL(veloc_client->restart_begin(label, version));
 
     if(success){
       std::set<int> ids = protect_members(members);
