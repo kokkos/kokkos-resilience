@@ -350,12 +350,16 @@ struct ResilientDuplicatesSubscriber {
 
         // The first copy constructor in a parallel_for for the given view
         if (res.second) {
+          std::cout << "Do we ever enter the first copy constructor? How many times?" << std::endl;
           c.duplicate_count = 0;
         }
-
+        std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count << "****" << std::endl;
         self = c.copy[c.duplicate_count++];
         // Copy all data, every time
         Kokkos::deep_copy(self, other);
+        std::cout << std::endl << "This is the end of the constructor after Kokkos::deep_copy" <<std::endl;
+        std::cout << "c_duplicate_count = "<<c.duplicate_count<< std::endl;
+
       }
     }
   }

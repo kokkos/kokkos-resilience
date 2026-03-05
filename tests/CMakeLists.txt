@@ -44,6 +44,12 @@ if (KR_ENABLE_OPENMP_EXEC_SPACE)
                  )
 endif()
 
+if (KR_ENABLE_CUDA_EXEC_SPACE)
+  target_sources(resilience_tests PRIVATE
+	  TestCudaResilientExecution.cpp
+                 )
+endif()
+
 if (KR_WARNINGS_AS_ERRORS)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(resilience_tests PRIVATE "-Wall")

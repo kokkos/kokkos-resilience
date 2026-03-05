@@ -87,8 +87,9 @@ kr_option(KR_ENABLE_HDF5_PARALLEL "use parallel version of HDF5" OFF KR_ENABLE_H
 
 #Exec space options
 kr_option(KR_ENABLE_EXEC_SPACES "enable resilient execution spaces" OFF)
-kr_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable the resilient OpenMP execution space" ON "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED")
-if(KR_ENABLE_OPENMP_EXEC_SPACE)
+kr_option(KR_ENABLE_OPENMP_EXEC_SPACE "enable resilient OpenMP execution space" OFF "KR_ENABLE_EXEC_SPACES;KR_OPENMP_DEVICE_ENABLED")
+kr_option(KR_ENABLE_CUDA_EXEC_SPACE "enable resilient Cuda execution space" OFF "KR_ENABLE_EXEC_SPACES;KR_CUDA_DEVICE_ENABLED")
+if(KR_ENABLE_EXEC_SPACES)
   set(KR_MODULAR_REDUNDANCY TRIPLE CACHE STRING "choose level of modular redundancy")
   set_property(CACHE KR_MODULAR_REDUNDANCY PROPERTY STRINGS OFF DOUBLE TRIPLE)
   if (KR_MODULAR_REDUNDANCY STREQUAL TRIPLE)
@@ -127,6 +128,9 @@ if (KR_ENABLE_OPENMP_EXEC_SPACE)
   message(STATUS "OpenMP resilient execution spaces are enabled")
 endif()
 
+if (KR_ENABLE_CUDA_EXEC_SPACE)
+  message(STATUS "Cuda resilient execution spaces are enabled")
+endif()
 
 add_subdirectory(src)
 

@@ -46,3 +46,10 @@
 #include "openMP/Resilient_OpenMP_Subscriber.hpp"
 #include "openMP/Resilient_HostSpace.hpp"
 #endif
+
+#ifdef KR_ENABLE_CUDA_EXEC_SPACE
+#include "cuda/Resilient_Cuda.hpp"
+#include "cuda/Resilient_Cuda_Parallel_For.hpp"
+#include "cuda/Resilient_Cuda_Subscriber.hpp"
+#include "cuda/Resilient_CudaSpace.hpp"
+#endif

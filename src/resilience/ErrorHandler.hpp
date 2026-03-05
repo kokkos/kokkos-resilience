@@ -42,6 +42,7 @@
 #define INC_RESILIENCE_ERRORHANDLER_HPP
 
 #include <functional>
+#include <Kokkos_Core.hpp>
 
 namespace KokkosResilience {
 /**
