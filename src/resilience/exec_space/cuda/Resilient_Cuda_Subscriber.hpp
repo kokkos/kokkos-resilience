@@ -80,26 +80,6 @@ namespace KokkosResilience {
 
 }
 
-/*--------------------------------------------------
- * ------------------------
- ******************** TEST KERNEL *****************************
- --------------------------------------------------------------------------*/
-namespace KokkosResilience{
-
-template< typename View >	
-struct TestKernel{
-
-  View view;
-
-  KOKKOS_INLINE_FUNCTION
-  __device__	  
-  void operator () (const int &i) const {
-    printf("test_print");
-    view(i) = i*i;
-  }
-};
-
-}//end namespace
 /*----------------------------------------------------------------------------
  ******** STRUCT TO CHECK CORRECTNESS OF INDIVIDUAL ELEMENTS OF VIEWS ********
  ----------------------------------------------------------------------------*/
@@ -158,7 +138,7 @@ struct CombineDuplicatesBase
   virtual ~CombineDuplicatesBase() = default;
   virtual void clear() = 0;
   virtual bool execute() = 0;
-  //virtual void inject_error() = 0;
+  virtual void inject_error() = 0;
   // First index tracks first view, second index tracks second copy
   bool already_copied[2] = {false,false};
 
@@ -177,17 +157,15 @@ struct CombineDuplicates: public CombineDuplicatesBase
   // Note: 2 copies allocated even in DMR
   View copy[2];
 
-  //Kokkos::View <bool> success {"Combiner success"};
   bool success = 0;
+  Kokkos::View <bool, Kokkos::Cuda> d_success{"device_success"};
 
   static constexpr size_t rank = View::rank();
 
-#if 0
 #if defined KR_ERROR_INJECTION  
   void inject_error() override{
     error_injection(original, copy[0], copy[1]);
   }
-#endif
 #endif
 
   void clear() override
@@ -196,90 +174,93 @@ struct CombineDuplicates: public CombineDuplicatesBase
     copy[1] = View ();
   }
 
-  //TestKernel test_kernel;
-#if 0
-//TODO: Tester kernel for Cuda with no-op  
-KOKKOS_INLINE_FUNCTION 
-void operator () (const int &i) const{
-  printf("Is it invalid because no-op?\n");
-  return;
-}  
-#endif
-#if 0
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const int& i) const {
-    test_kernel.operator()(i);
-  }
-#endif
-
   bool execute() override
   {
-    //success() = 1;
     success = true;
+    Kokkos::deep_copy(d_success, success);
 
 #ifdef KR_DOUBLE_MODULAR_REDUNDANCY
-    //if (duplicate_count < 1){
-    if(already_copied[0]==false){
+    if (duplicate_count < 1){
+    //if(already_copied[0]==false){
       Kokkos::abort("Aborted in CombineDuplicates, no duplicate created");
     }
 #else
-    //if (duplicate_count < 2) {
-    if(already_copied[1]==false){
+    if (duplicate_count < 2) {
+    //if(already_copied[1]==false){
       Kokkos::abort("Aborted in CombineDuplicates, duplicate_count < 2");
     }
 #endif
 
     else {
 
-      std::cout << "Combiner that has rpolicy 20 noop kernels" << std::endl;
-      auto range_policy = Kokkos::RangePolicy<Kokkos::Cuda>(0,original.size());
-      std::cout << "original.size is " << original.size() << std::endl;
-      Kokkos::parallel_for("Combiner", range_policy, TestKernel{ .view = original });
-      //Kokkos::parallel_for("Combiner", range_policy, KOKKOS_LAMBDA(const int i){
-//	printf("100 prints from inside the combiner for\n");		      
- //     });
+      //auto range_policy = Kokkos::RangePolicy<Kokkos::Cuda>(0,original.size());
       //Kokkos::parallel_for("Combiner", range_policy, *this);
-      //Kokkos::parallel_for("Combiner", range_policy, &CombineDuplicates::combiner_kernel);
-      std::cout << "#### After combine-duplicates parallel_for in the combiner map"<<std::endl;
-      Kokkos::fence("FenceCombine");	    
 
-#if 0
       if constexpr(rank > 1){
 
+        std::cout << "In multi-dimensional, rank = " << rank << std::endl;      
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} );
         Kokkos::parallel_for(mdrange, *this);
-
+        std::cout << "#### After combine-duplicates parallel_for in the combiner map"<<std::endl;
+  
       }else{
 
+        std::cout << "original.size is " << original.size() << std::endl;
         Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
+        std::cout << "#### After combine-duplicates parallel_for in the combiner map"<<std::endl;
+  
       }
-      Kkkos::fence();
-#endif
-    
+      //Kokkos::fence();
+      // fence in deep_copy already
+      Kokkos::deep_copy(success, d_success);
       return success;
     }
-    return 0; // TODO: REMOVE THIS ON ACTUAL COMBINER INSERT, IT'S FOR COMPILER ERROR IN TEST CASE
   }
-/*
-  // Looping over duplicates to check for equality
-  template<typename... Args> 
-  inline __device__ void operator ()(Args&&... its) const{ 
 
+  template <typename... Args>
+  KOKKOS_INLINE_FUNCTION
+  void operator ()(Args&&... vidx) const{
+    //int tid = blockIdx.x * blockDim.x + threadIdx.x; 
     //Main combiner begin
     for (int j = 0; j < 2; j ++) {
-      if (check_equality.compare(copy[j](std::forward<Args>(its)...), original(std::forward<Args>(its)...))) {
+      if (check_equality.compare(copy[j](std::forward<Args>(vidx)...), original(std::forward<Args>(vidx)...))) {
+#if 0
+	double valueo = static_cast<typename View::value_type>(original(std::forward<Args>(vidx)...));
+        printf("O-C loop tid %i vidx %i original %f\n", tid, std::forward<Args>(vidx)..., valueo);
+        double value0 = static_cast<typename View::value_type>(copy[0](std::forward<Args>(vidx)...));
+        printf("O-C loop tid %i vidx %i copy[0] %f\n", tid, std::forward<Args>(vidx)..., value0);
+        double value1 = static_cast<typename View::value_type>(copy[1](std::forward<Args>(vidx)...));
+        printf("O-C loop tid %i vidx %i copy[1] %f\n", tid, std::forward<Args>(vidx)..., value1);      
+#endif	
         return;
       }
     }
-    if (check_equality.compare(copy[0](std::forward<Args>(its)...), copy[1](std::forward<Args>(its)...))) {
-      original(std::forward<Args>(its)...) = static_cast<typename View::value_type>(copy[0](std::forward<Args>(its)...));  // just need 2 that are the same
+    if (check_equality.compare(copy[0](std::forward<Args>(vidx)...), copy[1](std::forward<Args>(vidx)...))) {
+      original(std::forward<Args>(vidx)...) = static_cast<typename View::value_type>(copy[0](std::forward<Args>(vidx)...));        
+#if 0
+      double valueo = static_cast<typename View::value_type>(original(std::forward<Args>(vidx)...));
+      printf("C-C loop tid %i vidx %i original %f\n", tid, std::forward<Args>(vidx)..., valueo);
+      double value0 = static_cast<typename View::value_type>(copy[0](std::forward<Args>(vidx)...));
+      printf("C-C loop tid %i vidx %i copy[0] %f\n", tid, std::forward<Args>(vidx)..., value0);
+      double value1 = static_cast<typename View::value_type>(copy[1](std::forward<Args>(vidx)...));
+      printf("C-C loop tid %i vidx %i copy[1] %f\n", tid, std::forward<Args>(vidx)..., value1);
+#endif
       return;
     }
     //No match found, all three executions return different number
-    success = false;
-  
+    d_success()=false;
+//#if 0
+    int tid = blockIdx.x * blockDim.x + threadIdx.x; 
+
+    printf("tid %i vid %i errored with success = %i", tid, std::forward<Args>(vidx)..., d_success());
+    double valueo = static_cast<typename View::value_type>(original(std::forward<Args>(vidx)...));
+    printf("expecting error tid %i vidx %i original %f\n", tid, std::forward<Args>(vidx)..., valueo);
+    double value0 = static_cast<typename View::value_type>(copy[0](std::forward<Args>(vidx)...));
+    printf("expecting error tid %i vidx %i copy[0] %f\n", tid, std::forward<Args>(vidx)..., value0);
+    double value1 = static_cast<typename View::value_type>(copy[1](std::forward<Args>(vidx)...));
+    printf("expecting error tid %i vidx %i copy[1] %f\n", tid, std::forward<Args>(vidx)..., value1);
+//#endif
   }
-*/
 
 };// end Combiner
 
@@ -294,8 +275,8 @@ namespace KokkosResilience {
 struct ResilientDuplicatesSubscriber {
 
   // Gating for using subscriber only inside resilient parallel loops
-  //static int resilient_duplicate_counter;
-  static bool in_resilient_parallel_loop;
+  static int resilient_duplicate_counter;
+  //static bool in_resilient_parallel_loop;
 
  //  KOKKOS_IMPL_CUDA_SAFE_CALL
 
@@ -366,8 +347,8 @@ struct ResilientDuplicatesSubscriber {
     if constexpr( std::is_same_v< typename View::non_const_data_type, typename View::data_type > )
     {
       // If view is non-constant and in the parallel loop, cascade the rest of the subscriber
-      //if (resilient_duplicate_counter > 0) {
-	if(in_resilient_parallel_loop){
+      if (resilient_duplicate_counter > 0) {
+	//if(in_resilient_parallel_loop){
 
         auto err = cudaGetLastError();
         if (err != cudaSuccess)
@@ -382,28 +363,35 @@ struct ResilientDuplicatesSubscriber {
 
         // The first copy constructor in a parallel_for for the given view
         if (res.second) {
-	  std::cout << "Do we ever enter the first copy constructor? How many times?" << std::endl;	
-          //assert(resilient_duplicate_counter == 1);
+	  //std::cout << "First entry to copy constructor for this view. Copying for state 1" << std::endl;	   assert(resilient_duplicate_counter == 1);
           c.duplicate_count = 0;
-        }
-	else{
-	  c.duplicate_count = 1;
-	  std::cout << "Now in the duplicate_count else branch" <<std::endl;
+          //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count<<"]="<<c.already_copied[c.duplicate_count]<<std::endl;
+          c.already_copied[c.duplicate_count]=true;
+          self = c.copy[c.duplicate_count++];
+          //std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count - 1 << "****" << std::endl;
+	  Kokkos::deep_copy(self, other);
+          //std::cout << "This is the end of the first-time constructor after Kokkos::deep_copy" <<std::endl;
+          //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count - 1 <<"]="<<c.already_copied[c.duplicate_count - 1]<<std::endl <<std::endl;
 	}
+	else if(resilient_duplicate_counter==2 & !c.already_copied[c.duplicate_count]){
+          assert(resilient_duplicate_counter == 2);		
+	  c.duplicate_count = 1;
+	  //std::cout << "Now in the duplicate_count else branch" <<std::endl;
+//	}
 
-        std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count<<"]="<<c.already_copied[c.duplicate_count]<<std::endl;
-        if (!c.already_copied[c.duplicate_count]){
-          self = c.copy[c.duplicate_count];
+          //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count<<"]="<<c.already_copied[c.duplicate_count]<<std::endl;
+//        if (!c.already_copied[c.duplicate_count]){
+          //self = c.copy[c.duplicate_count];
 	
-	  	
-	  //self = c.copy[c.duplicate_count++];
-          std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count << "****" << std::endl;      
+          c.already_copied[c.duplicate_count]=true;	
+	  self = c.copy[c.duplicate_count++];
+          //std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count - 1 << "****" << std::endl;      
           //TODO: Check logic here
-	  c.already_copied[c.duplicate_count]=true;
+	  //c.already_copied[c.duplicate_count]=true;
           // Copy all data, every time
           Kokkos::deep_copy(self, other);
-          std::cout << std::endl << "This is the end of the constructor after Kokkos::deep_copy" <<std::endl;
-	  std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count<<"]="<<c.already_copied[c.duplicate_count]<<std::endl;
+          //std::cout << "This is the end of the second constructor after Kokkos::deep_copy" <<std::endl;
+	  //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count - 1 <<"]="<<c.already_copied[c.duplicate_count - 1]<<std::endl <<std::endl;
         }
 
       }

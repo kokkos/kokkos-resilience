@@ -70,7 +70,7 @@ namespace KokkosResilience{
  
 #if defined KR_ERROR_INJECTION  
   inline void inject_error_duplicates() {
-    /*
+    
     if (global_error_settings){
       //Per kernel, seed the first inject index     
       KokkosResilience::ErrorInjectionTracking::global_next_inject 
@@ -80,7 +80,7 @@ namespace KokkosResilience{
       for (auto& [ key, combiner ] : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
         combiner->inject_error();
       }
-    }*/
+    }
   }
 #endif
 

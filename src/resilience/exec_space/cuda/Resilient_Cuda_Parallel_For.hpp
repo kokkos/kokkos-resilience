@@ -28,6 +28,7 @@
 
 #include "Resilient_Cuda_Subscriber.hpp"
 #include "Resilient_Cuda_Duplicate_Map_Traversals.hpp"
+#include "Resilient_Cuda_Error_Injector.hpp"
 
 /*--------------------------------------------------------------------------*/
 /************************ RESILIENT PARALLEL FORS ***************************/
@@ -64,6 +65,11 @@ class ParallelFor< FunctorType
  
     bool success = 0;
 
+    surrogate_policy s_policy;
+    s_policy = surrogate_policy(m_policy.begin(), m_policy.end());
+
+    //This may be a legacy way to call these streams and may also need to set to particular available devices
+#if 0
     surrogate_policy streamPolicy[3];
     for (int i = 0; i < 3; i++){
       cudaStream_t stream;
@@ -71,17 +77,20 @@ class ParallelFor< FunctorType
       Kokkos::Cuda cuda_inst(stream);
       new (&streamPolicy[i]) surrogate_policy(cuda_inst, m_policy.begin(), m_policy.end());
     }
-  
-    //KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter = 1;
+#endif
+
+    KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter = 1;
     //std::cout << "In parallel for, resilient_duplicate_counter = "
     //<< KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter
     //<< std::endl;    
     
-    KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
+    //KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
     auto functor_copy_0 = m_functor;
-    //std::cout << "After first copy constructor, resilient_duplicate_counter = " << std::endl; 
+    //std::cout << "After first copy constructor, resilient_duplicate_counter = " 
+    //<< KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter
+    //<< std::endl;
 
-    //KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter = 2;
+    KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter = 2;
     //std::cout << "After first copy constructor, resilient_duplicate_counter = "
     //<< KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter
     //<< std::endl;	    
@@ -90,40 +99,59 @@ class ParallelFor< FunctorType
     //std::cout << "After second copy constructor, resilient_duplicate_counter = "     
     //<< KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter
     //<< std::endl;
-    //KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter = 0;
+    KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter = 0;
     //std::cout << "In parallel for, resilient_duplicate_counter = "
     //<< KokkosResilience::ResilientDuplicatesSubscriber::resilient_duplicate_counter
     //<< std::endl;
-    KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+    //KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+
+    Kokkos::fence();
+
+    Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure0( m_functor , s_policy );
+    Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure1( functor_copy_0 , s_policy );
+    Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure2( functor_copy_1 , s_policy );
+
+    //std::cout << "Before executes" << std::endl;
 
     //Kokkos::fence();
-
-    Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure0( m_functor , streamPolicy[0] );
-    Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure1( functor_copy_0 , streamPolicy[1] );
-    Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure2( functor_copy_1 , streamPolicy[2] );
-
-    std::cout << "Before executes" << std::endl;
 
     closure0.execute();
     closure1.execute();
     closure2.execute();
 
-    std::cout << "After executes" << std::endl;
+    //std::cout << "After executes" << std::endl;
 
 
-    //Kokkos::fence();
+    Kokkos::fence();
+    //need more stream destroying
+    //cudaStreamDestroy(stream);
 
-    std::cout << "Before combine " <<std::endl;
+#if defined KR_ERROR_INJECTION
+    const auto start{std::chrono::steady_clock::now()};
+    KokkosResilience::inject_error_duplicates();
+    const auto stop{std::chrono::steady_clock::now()};
+    KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
+    KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+#endif
+
+    //std::cout << "Before combine " <<std::endl;
 
     success = KokkosResilience::combine_resilient_duplicates();
-    std::cout << "After combine " << std::endl;
+    //std::cout << "After combine " << std::endl;
 
-    std::cout<< "Before clear_duplicates_map" <<std::endl;
+    //std::cout<< "Before clear_duplicates_map" <<std::endl;
     KokkosResilience::clear_duplicates_map();
-    std::cout<< "After clear_duplicates_map" <<std::endl;
-    
-    if (!success)
-      Kokkos::abort("success was 0");
+    //std::cout<< "After clear_duplicates_map" <<std::endl;
+
+
+    if(success==0){
+      // Abort if no agreement in duplicates
+      auto &handler = KokkosResilience::get_unrecoverable_data_corruption_handler();
+      handler(0);
+    }
+
+//    if (!success)
+//      Kokkos::abort("success was 0");
   }
   ParallelFor(const FunctorType& arg_functor,
               const Policy& arg_policy)

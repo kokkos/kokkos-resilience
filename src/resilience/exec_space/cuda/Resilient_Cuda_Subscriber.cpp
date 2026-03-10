@@ -48,10 +48,10 @@
 
 namespace KokkosResilience {
 
-//int ResilientDuplicatesSubscriber::resilient_duplicate_counter = 0;
+int ResilientDuplicatesSubscriber::resilient_duplicate_counter = 0;
 
 	
-bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
+//bool ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 #if 0
 #ifdef KR_DOUBLE_MODULAR_REDUNDANCY
 bool ResilientDuplicatesSubscriber::dmr_failover_to_tmr = false;

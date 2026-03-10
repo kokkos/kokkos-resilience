@@ -46,7 +46,7 @@
 #if defined(KOKKOS_ENABLE_CUDA)
 
 #include "Resilient_Cuda_Subscriber.hpp"
-/*
+
 namespace KokkosResilience{
 
 // Struct to gate error insertion
@@ -95,6 +95,14 @@ void error_injection(View& original, View& copy_0, View& copy_1)
                 {return view->access(idcs...);};
   size_t total_extent = original.size();
 
+  auto h_original = Kokkos::create_mirror( original );
+  auto h_copy0 = Kokkos::create_mirror( copy_0 );
+  auto h_copy1 = Kokkos::create_mirror( copy_1 );
+
+  Kokkos::deep_copy( h_original, original);
+  Kokkos::deep_copy( h_copy0, copy_0);
+  Kokkos::deep_copy( h_copy1, copy_1);
+
 #ifdef KR_TRIPLE_MODULAR_REDUNDANCY
   //Any-dimensional TMR error injector
 
@@ -120,22 +128,22 @@ void error_injection(View& original, View& copy_0, View& copy_1)
   for (int j = 0; j<=2; j++){
     while (next_inject < total_extent)
     {
-      auto indices = get_inject_indices_array( original, next_inject );
+      auto indices = get_inject_indices_array( h_original, next_inject );
       if (j==0){//Inject in the original if j is 0
-	auto view_tuple = std::tuple_cat(std::make_tuple(&original), indices);
+	auto view_tuple = std::tuple_cat(std::make_tuple(&h_original), indices);
         //replace value with noise
 	std::apply(access, view_tuple)
   	           = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
       else if(j==1){//Else inject in one of the other two copies, copy[0]
-	auto view_tuple = std::tuple_cat(std::make_tuple(&copy_0), indices);
+	auto view_tuple = std::tuple_cat(std::make_tuple(&h_copy0), indices);
 	std::apply(access, view_tuple)
     	           = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
       }
       else{//or copy[1]
-        auto view_tuple = std::tuple_cat(std::make_tuple(&copy_1), indices);
+        auto view_tuple = std::tuple_cat(std::make_tuple(&h_copy1), indices);
 	std::apply(access, view_tuple)
     	           = static_cast<typename View::value_type>(ErrorInjectionTracking::random_gen());
         ErrorInjectionTracking::error_counter++;
@@ -152,14 +160,19 @@ void error_injection(View& original, View& copy_0, View& copy_1)
 #else
     }
 #endif
+
+  Kokkos::deep_copy( original, h_original);
+  Kokkos::deep_copy( copy_0, h_copy0);
+  Kokkos::deep_copy( copy_1, h_copy1);
+
   }
 #endif //KR_TRIPLE_MODULAR_REDUNDANCY
 }// end inject_error
 
 #endif //defined KR_ERROR_INJECTION
 
-KOKKOS_INLINE_FUNCTION
-void print_total_error_time() {
+#if defined KR_ERROR_INJECTION
+inline void print_total_error_time() {
 
   static std::mutex global_time_mutex;	
   global_time_mutex.lock();
@@ -168,12 +181,9 @@ void print_total_error_time() {
   global_time_mutex.unlock();
 
 }
+#endif
 
 }//KokkosResilience
-*/
+
 #endif //defined(KOKKOS_ENABLE_CUDA)
 #endif //INC_RESILIENT_CUDA_ERROR_INJECTOR_HPP
-
-
-
-

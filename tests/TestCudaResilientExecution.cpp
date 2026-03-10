@@ -74,39 +74,36 @@ using ResilientView = Kokkos::View<
 
 
 //Non-resilient
-using KokkosCudaView = Kokkos::View<double*, Kokkos::LayoutLeft, Kokkos::CudaSpace>;
+template<typename DataType, typename... MemoryTraits>
+using KokkosCudaView = Kokkos::View<
+                       DataType,
+                       Kokkos::LayoutLeft,
+                       Kokkos::CudaSpace,
+                       MemoryTraits...
+                       >;
 using cuda_range_policy = Kokkos::RangePolicy<Kokkos::Cuda>;
 
 TEST(TestResCuda, TestCudaSpace)
 {
 
   // Create device view
-  KokkosCudaView x( "x", N );
-  KokkosCudaView y( "y", N );
-
-  std::cout << "Kokkos Test for SegFault after allocate device views" << std::endl;
+  KokkosCudaView<double*> x( "x", N );
+  KokkosCudaView<double*> y( "y", N );
 
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
   auto h_y = Kokkos::create_mirror( y );
 
   static_assert( std::same_as<decltype(h_x)::memory_space, Kokkos::HostSpace > );
-  std::cout << "Kokkos Test for SegFault after allocate host mirror before init host PFor" << std::endl;
 
   // Initialize x vector on host
   for ( int i = 0; i < N; i++ ){
     h_x( i ) = i;
   }
 
-  std::cout << "Kokkos Test for SegFault after Init host PFor" << std::endl;
-
   // Deep copy device to host (dest, src), checking if space works
-  // Does not use parallel_for code, should pass deep-copy from ResCudaSpace to CudaSpace
+  // Using deep-copy only, should pass information host->device->device->host
   Kokkos::deep_copy( x, h_x );
-
-  std::cout << "Kokkos Test for SegFault after deep-copy host-host" << std::endl;
-  const std::type_info& ti = typeid(decltype(h_x)::memory_space);
-  std::cout << "Get name? "<< ti.name() << std::endl;
 
   Kokkos::deep_copy ( y, x);
   Kokkos::deep_copy ( h_y, y);
@@ -118,45 +115,36 @@ TEST(TestResCuda, TestCudaSpace)
   Kokkos::fence();
 
 }
-//#if 0
-// gTest runs CUDA resilient execution space and performs a deep copy to show space
-// itself is working.
+
+// Tests if ResCudaSpace works and can pass information between execution space types 
 TEST(TestResCuda, TestResCudaSpace)
 {
   
-  // Create device view
+  // Create device view - without-initializing is not mandatory
   ResilientView<double*> x( Kokkos::view_alloc("x", Kokkos::WithoutInitializing), N );
   ResilientView<double*> y( Kokkos::view_alloc("y", Kokkos::WithoutInitializing), N );
   
-  //ResilientView<double*> x( "x", N );
-  //ResilientView<double*> y( "y", N );
-
-  std::cout << "Test for SegFault after allocate device views" << std::endl;
-
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
   auto h_y = Kokkos::create_mirror( y );
-
-  const std::type_info& ti = typeid(decltype(h_x)::memory_space);
-  std::cout << "Get name? "<< ti.name() << std::endl;
-  //static_assert( std::same_as<decltype(h_x)::memory_space, Kokkos::HostSpace > );
-  std::cout << "Test for SegFault after allocate host mirror before init host PFor" << std::endl;
 
   // Initialize x vector on host
   for ( int i = 0; i < N; i++ ){
     h_x( i ) = i;
   }
 
-  std::cout << "Test for SegFault after Init host PFor" << std::endl;
-
   // Deep copy device to host (dest, src), checking if space works
-  // Does not use parallel_for code, should pass deep-copy from ResCudaSpace to CudaSpace
+  // Using deep-copy only, should pass information host->device->device->host
   Kokkos::deep_copy( x, h_x );
 
-  std::cout << "Test for SegFault after deep-copy host-host" << std::endl;
+  Kokkos::deep_copy ( y, x);
+  Kokkos::deep_copy ( h_y, y);
+
+  for (int i=0; i< N; i++) {
+    ASSERT_EQ( h_y(i), i);
+  }
 
   Kokkos::fence();
-
   KokkosResilience::clear_duplicates_cache();
 
 }
@@ -165,16 +153,16 @@ TEST(TestResCuda, TestResCudaSpace)
 *********PARALLEL FORS************
 **********************************/
 
+// Function for gtest testing Kokkos parallel fors, should always work
 void test_kokkos_for(){
 
   // Create device views
-  KokkosCudaView y( "y", N );
-  KokkosCudaView x( "x", N );
+  KokkosCudaView<double*> y( "y", N );
+  KokkosCudaView<double*> x( "x", N );
 
   // Create host mirrors of device views.
   auto h_y = Kokkos::create_mirror_view( y );
   auto h_x = Kokkos::create_mirror_view( x );
-//KokkosCudaView::HostMirror h_x = Kokkos::create_mirror_view( x );
 
   // Initialize y vector on host
   for ( int i = 0; i < N; i++ ){
@@ -184,22 +172,21 @@ void test_kokkos_for(){
   // Deep copy host to device (dest, src)
   Kokkos::deep_copy( y, h_y );
 
-  // Copy y to x on device using parallel for
+  // A trivial parallel_for multiplication
   Kokkos::parallel_for(cuda_range_policy(0, N), KOKKOS_LAMBDA(int i) { 
 	  x (i) = y (i) * y (i); 
 	  });
 
   // Deep copy device to host (dest, src)
   Kokkos::deep_copy(h_x, x);
-  
-  // Assert that the parallel for took
+ 
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(h_x(i), i*i);
   }
 
 }
 
-// gTest runs CUDA parallel_for with non-resilient Kokkos. Should never fail.
+// CUDA parallel_for with non-resilient Kokkos. Should never fail.
 TEST(TestResCuda, TestKokkosFor)
 {
  
@@ -207,24 +194,18 @@ TEST(TestResCuda, TestKokkosFor)
 
 }
 
-template class Kokkos::Impl::ParallelFor<KokkosResilience::TestKernel<ResilientView<double*>>, cuda_range_policy, Kokkos::Cuda>;
-
+// function for gtest CUDA parallel_for with resilient Kokkos using doubles in view entries
 void test_res_for(){
-
-  //ResilientView<double*> x( Kokkos::view_alloc("x", Kokkos::WithoutInitializing), N );
-  //ResilientView<double*> y( Kokkos::view_alloc("y", Kokkos::WithoutInitializing), N );
 
   ResilientView<double*> x( "x", N );
   ResilientView<double*> y( "y", N );
 
-  std::cout << "Reached after Initialized cuda views." << std::endl;
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.0001);
 
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
   auto h_y = Kokkos::create_mirror( y );
-
-  const std::type_info& ti = typeid(decltype(h_x)::memory_space);
-  std::cout << "Memory space of host mirror (created): " << ti.name() << std::endl;
 
   // Initialize y vector on host
   for ( int i = 0; i < N; i++ ){
@@ -234,34 +215,265 @@ void test_res_for(){
   // Deep copy host to device (dest, src)
   Kokkos::deep_copy( y, h_y );
 
-  std::cout << "********After deep-copy host->device, before for" << std::endl;
-  // Basic resilient parallel for
-
- // Kokkos::parallel_for(cuda_range_policy(0,N), KokkosResilience::TestKernel{.view=y});
-  //Kokkos::fence();
-  
-#if 1
-
+  // A trivial parallel_for multiplication
   Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
-          x (i) = y (i) * y (i);
+	  x (i) = y (i) * y (i);
           });
-  std::cout << "*********After resilient parallel-for" << std::endl;
-#endif
+  
   // Deep copy device to host (dest, src)
   Kokkos::deep_copy(h_x, x);
 
+  // Error mitigation testing machinery and cache reset
+  KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
   KokkosResilience::clear_duplicates_cache();
 
-  // Assert that the parallel for took
+  // Assert that resilient parallel_for caught and corrected errors
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(h_x(i), i*i);
   }
 }
 
-// gTest runs CUDA parallel_for with non-resilient Kokkos. Should never fail.
+// CUDA parallel_for with resilient Kokkos using doubles in view entries
 TEST(TestResCuda, TestResFor)
 {
 
   test_res_for();	
 
+}
+
+// function for gtest CUDA parallel_for with resilient Kokkos using integers in view entries
+void test_res_int_for(){
+
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+
+  // Allocate y, x vectors.
+  ResilientView<int*> y( "y", N );
+  ResilientView<int*> x( "x", N );
+
+  //Integer vector 1 long to count data accesses
+  ResilientView<int*>  d_counter( "DataAccesses", 1);
+
+  // Create host mirror of device view
+  auto h_counter = Kokkos::create_mirror( d_counter );
+  auto h_x = Kokkos::create_mirror( x );
+  auto h_y = Kokkos::create_mirror( y );
+
+  // Initialize y vector on host
+  for ( int i = 0; i < N; i++ ){
+    h_y( i ) = i;
+  }
+  h_counter(0) = 0;
+
+  // Deep copy host to device (dest, src)
+  Kokkos::deep_copy( y, h_y );
+  Kokkos::deep_copy(d_counter,h_counter);
+  
+  // A trivial parallel_for multiplication with added atomic access test
+  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
+          x (i) = y (i) * y (i);
+          Kokkos::atomic_inc(&d_counter(0));
+          });
+
+  // Deep copy device to host (dest, src)
+  Kokkos::deep_copy(h_x, x);
+  Kokkos::deep_copy(h_counter, d_counter);
+
+  // Error mitigation testing machinery and cache reset
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::clear_duplicates_cache();
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::global_error_settings.reset();
+  
+  // Assert that resilient parallel_for caught and corrected errors
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(h_x(i), i*i);
+  }
+  ASSERT_EQ(h_counter(0), N);
+}
+
+// CUDA parallel_for with resilient Kokkos using integers in view entries
+// Expect counter to count iterations
+TEST(TestResCuda, TestResilientForInteger)
+{
+
+  test_res_int_for();
+
+}
+
+// function for parallel_for gtest with nonzero range 
+void test_res_nonzero_range(){
+
+  ResilientView<double*> x( "x", N );
+  ResilientView<double*> y( "y", N );
+
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+
+  // Create host mirror of device view
+  auto h_x = Kokkos::create_mirror( x );
+  auto h_y = Kokkos::create_mirror( y );
+
+  // Initialize y vector on host
+  for ( int i = 0; i < N/2; i++ ){
+    h_y( i ) = 1.0;
+  }
+  for ( int i = N/2; i < N; i++ ){
+    h_y( i ) = i;
+  }
+
+  // Deep copy host to device (dest, src)
+  Kokkos::deep_copy( y, h_y );
+
+  // A trivial parallel_for multiplication
+  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
+          x (i) = y (i) * y (i);
+          });
+
+  // Deep copy device to host (dest, src)
+  Kokkos::deep_copy(h_x, x);
+
+  // Error mitigation testing machinery and cache reset
+  KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::clear_duplicates_cache();
+
+  // Assert that resilient parallel_for caught and corrected errors
+  for ( int i = 0; i < N; i++) {
+    if (i<N_2) {
+      ASSERT_EQ(h_x(i), 1);
+    } else {
+      ASSERT_EQ (h_x(i), i*i);
+    }
+  }
+}
+
+// CUDA parallel_for with resilient Kokkos using nonzero range
+TEST(TestResCuda, TestResilientNonZeroRange)
+{
+  test_res_nonzero_range();
+}
+
+// function for parallel_for gtest with nonzero range 
+void test_res_const_view(){
+
+  ResilientView<double*> x( "x", N );
+  ResilientView<double*> y( "y", N );
+
+  //A higher error rate should be selected to make sure errors inserted in const view
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
+
+  // Create host mirror of device view
+  auto h_x = Kokkos::create_mirror( x );
+  auto h_y = Kokkos::create_mirror( y );
+
+  // Initialize y vector on host
+  for ( int i = 0; i < N; i++ ){
+    h_y( i ) = i;
+  }
+
+  // Deep copy host to device (dest, src)
+  Kokkos::deep_copy( y, h_y );
+
+  // A trivial parallel_for multiplication
+  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
+          x (i) = y (i) * y (i);
+          });
+
+  //Create const view
+  ResilientView<const double*> x_const = x;
+
+  // Another trivial parallel_for multiplication to trigger errors in const
+  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
+          y (i) = 2 * x_const (i);
+          });
+
+  // Deep copy device to host (dest, src)
+  Kokkos::deep_copy(h_x, y);
+
+  // Error mitigation testing machinery and cache reset
+  KokkosResilience::global_error_settings.reset();
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::clear_duplicates_cache();
+
+  // Assert that resilient parallel_for caught and corrected errors
+  for ( int i = 0; i < N; i++) {
+    ASSERT_EQ(h_x(i), i*i*2);
+  }
+
+}
+
+// Test runs parallel_for with a const view. Expect const view to trigger const view subscriber, a no-op
+// Expect non-const view to trigger copies and majority voting resiliency subscriber
+TEST(TestResCuda, TestConstViewSubscriber)
+{
+  test_res_const_view();
+}
+
+// gTest runs parallel_for with resilient Kokkos doubles assignment
+// and atomic counter on a multidimensional view.
+// Expect counter to count accesses to each vector element.
+void test_res_2d_view(){
+
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.0001);
+
+  // Allocate y, x vectors.
+  ResilientView<double**> y( "y", N, N );
+  ResilientView<double**> x( "x", N, N );
+  //ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > d_counter( "DataAccesses", 1);
+
+  // Create host mirror of device view
+  auto h_x = Kokkos::create_mirror( x );
+  auto h_y = Kokkos::create_mirror( y );
+  //auto h_counter = Kokkos::create_mirror( d_counter );
+
+  //Initialize y vector on host using for loops, increment a counter for data accesses
+  for ( int i = 0; i < N; i++) {  
+    for (int j = 0; j < N; j++){
+      h_y ( i,j ) = i+j;
+//      h_counter(0)++;
+    }
+  }
+  
+
+  // Deep copy host to device (dest, src)
+  Kokkos::deep_copy( y, h_y );
+
+#if 0
+  //Kokkos::deep_copy( d_counter , h_counter );
+
+  // A trivial parallel_for multiplication to get multi-d data device-device
+  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
+          for (int j = 0; j < N; j++){
+	      x (i,j) = 3 * y (i,j);
+//	      d_counter(0)++;
+	    }
+          });
+#if 0
+  // Deep copy device to host (dest, src)
+  Kokkos::deep_copy( h_x, x );
+//  Kokkos::deep_copy( h_counter , d_counter );
+
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::clear_duplicates_cache();
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
+  KokkosResilience::global_error_settings.reset();
+
+  for ( int i = 0; i < N; i++) {
+    for ( int j = 0; j < N; j++) {
+      ASSERT_EQ(h_x(i,j), 3*(i+j));
+    }
+  }
+//  ASSERT_EQ(h_counter(0), 3*N*N);
+#endif
+}
+
+// gTest runs parallel_for with resilient Kokkos doubles assignment
+// and atomic counter on a multidimensional view
+// Expect counter to count accesses to each vector element
+TEST(TestResCuda, TestResilient2D)
+{
+  test_res_2d_view();
 }

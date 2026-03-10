@@ -136,6 +136,7 @@ class ParallelFor< FunctorType
       // Trigger Subscriber constructors
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = true;
       auto functor_copy_0 = m_functor;
+      std::cout << "***Testing where the functor break is***" << std::endl;
       auto functor_copy_1 = m_functor;
       KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 #endif
