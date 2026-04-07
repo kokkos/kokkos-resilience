@@ -199,10 +199,10 @@ void test_res_for(){
 
   ResilientView<double*> x( "x", N );
   ResilientView<double*> y( "y", N );
-
+#if defined KR_ERROR_INJECTION
   KokkosResilience::ErrorInjectionTracking::error_counter = 0;
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.0001);
-
+#endif
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
   auto h_y = Kokkos::create_mirror( y );
@@ -224,9 +224,13 @@ void test_res_for(){
   Kokkos::deep_copy(h_x, x);
 
   // Error mitigation testing machinery and cache reset
+#if defined KR_ERROR_INJECTION  
   KokkosResilience::global_error_settings.reset();
   KokkosResilience::print_total_error_time();
   KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::ErrorInjectionTracking::elapsed_seconds = {};
+  KokkosResilience::ErrorInjectionTracking::total_error_time = {};
+#endif  
   KokkosResilience::clear_duplicates_cache();
 
   // Assert that resilient parallel_for caught and corrected errors
@@ -246,8 +250,9 @@ TEST(TestResCuda, TestResFor)
 // function for gtest CUDA parallel_for with resilient Kokkos using integers in view entries
 void test_res_int_for(){
 
+#if defined KR_ERROR_INJECTION	
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
-
+#endif
   // Allocate y, x vectors.
   ResilientView<int*> y( "y", N );
   ResilientView<int*> x( "x", N );
@@ -280,12 +285,16 @@ void test_res_int_for(){
   Kokkos::deep_copy(h_x, x);
   Kokkos::deep_copy(h_counter, d_counter);
 
+#if defined KR_ERROR_INJECTION
   // Error mitigation testing machinery and cache reset
   KokkosResilience::print_total_error_time();
-  KokkosResilience::clear_duplicates_cache();
   KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::ErrorInjectionTracking::elapsed_seconds = {};
+  KokkosResilience::ErrorInjectionTracking::total_error_time = {};
   KokkosResilience::global_error_settings.reset();
-  
+#endif
+  KokkosResilience::clear_duplicates_cache();
+ 
   // Assert that resilient parallel_for caught and corrected errors
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(h_x(i), i*i);
@@ -308,7 +317,9 @@ void test_res_nonzero_range(){
   ResilientView<double*> x( "x", N );
   ResilientView<double*> y( "y", N );
 
+#if defined KR_ERROR_INJECTION
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+#endif
 
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
@@ -333,10 +344,12 @@ void test_res_nonzero_range(){
   // Deep copy device to host (dest, src)
   Kokkos::deep_copy(h_x, x);
 
+#if defined KR_ERROR_INJECTION  
   // Error mitigation testing machinery and cache reset
   KokkosResilience::global_error_settings.reset();
   KokkosResilience::print_total_error_time();
   KokkosResilience::ErrorInjectionTracking::error_counter=0;
+#endif  
   KokkosResilience::clear_duplicates_cache();
 
   // Assert that resilient parallel_for caught and corrected errors
@@ -361,8 +374,10 @@ void test_res_const_view(){
   ResilientView<double*> x( "x", N );
   ResilientView<double*> y( "y", N );
 
+#if defined KR_ERROR_INJECTION  
   //A higher error rate should be selected to make sure errors inserted in const view
   KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
+#endif
 
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
@@ -392,10 +407,14 @@ void test_res_const_view(){
   // Deep copy device to host (dest, src)
   Kokkos::deep_copy(h_x, y);
 
+#if defined KR_ERROR_INJECTION
   // Error mitigation testing machinery and cache reset
   KokkosResilience::global_error_settings.reset();
   KokkosResilience::print_total_error_time();
   KokkosResilience::ErrorInjectionTracking::error_counter=0;
+  KokkosResilience::ErrorInjectionTracking::elapsed_seconds = {};
+  KokkosResilience::ErrorInjectionTracking::total_error_time = {};
+#endif
   KokkosResilience::clear_duplicates_cache();
 
   // Assert that resilient parallel_for caught and corrected errors
@@ -417,57 +436,61 @@ TEST(TestResCuda, TestConstViewSubscriber)
 // Expect counter to count accesses to each vector element.
 void test_res_2d_view(){
 
-  KokkosResilience::global_error_settings = KokkosResilience::Error(0.0001);
+#if defined KR_ERROR_INJECTION	
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.001);
+#endif
 
   // Allocate y, x vectors.
   ResilientView<double**> y( "y", N, N );
   ResilientView<double**> x( "x", N, N );
-  //ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > d_counter( "DataAccesses", 1);
+  ResilientView<int*, Kokkos::MemoryTraits <Kokkos::Atomic> > d_counter( "DataAccesses", 1);
 
   // Create host mirror of device view
   auto h_x = Kokkos::create_mirror( x );
   auto h_y = Kokkos::create_mirror( y );
-  //auto h_counter = Kokkos::create_mirror( d_counter );
+  auto h_counter = Kokkos::create_mirror( d_counter );
+  int host_counting = 0;
 
   //Initialize y vector on host using for loops, increment a counter for data accesses
   for ( int i = 0; i < N; i++) {  
     for (int j = 0; j < N; j++){
       h_y ( i,j ) = i+j;
-//      h_counter(0)++;
+      host_counting++;
     }
   }
   
 
-  // Deep copy host to device (dest, src)
-  Kokkos::deep_copy( y, h_y );
-
-#if 0
-  //Kokkos::deep_copy( d_counter , h_counter );
+  //Deep copy host to device (dest, src)
+  Kokkos::deep_copy(y, h_y );
+  Kokkos::deep_copy( d_counter , h_counter );
 
   // A trivial parallel_for multiplication to get multi-d data device-device
-  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(int i) {
+  Kokkos::parallel_for(res_range_policy(0, N), KOKKOS_LAMBDA(const int i) {
           for (int j = 0; j < N; j++){
 	      x (i,j) = 3 * y (i,j);
-//	      d_counter(0)++;
+	      d_counter(0) += 2;
 	    }
           });
-#if 0
   // Deep copy device to host (dest, src)
-  Kokkos::deep_copy( h_x, x );
-//  Kokkos::deep_copy( h_counter , d_counter );
+  Kokkos::deep_copy(Kokkos::Cuda(), h_x, x );
+  Kokkos::deep_copy(Kokkos::Cuda(), h_counter , d_counter );
+  h_counter(0) += host_counting;
 
+#if defined KR_ERROR_INJECTION  
   KokkosResilience::print_total_error_time();
-  KokkosResilience::clear_duplicates_cache();
   KokkosResilience::ErrorInjectionTracking::error_counter = 0;
+  KokkosResilience::ErrorInjectionTracking::elapsed_seconds = {};
+  KokkosResilience::ErrorInjectionTracking::total_error_time = {};
   KokkosResilience::global_error_settings.reset();
+#endif
+  KokkosResilience::clear_duplicates_cache();
 
   for ( int i = 0; i < N; i++) {
     for ( int j = 0; j < N; j++) {
       ASSERT_EQ(h_x(i,j), 3*(i+j));
     }
   }
-//  ASSERT_EQ(h_counter(0), 3*N*N);
-#endif
+  ASSERT_EQ(h_counter(0), 3*N*N);
 }
 
 // gTest runs parallel_for with resilient Kokkos doubles assignment
@@ -477,3 +500,52 @@ TEST(TestResCuda, TestResilient2D)
 {
   test_res_2d_view();
 }
+
+// gTest runs parallel_reduce with resilient Kokkos to get a dot product.
+void test_res_reduce(){
+
+#if defined KR_ERROR_INJECTION	
+  KokkosResilience::global_error_settings = KokkosResilience::Error(0.01);
+#endif     
+
+  // Allocate y, x vectors.
+  ResilientView<double*> y( "y", N );
+  ResilientView<double*> x( "x", N );
+
+  // Create host mirror of device view
+  auto h_x = Kokkos::create_mirror( x );
+  auto h_y = Kokkos::create_mirror( y );
+
+  // Initialize y vector on host
+  for ( int i = 0; i < N; i++ ){
+    h_y( i ) = 1.0;
+  }
+
+  // Deep copy host to device (dest, src)
+  Kokkos::deep_copy( y, h_y );  
+  Kokkos::deep_copy ( x , y );
+
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(res_range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+#if defined KR_ERROR_INJECTION
+  KokkosResilience::print_total_error_time();
+  KokkosResilience::ErrorInjectionTracking::error_counter = 0;
+  KokkosResilience::ErrorInjectionTracking::elapsed_seconds = {};
+  KokkosResilience::ErrorInjectionTracking::total_error_time = {};
+  KokkosResilience::global_error_settings.reset();
+#endif
+  KokkosResilience::clear_duplicates_cache();
+
+  ASSERT_EQ(dot_product, N);
+
+}
+
+TEST(TestResCuda, TestResilientReduce)
+{
+  test_res_reduce();
+}
+

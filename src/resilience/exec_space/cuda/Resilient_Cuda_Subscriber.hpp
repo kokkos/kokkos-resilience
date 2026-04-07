@@ -138,7 +138,9 @@ struct CombineDuplicatesBase
   virtual ~CombineDuplicatesBase() = default;
   virtual void clear() = 0;
   virtual bool execute() = 0;
+#if defined KR_ERROR_INJECTION
   virtual void inject_error() = 0;
+#endif
   // First index tracks first view, second index tracks second copy
   bool already_copied[2] = {false,false};
 
@@ -198,16 +200,12 @@ struct CombineDuplicates: public CombineDuplicatesBase
 
       if constexpr(rank > 1){
 
-        std::cout << "In multi-dimensional, rank = " << rank << std::endl;      
         auto mdrange = make_md_range_policy( original, std::make_index_sequence< rank > {} );
         Kokkos::parallel_for(mdrange, *this);
-        std::cout << "#### After combine-duplicates parallel_for in the combiner map"<<std::endl;
   
       }else{
 
-        std::cout << "original.size is " << original.size() << std::endl;
         Kokkos::parallel_for("SubscriberCombiner1D", original.size(), *this);
-        std::cout << "#### After combine-duplicates parallel_for in the combiner map"<<std::endl;
   
       }
       //Kokkos::fence();
@@ -249,7 +247,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     }
     //No match found, all three executions return different number
     d_success()=false;
-//#if 0
+#if 0
     int tid = blockIdx.x * blockDim.x + threadIdx.x; 
 
     printf("tid %i vid %i errored with success = %i", tid, std::forward<Args>(vidx)..., d_success());
@@ -259,7 +257,7 @@ struct CombineDuplicates: public CombineDuplicatesBase
     printf("expecting error tid %i vidx %i copy[0] %f\n", tid, std::forward<Args>(vidx)..., value0);
     double value1 = static_cast<typename View::value_type>(copy[1](std::forward<Args>(vidx)...));
     printf("expecting error tid %i vidx %i copy[1] %f\n", tid, std::forward<Args>(vidx)..., value1);
-//#endif
+#endif
   }
 
 };// end Combiner
@@ -369,7 +367,7 @@ struct ResilientDuplicatesSubscriber {
           c.already_copied[c.duplicate_count]=true;
           self = c.copy[c.duplicate_count++];
           //std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count - 1 << "****" << std::endl;
-	  Kokkos::deep_copy(self, other);
+	  Kokkos::deep_copy(Kokkos::Cuda(), self, other);
           //std::cout << "This is the end of the first-time constructor after Kokkos::deep_copy" <<std::endl;
           //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count - 1 <<"]="<<c.already_copied[c.duplicate_count - 1]<<std::endl <<std::endl;
 	}
@@ -389,7 +387,7 @@ struct ResilientDuplicatesSubscriber {
           //TODO: Check logic here
 	  //c.already_copied[c.duplicate_count]=true;
           // Copy all data, every time
-          Kokkos::deep_copy(self, other);
+          Kokkos::deep_copy(Kokkos::Cuda(),self, other);
           //std::cout << "This is the end of the second constructor after Kokkos::deep_copy" <<std::endl;
 	  //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count - 1 <<"]="<<c.already_copied[c.duplicate_count - 1]<<std::endl <<std::endl;
         }

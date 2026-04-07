@@ -105,7 +105,7 @@ class ParallelFor< FunctorType
     //<< std::endl;
     //KokkosResilience::ResilientDuplicatesSubscriber::in_resilient_parallel_loop = false;
 
-    Kokkos::fence();
+    //Kokkos::fence();
 
     Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure0( m_functor , s_policy );
     Impl::ParallelFor< decltype(m_functor), surrogate_policy, Kokkos::Cuda > closure1( functor_copy_0 , s_policy );
@@ -122,7 +122,7 @@ class ParallelFor< FunctorType
     //std::cout << "After executes" << std::endl;
 
 
-    Kokkos::fence();
+    //Kokkos::fence();
     //need more stream destroying
     //cudaStreamDestroy(stream);
 

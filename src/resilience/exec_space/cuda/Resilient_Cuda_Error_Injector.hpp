@@ -99,9 +99,9 @@ void error_injection(View& original, View& copy_0, View& copy_1)
   auto h_copy0 = Kokkos::create_mirror( copy_0 );
   auto h_copy1 = Kokkos::create_mirror( copy_1 );
 
-  Kokkos::deep_copy( h_original, original);
-  Kokkos::deep_copy( h_copy0, copy_0);
-  Kokkos::deep_copy( h_copy1, copy_1);
+  Kokkos::deep_copy(Kokkos::Cuda(), h_original, original);
+  Kokkos::deep_copy(Kokkos::Cuda(), h_copy0, copy_0);
+  Kokkos::deep_copy(Kokkos::Cuda(), h_copy1, copy_1);
 
 #ifdef KR_TRIPLE_MODULAR_REDUNDANCY
   //Any-dimensional TMR error injector
@@ -161,9 +161,9 @@ void error_injection(View& original, View& copy_0, View& copy_1)
     }
 #endif
 
-  Kokkos::deep_copy( original, h_original);
-  Kokkos::deep_copy( copy_0, h_copy0);
-  Kokkos::deep_copy( copy_1, h_copy1);
+  Kokkos::deep_copy(Kokkos::Cuda(), original, h_original);
+  Kokkos::deep_copy(Kokkos::Cuda(), copy_0, h_copy0);
+  Kokkos::deep_copy(Kokkos::Cuda(), copy_1, h_copy1);
 
   }
 #endif //KR_TRIPLE_MODULAR_REDUNDANCY

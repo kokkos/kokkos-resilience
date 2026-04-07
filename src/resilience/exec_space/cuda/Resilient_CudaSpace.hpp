@@ -139,27 +139,6 @@ struct MemorySpaceAccess< Kokkos::CudaSpace, KokkosResilience::ResCudaSpace > {
   enum { deepcopy   = true };
 };
 
-/*
-template <>
-struct MemorySpaceAccess <KokkosResilience::ResCudaSpace, KokkosResilience::ResCudaSpace>
-     : MemorySpaceAccess <Kokkos::CudaSpace, Kokkos::CudaSpace>{
-};
-
-template < typename OtherSpace >
-struct MemorySpaceAccess <KokkosResilience::ResCudaSpace, OtherSpace
-                         , std::enable_if_t< !std::is_same<OtherSpace, Kokkos::AnonymousSpace>::value >> 
-     : MemorySpaceAccess <Kokkos::CudaSpace, OtherSpace>{
-};
-
-template < typename OtherSpace >
-struct MemorySpaceAccess <OtherSpace, KokkosResilience::ResCudaSpace
-                         , std::enable_if_t< !std::is_same<OtherSpace, Kokkos::AnonymousSpace>::value >> 
-     : MemorySpaceAccess <OtherSpace, Kokkos::CudaSpace>{
-};
-
-static_assert(Kokkos::Impl::MemorySpaceAccess<KokkosResilience::ResCudaSpace,
-                                              KokkosResilience::ResCudaSpace>::assignable, "");
-*/
 } // namespace Impl
 } // namespace Kokkos
 
@@ -181,8 +160,6 @@ struct ExecutionSpaceAlias< KokkosResilience::ResCuda >{
   using type = Cuda;
 
 };
-
-//TODO:: Possible logic hole here, what in the event using a Cuda Execution space?
 
 /// default case
 template <typename T>
@@ -215,6 +192,37 @@ template <class MemSpace1, class MemSpace2>
 struct DeepCopy<MemSpace1, MemSpace2, KokkosResilience::ResCuda, 
 	        std::enable_if_t<is_res_cuda_type_space<MemSpace1>::value && 
 				 is_res_cuda_type_space<MemSpace2>::value>>
+    : DeepCopy< typename MemSpace1::base_space, typename MemSpace2::base_space, Cuda>
+{
+  using DeepCopy< typename MemSpace1::base_space, typename MemSpace2::base_space, Cuda>::DeepCopy;
+};
+
+//TODO: the following 3 cuda specializations can be merged with ResCuda specializations
+//using ExecutionSpaceAlias with base type Cuda
+
+// Template deep copy: Host -> CudaSpace
+template <class MemSpace>
+struct DeepCopy< Kokkos::HostSpace, MemSpace, Kokkos::Cuda,
+                 std::enable_if_t<is_res_cuda_type_space<MemSpace>::value>>
+     : DeepCopy< Kokkos::HostSpace, typename MemSpace::base_space, Cuda >
+{
+  using DeepCopy< Kokkos::HostSpace, typename MemSpace::base_space, Cuda >::DeepCopy;
+};
+
+// Template deep copy: CudaSpace -> Host
+template <class MemSpace>
+struct DeepCopy< MemSpace, Kokkos::HostSpace, Kokkos::Cuda,
+                 std::enable_if_t<is_res_cuda_type_space<MemSpace>::value>>
+     : DeepCopy< typename MemSpace::base_space, Kokkos::HostSpace, Cuda >
+{
+  using DeepCopy< typename MemSpace::base_space, Kokkos::HostSpace, Cuda >::DeepCopy;
+};
+
+// Template deep copy: Cuda -> Cuda
+template <class MemSpace1, class MemSpace2>
+struct DeepCopy<MemSpace1, MemSpace2, Kokkos::Cuda,
+                std::enable_if_t<is_res_cuda_type_space<MemSpace1>::value &&
+                                 is_res_cuda_type_space<MemSpace2>::value>>
     : DeepCopy< typename MemSpace1::base_space, typename MemSpace2::base_space, Cuda>
 {
   using DeepCopy< typename MemSpace1::base_space, typename MemSpace2::base_space, Cuda>::DeepCopy;
