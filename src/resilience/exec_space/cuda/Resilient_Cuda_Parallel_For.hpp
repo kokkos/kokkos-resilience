@@ -136,7 +136,10 @@ class ParallelFor< FunctorType
 
     //std::cout << "Before combine " <<std::endl;
 
+    const auto pforcomstart{std::chrono::steady_clock::now()};
     success = KokkosResilience::combine_resilient_duplicates();
+    const auto pforcomstop{std::chrono::steady_clock::now()};
+    KokkosResilience::combiner_seconds += (std::chrono::duration_cast<std::chrono::nanoseconds>(pforcomstop - pforcomstart));
     //std::cout << "After combine " << std::endl;
 
     //std::cout<< "Before clear_duplicates_map" <<std::endl;

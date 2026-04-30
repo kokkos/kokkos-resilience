@@ -540,6 +540,11 @@ void test_res_reduce(){
 #endif
   KokkosResilience::clear_duplicates_cache();
 
+  //Delete, test of combiner stuff that will be deleted after MiniMD
+  std::chrono::duration<double> secs = KokkosResilience::combiner_seconds;
+  std::cout << "The reduce combiner took " << secs.count() << " seconds" <<std::endl;
+
+
   ASSERT_EQ(dot_product, N);
 
 }

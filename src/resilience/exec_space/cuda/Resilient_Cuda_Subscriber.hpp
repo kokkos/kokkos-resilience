@@ -86,6 +86,9 @@ namespace KokkosResilience {
 
 namespace KokkosResilience {
 
+//TODO: Delete and all associated, temp variable for statistics
+inline static std::chrono::duration<long int, std::nano> combiner_seconds{};
+
 // Helper template used to get Rank number of 0's for MDRangePolicy
 template< std::int64_t begin >
 constexpr auto get_start_index ( std::size_t ){
@@ -95,7 +98,7 @@ constexpr auto get_start_index ( std::size_t ){
 // Makes a MDRangePolicy from View extents
 template< typename View, std::size_t... Ranks >
 auto make_md_range_policy( const View &view, std::index_sequence< Ranks... >){
-  return Kokkos::MDRangePolicy<Kokkos::Rank<View::rank()>>({ 
+  return Kokkos::MDRangePolicy<Kokkos::Cuda,Kokkos::Rank<View::rank()>>({ 
     get_start_index < 0 > ( Ranks ) ... }, { static_cast<std::int64_t>( view.extent ( Ranks ))... });
 }
 
