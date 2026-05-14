@@ -118,9 +118,6 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_VELOC_BACKEND
         {"veloc", [&]() -> std::unique_ptr<ContextBase> {
           return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
-        }},
-        {"veloc-noop", [&]() -> std::unique_ptr<ContextBase> {
-          return std::make_unique<MPIContext<VeloCRegisterOnlyBackend> >(comm, cfg);
         }}
 #endif
       };

@@ -84,10 +84,6 @@ class StdFileContext : public ContextBase {
 
   Backend &backend() { return m_backend; }
 
-  void register_hashes(std::unordered_set<Registration> &members) override {
-    m_backend.register_hashes(members);
-  }
-
   bool restart_available(const std::string &label, int version) override {
     return m_backend.restart_available(label, version);
   }
