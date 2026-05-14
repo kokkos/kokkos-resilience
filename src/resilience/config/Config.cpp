@@ -66,7 +66,7 @@ namespace KokkosResilience
     }
   }
 
-  Config::Config( const std::filesystem::path &p )
+  Config::Entry Config::from_file( const std::filesystem::path &p )
   {
     std::ifstream instrm{ p.string() };
 
@@ -83,6 +83,6 @@ namespace KokkosResilience
     }
 
     auto baseobj = v.get< picojson::object >();
-    m_root = parse_json( baseobj );
+    return parse_json( baseobj );
   }
 }
