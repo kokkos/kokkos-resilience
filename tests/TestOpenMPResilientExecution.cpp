@@ -390,7 +390,7 @@ TEST(TestResOpenMP, TestMiniMDKernel)
   KokkosResilience::clear_duplicates_cache();
 
   std::cout << "Test values y(1,0) and z(1,0) are " << y(1,0) << " and " << z(1,0) << " respectively\n. ";
-  std::cout << "This test should have resulted in 50 and 1500, in these integrations, respectively." << std::endl;
+  std::cout << "This test should have resulted in 150 and 1500, in these integrations, respectively." << std::endl;
 
   for ( int i = 0; i < M; i++) {
     ASSERT_EQ(y(i,0), 15*test_const );
@@ -486,4 +486,52 @@ TEST(TestResOpenMP, TestAtomic)
   for ( int i = 0; i < N; i++) {
     ASSERT_EQ(x(i), i);
   }
+}
+
+/**********************************
+ *********PARALLEL REDUCES*********
+ **********************************/
+// gTest runs parallel_reduce with regular Kokkos to get a dot product. Should never fail.
+TEST(TestResOpenMP, TestKokkosReduceDouble)
+{
+
+  KokkosVectorView y( "y", N );
+  KokkosVectorView x( "x", N );
+
+  Kokkos::parallel_for( omp_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 1.0;
+  });
+
+  Kokkos::deep_copy(x,y);
+
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(omp_range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+  ASSERT_EQ(dot_product, N);
+
+}
+
+// gTest runs parallel_reduce with resilient Kokkos to get a dot product.
+TEST(TestResOpenMP, TestResilientReduceDouble)
+{
+  // Allocate y, x vectors.
+  ResilientView<double*> y( "y", N );
+  ResilientView<double*> x( "x", N );
+
+  Kokkos::parallel_for( res_range_policy (0, N), KOKKOS_LAMBDA ( const int i) {
+    y ( i ) = 1.0;
+  });
+
+  Kokkos::deep_copy(x,y);
+  double dot_product = 0;
+
+  Kokkos::parallel_reduce(res_range_policy(0,N),KOKKOS_LAMBDA (const int i, double & update) {
+    update += x ( i ) * y ( i );
+  }, dot_product);
+
+  ASSERT_EQ(dot_product, N);
+  KokkosResilience::clear_duplicates_cache();
 }
