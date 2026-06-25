@@ -69,6 +69,7 @@ endforeach()
 kr_option(KR_ENABLE_TRACING "Enable tracing of resilience functions" OFF)
 option(KR_ENABLE_TESTS "Enable tests in the build" ON)
 option(KR_ENABLE_EXAMPLES "Enable examples in the build" ON)
+option(KR_ENABLE_CI_BUILD "Enable flags for a CI build" OFF)
 
 #Automatic checkpointing options
 kr_option(KR_ENABLE_AUTOMATIC_CHECKPOINTING "Compile automatic checkpointing contexts and backends" ON)
@@ -77,6 +78,8 @@ kr_option(KR_ENABLE_MPI_CONTEXT "Compile MPI checkpointing context" ON KR_ENABLE
 #Backends
 find_package(veloc QUIET)
 kr_option(KR_ENABLE_VELOC_BACKEND "Compile VeloC checkpointing backend" ${veloc_FOUND} KR_ENABLE_MPI_CONTEXT)
+find_package(fenix QUIET)
+kr_option(KR_ENABLE_FENIX_BACKEND "Compile Fenix checkpointing backend" ${fenix_FOUND} KR_ENABLE_MPI_CONTEXT)
 
 #Data space options
 kr_option(KR_ENABLE_DATA_SPACES "Enable Kokkos memory spaces for manual view checkpointing" OFF)
@@ -111,6 +114,14 @@ if (KR_ENABLE_VELOC_BACKEND)
     message(FATAL_ERROR "Veloc backend requested, but veloc not found!")
   endif()
   target_link_libraries(resilience PUBLIC veloc::client)
+endif()
+
+# Fenix backend
+if (KR_ENABLE_FENIX_BACKEND)
+  if (NOT fenix_FOUND)
+    message(FATAL_ERROR "Fenix backend requested, but fenix not found!")
+  endif()
+  target_link_libraries(resilience PRIVATE fenix)
 endif()
 
 if (KR_ENABLE_DATA_SPACES)

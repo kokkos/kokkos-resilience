@@ -38,13 +38,56 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
+#define INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
 
-#include "StdFileBackend.hpp"
+#include <memory>
+#include <string>
+#include <unordered_set>
 
-#ifdef KR_ENABLE_VELOC_BACKEND
-#include "VelocBackend.hpp"
-#endif
+#include <mpi.h>
 
-#ifdef KR_ENABLE_FENIX_BACKEND
-#include "FenixBackend.hpp"
-#endif
+#include <Kokkos_Core.hpp>
+
+#include "resilience/registration/Registration.hpp"
+
+namespace KokkosResilience {
+
+class ContextBase;
+
+class FenixMemoryBackend {
+ public:
+  FenixMemoryBackend(ContextBase& ctx, MPI_Comm mpi_comm);
+
+  ~FenixMemoryBackend();
+
+  FenixMemoryBackend(const FenixMemoryBackend&) = delete;
+
+  FenixMemoryBackend& operator=(const FenixMemoryBackend&) = delete;
+
+  FenixMemoryBackend(FenixMemoryBackend&&) noexcept = default;
+
+  FenixMemoryBackend& operator=(FenixMemoryBackend&&) = default;
+
+  void checkpoint(const std::string& label, int version, const std::unordered_set<Registration>& members);
+
+  void restart(const std::string& label, int version, std::unordered_set<Registration>& members);
+
+  int latest_version(const std::string& label) const noexcept;
+
+  bool restart_available(const std::string& label, int version);
+
+  void clear_checkpoints();
+
+  void reset();
+
+  void register_alias(Registration& member, const std::string& alias);
+
+ private:
+  class Impl;
+  std::unique_ptr<Impl> p_impl;
+};
+
+}  // namespace KokkosResilience
+
+#endif  // INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
