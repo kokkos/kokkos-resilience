@@ -41,6 +41,10 @@
 #include "FenixBackend.hpp"
 
 #include <sstream>
+#include <vector>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/stream.hpp>
 
 #include <fenix.h>
 
@@ -157,13 +161,15 @@ void FenixMemoryBackend::Impl::checkpoint(const std::string& label, int version,
 
   // store actual members alongside their size information
   for (auto&& member : unaliased_members) {
-    std::ostringstream stream;
-    member->serialize(stream);
+    std::vector<char> buffer;
+    auto sink = boost::iostreams::back_inserter(buffer);
+    boost::iostreams::stream<decltype(sink)> stream(sink);
 
-    std::string buffer = stream.str();  // TODO avoid copy
+    member->serialize(stream);
+    stream.flush();
 
     char* data = buffer.data();
-    int count  = buffer.length();
+    int count  = buffer.size();
 
     const int member_hash = static_cast<int>(member->hash());
 
@@ -220,11 +226,12 @@ void FenixMemoryBackend::Impl::restart(const std::string& label, int version,
     int count;
     restore_data_member(group_id, label, count_id, member->name + " count", time_stamp, &count, sizeof(int));
 
-    std::string buffer;
-    buffer.resize(count);
+    std::vector<char> buffer(count);
     restore_data_member(group_id, label, member_id, member->name, time_stamp, buffer.data(), count);
 
-    std::istringstream stream(buffer);
+    boost::iostreams::array_source source(buffer.data(), buffer.size());
+    boost::iostreams::stream<decltype(source)> stream(source);
+
     member->deserialize(stream);
   }
 }
