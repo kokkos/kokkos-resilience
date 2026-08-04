@@ -53,50 +53,7 @@
 
 #include "Resilient_OpenMP_Subscriber.hpp"
 #include "Resilient_OpenMP_Error_Injector.hpp"
-
-/*--------------------------------------------------------------------------*/
-/************************** DUPLICATE COMBINER CALL *************************/
-/*--------------------------------------------------------------------------*/
-
-namespace KokkosResilience{
-
-  inline bool combine_resilient_duplicates() {
-    bool success = true;
-    // Combines all duplicates
-    // Go over the Subscriber map, execute all the CombinerBase elements
-    // If any duplicate fails to find a match, breaks
-    for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-      success = combiner.second->execute();
-      if(!success) break;
-    }
-    return success;
-  }
-
-} // namespace KokkosResilience
-
-/*--------------------------------------------------------------------------*/
-/************************* ERROR INSERTION TEST CODE ************************/
-/*--------------------------------------------------------------------------*/
-
-namespace KokkosResilience{
-
-  inline void inject_error_duplicates() {
-
-    if (global_error_settings){
-      //Per kernel, seed the first inject index	    
-      KokkosResilience::ErrorInjectionTracking::global_next_inject = KokkosResilience::global_error_settings->geometric(KokkosResilience::ErrorInjectionTracking::random_gen);
-      // Inject geometrically distributed error into all duplicates
-      // Go over the Subscriber map, inject into all the CombinerBase elements
-      for (auto&& combiner : KokkosResilience::ResilientDuplicatesSubscriber::duplicates_map) {
-        combiner.second->inject_error();
-      }
-    }
-  }
-} // namespace KokkosResilience
-
-/*--------------------------------------------------------------------------*/
-/************************ RESILIENT PARALLEL FORS ***************************/
-/*--------------------------------------------------------------------------*/
+#include "Resilient_OpenMP_Duplicate_Map_Traversals.hpp"
 
 namespace Kokkos {
 namespace Impl {
@@ -208,12 +165,13 @@ class ParallelFor< FunctorType
       closure1.execute();
       closure2.execute();
 
-
+#if defined KR_ERROR_INJECTION
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
       KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
       KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+#endif
 
       // Combine the duplicate views and majority vote on correctness
       success = KokkosResilience::combine_resilient_duplicates();
@@ -238,12 +196,14 @@ class ParallelFor< FunctorType
       closure0.execute();
       closure1.execute();
 
+#if defined KR_ERROR_INJECTION
       const auto start{std::chrono::steady_clock::now()};
       KokkosResilience::inject_error_duplicates();
       const auto stop{std::chrono::steady_clock::now()};
       KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
       KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
-      
+#endif
+
       // Combine the duplicate views, majority vote not triggered due to CMAKE macro
       success = KokkosResilience::combine_resilient_duplicates();
 
@@ -256,11 +216,13 @@ class ParallelFor< FunctorType
 
         Impl::ParallelFor< decltype(m_functor) , surrogate_policy, Kokkos::OpenMP > closure2(functor_copy_1 , wrapper_policy );
 
+#if defined KR_ERROR_INJECTION	
         start=std::chrono::steady_clock::now();
         KokkosResilience::inject_error_duplicates();
         stop=std::chrono::steady_clock::now();
         KokkosResilience::ErrorInjectionTracking::elapsed_seconds = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start));
         KokkosResilience::ErrorInjectionTracking::total_error_time += KokkosResilience::ErrorInjectionTracking::elapsed_seconds;
+#endif
 
         success = KokkosResilience::combine_resilient_duplicates();
         KokkosResilience::clear_duplicates_map();
