@@ -47,7 +47,14 @@
 
 #include <fenix.h>
 
-#define FENIX_SAFE_CALL(call) KokkosResilience::fenix_safe_call(call, #call, __FILE__, __LINE__)
+#define FENIX_SAFE_CALL(call) \
+  do { \
+    try { \
+      KokkosResilience::fenix_safe_call(call, #call, __FILE__, __LINE__); \
+    } catch (const fenix::RuntimeException &e) { \
+      KokkosResilience::fenix_safe_call(e.error, #call, __FILE__, __LINE__); \
+    } \
+  } while(false)
 
 namespace KokkosResilience {
 
