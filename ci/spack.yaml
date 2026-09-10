@@ -1,6 +1,6 @@
 spack:
   definitions:
-    - compilers: [gcc@11.4.0]
+    - compilers: [gcc@11.5.0]
     - packages:
       - kokkos@5.1.1 +openmp
       - boost@1.81.0
