@@ -39,7 +39,7 @@ RUN mkdir -p /opt/spack/ \
   && cd /opt/spack/ \
   && git init \
   && git remote add origin https://github.com/spack/spack.git \
-  && git fetch origin 6f948eb847c46a9caea852d3ffffd9cd4575dacc \
+  && git fetch origin v1.2.2 \
   && git checkout FETCH_HEAD
 
 RUN . /opt/spack/share/spack/setup-env.sh \
