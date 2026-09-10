@@ -14,7 +14,8 @@ spack:
   concretizer:
     unify: false
   config:
-    install_tree: /opt/software
+    install_tree:
+      root: /opt/software
   view:
     default:
       root: /opt/view
