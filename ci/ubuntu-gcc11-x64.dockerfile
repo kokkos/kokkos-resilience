@@ -46,8 +46,8 @@ RUN . /opt/spack/share/spack/setup-env.sh \
   && spack compiler find \
   && spack external find --not-buildable \
   && spack external list \
-  && spack mirror add spack-build-cache-v0.20 https://binaries.spack.io/v0.20.0 \
-  && spack buildcache keys --install --trust
+  && spack mirror add spack-cache https://binaries.spack.io/v2026.06.0 \
+  && spack buildcache keys --install --trust --force
 
 # ... and setup the spack environment
 ADD ./ci/spack.yaml /opt/spack-environment/spack.yaml
