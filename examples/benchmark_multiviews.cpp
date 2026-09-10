@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
     while (i < nsteps) {
       KokkosResilience::checkpoint(
           *ctx, "test_kokkos", i,
-          [=]() {  // Nic, tell me what should I put for []/
+          [=]() {
             for (std::size_t j = 0; j < num_views; ++j) {
               Kokkos::parallel_for(
                   M * nbLines, KOKKOS_LAMBDA(const int& k) {
