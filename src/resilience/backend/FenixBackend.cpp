@@ -267,11 +267,13 @@ void FenixMemoryBackend::clear_checkpoints() {
       int member_id;
       int position = 0;
       FENIX_SAFE_CALL(Fenix_Data_group_get_member_at_position(group_id, &member_id, position));
-      Fenix_Data_member_delete(group_id, member_id);
+      FENIX_SAFE_CALL(Fenix_Data_member_delete(group_id, member_id));
     }
 
-    // not deleteting data group to avoid double free in fenix
+    FENIX_SAFE_CALL(Fenix_Data_group_delete(group_id));
   }
+
+  m_group_ids.clear();
 }
 
 void FenixMemoryBackend::reset() {
