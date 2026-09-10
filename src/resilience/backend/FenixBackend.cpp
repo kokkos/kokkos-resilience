@@ -123,17 +123,7 @@ void FenixMemoryBackend::checkpoint(const std::string& label, int version,
   }
 
   // store version information in the checkpoint
-  if (not Fenix_Data_member_created(group_id, member_id_of_version)) {
-    FENIX_SAFE_CALL(Fenix_Data_member_create(group_id, member_id_of_version, &version, sizeof(int), MPI_CHAR));
-  } else {
-    int flag;
-    int count = sizeof(int);
-    FENIX_SAFE_CALL(Fenix_Data_member_attr_set(group_id, member_id_of_version, FENIX_DATA_MEMBER_ATTRIBUTE_BUFFER,
-                                               &version, &flag));
-    FENIX_SAFE_CALL(
-        Fenix_Data_member_attr_set(group_id, member_id_of_version, FENIX_DATA_MEMBER_ATTRIBUTE_COUNT, &count, &flag));
-  }
-
+  FENIX_SAFE_CALL(Fenix_Data_member_define(group_id, member_id_of_version, &version, sizeof(int), MPI_CHAR));
   FENIX_SAFE_CALL(Fenix_Data_member_store(group_id, member_id_of_version, FENIX_DATA_SUBSET_FULL));
 
   auto unaliased_members = get_unaliased_member_list(m_alias_map, members);
@@ -153,29 +143,11 @@ void FenixMemoryBackend::checkpoint(const std::string& label, int version,
     const int member_hash = static_cast<int>(member->hash());
 
     const int length_id = member_id_offset + 2 * member_hash;
-    const int member_id = length_id + 1;
-
-    if (not Fenix_Data_member_created(group_id, length_id)) {
-      FENIX_SAFE_CALL(Fenix_Data_member_create(group_id, length_id, &length, sizeof(int), MPI_CHAR));
-    } else {
-      int flag;
-      int count = sizeof(int);
-      FENIX_SAFE_CALL(
-          Fenix_Data_member_attr_set(group_id, length_id, FENIX_DATA_MEMBER_ATTRIBUTE_BUFFER, &length, &flag));
-      FENIX_SAFE_CALL(
-          Fenix_Data_member_attr_set(group_id, length_id, FENIX_DATA_MEMBER_ATTRIBUTE_COUNT, &count, &flag));
-    }
-
-    if (not Fenix_Data_member_created(group_id, member_id)) {
-      FENIX_SAFE_CALL(Fenix_Data_member_create(group_id, member_id, data, length, MPI_CHAR));
-    } else {
-      int flag;
-      FENIX_SAFE_CALL(Fenix_Data_member_attr_set(group_id, member_id, FENIX_DATA_MEMBER_ATTRIBUTE_BUFFER, data, &flag));
-      FENIX_SAFE_CALL(
-          Fenix_Data_member_attr_set(group_id, member_id, FENIX_DATA_MEMBER_ATTRIBUTE_COUNT, &length, &flag));
-    }
-
+    FENIX_SAFE_CALL(Fenix_Data_member_define(group_id, length_id, &length, sizeof(int), MPI_CHAR));
     FENIX_SAFE_CALL(Fenix_Data_member_store(group_id, length_id, FENIX_DATA_SUBSET_FULL));
+
+    const int member_id = length_id + 1;
+    FENIX_SAFE_CALL(Fenix_Data_member_define(group_id, member_id, data, length, MPI_CHAR));
     FENIX_SAFE_CALL(Fenix_Data_member_store(group_id, member_id, FENIX_DATA_SUBSET_FULL));
   }
 
