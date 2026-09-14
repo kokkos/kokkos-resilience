@@ -2,19 +2,20 @@ spack:
   definitions:
     - compilers: [gcc@11.4.0]
     - packages:
-      - kokkos@4.4.00 +openmp
+      - kokkos@5.1.1 +openmp
       - boost@1.81.0
       - openmpi@5.0.5
-      - veloc@1.7 ^kvtree@1.5.0 ^rankstr@0.4.0 ^redset@0.4.0 ^shuffile@0.4.0 ^er@0.5.0 ^axl@0.9.0 ^boost@1.81.0
+      - veloc@1.7 ^kvtree@1.5.0 ^rankstr@0.4.0 ^redset@0.4.0 ^shuffile@0.4.0 ^er@0.5.0 ^axl@0.9.0 ^boost@1.81.0 ^openmpi@5.0.5
   specs:
     - matrix:
       - [$packages]
       - [$%compilers]
       - [arch=x86_64_v3]
   concretizer:
-    unify: false
+    unify: true
   config:
-    install_tree: /opt/software
+    install_tree:
+      root: /opt/software
   view:
     default:
       root: /opt/view

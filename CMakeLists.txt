@@ -54,8 +54,9 @@ target_include_directories(resilience PUBLIC
                            $<INSTALL_INTERFACE:include>
                            )
 
-find_package(Kokkos 4.0 REQUIRED)
+find_package(Kokkos 5.0 REQUIRED)
 
+# Note that this will always be C++20 or higher
 set_property(TARGET resilience PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(resilience PUBLIC Kokkos::kokkos)
 
