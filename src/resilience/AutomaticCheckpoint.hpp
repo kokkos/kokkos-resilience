@@ -180,7 +180,7 @@ namespace KokkosResilience
   }
 
   template<typename FilterFunc>
-  concept FilterFunction = std::invocable< FilterFunc, int > && std::convertible_to< std::invoke_result_t< FilterFunc, int >, bool >;
+  concept FilterFunction = std::invocable< FilterFunc, int > && std::same_as< std::invoke_result_t< FilterFunc, int >, bool >;
 
   template< typename Context, typename F, FilterFunction FilterFunc, typename... T>
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, RegistrationInfo<T>... explicit_members)
