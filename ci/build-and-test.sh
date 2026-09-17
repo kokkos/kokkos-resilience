@@ -2,6 +2,6 @@
 
 set -x
 
-cmake --preset ci
-cmake --build --preset ci
-ctest --preset ci
+cmake --preset $@
+cmake --build --preset $@
+ctest --preset $@

@@ -69,6 +69,15 @@
         "KR_ENABLE_EXEC_SPACES": "ON",
         "KR_ENABLE_OPENMP_EXEC_SPACE": "ON"
       }
+    },
+    {
+      "name": "ci-debug-asan",
+      "inherits": "ci",
+      "binaryDir": "/opt/build/kr-ci-debug-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address"
+      }
     }
   ],
   "buildPresets": [
@@ -76,12 +85,27 @@
       "name": "ci",
       "configurePreset": "ci",
       "jobs": 4
+    },
+    {
+      "name": "ci-debug-asan",
+      "configurePreset": "ci-debug-asan",
+      "jobs": 4
     }
   ],
   "testPresets": [
     {
       "name": "ci",
       "configurePreset": "ci",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "ci-debug-asan",
+      "configurePreset": "ci-debug-asan",
       "output": {
         "outputOnFailure": true
       },
