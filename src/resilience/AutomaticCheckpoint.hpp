@@ -47,6 +47,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <concepts>
 #include <unordered_set>
 
 #include <Kokkos_Core.hpp>
@@ -88,7 +89,7 @@ namespace KokkosResilience
             members.insert(Registration(ctx, view));
           }
         );
-          
+
         //Copy the lambda/functor to trigger copy-constructor hooks
         using FuncType = typename std::remove_reference<RegionFunc>::type;
         [[maybe_unused]] FuncType f = fun;
@@ -179,12 +180,9 @@ namespace KokkosResilience
   }
 
   template<typename FilterFunc>
-  constexpr bool is_filter_v = std::is_same_v<
-    std::invoke_result<FilterFunc, int>, 
-    bool
-  >;
+  concept FilterFunction = std::invocable< FilterFunc, int > && std::same_as< std::invoke_result_t< FilterFunc, int >, bool >;
 
-  template< typename Context, typename F, typename FilterFunc, typename... T, std::enable_if_t<is_filter_v<FilterFunc>>* = nullptr>
+  template< typename Context, typename F, FilterFunction FilterFunc, typename... T>
   void checkpoint( Context &ctx, const std::string &label, int iteration, F &&fun, FilterFunc &&filter, RegistrationInfo<T>... explicit_members)
   {
     Detail::checkpoint_impl( ctx, label, iteration, std::forward< F >( fun ), std::forward< FilterFunc >( filter ), explicit_members...);

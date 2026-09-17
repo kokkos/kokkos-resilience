@@ -188,8 +188,8 @@ struct ViewHolderImplDeepCopyImpl {
 
 template <typename SrcViewType, typename DstViewType>
 struct ViewHolderImplDeepCopyImpl<SrcViewType, DstViewType,
-                                  std::enable_if_t<Kokkos::is_always_assignable_impl<
-                                      DstViewType, SrcViewType>::value>> {
+                                  std::enable_if_t<Kokkos::is_always_assignable_v<
+                                      DstViewType, SrcViewType>>> {
   static void copy_to_unmanaged(SrcViewType &_src, char *_buff) {
     auto dst = make_unmanaged_view_like(_src, _buff);
     deep_copy(dst, _src);

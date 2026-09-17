@@ -62,7 +62,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "/usr/bin/gcc-11",
         "CMAKE_CXX_COMPILER": "/usr/bin/g++-11",
-        "Kokkos_ROOT": "/opt/view/gcc-11.4.0/kokkos/4.4.00/",
+        "Kokkos_ROOT": "/opt/view/gcc-11.4.0/kokkos/5.1.1/",
         "MPI_ROOT": "/opt/view/gcc-11.4.0/openmpi/5.0.5/",
         "Boost_ROOT": "/opt/view/gcc-11.4.0/boost/1.81.0/",
         "kvtree_ROOT": "/opt/view/gcc-11.4.0/kvtree/1.5.0/",
