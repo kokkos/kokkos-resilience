@@ -46,9 +46,12 @@
 #ifdef KR_ENABLE_MPI_CONTEXT
 #include "MPIContext.hpp"
 #endif
-#include "../backend/StdFileBackend.hpp"
+#include "resilience/backend/StdFileBackend.hpp"
 #ifdef KR_ENABLE_VELOC_BACKEND  
 #include "resilience/backend/VelocBackend.hpp"
+#endif
+#ifdef KR_ENABLE_FENIX_BACKEND
+#include "resilience/backend/FenixBackend.hpp"
 #endif
 
 namespace KokkosResilience
@@ -118,6 +121,14 @@ namespace KokkosResilience
 #ifdef KR_ENABLE_VELOC_BACKEND
         {"veloc", [&]() -> std::unique_ptr<ContextBase> {
           return std::make_unique<MPIContext<VeloCMemoryBackend> >(comm, cfg);
+        }}
+#endif
+#if defined(KR_ENABLE_VELOC_BACKEND) && defined(KR_ENABLE_FENIX_BACKEND)
+        ,
+#endif
+#ifdef KR_ENABLE_FENIX_BACKEND
+        {"fenix", [&]() -> std::unique_ptr<ContextBase> {
+          return std::make_unique<MPIContext<FenixMemoryBackend> >(comm, cfg);
         }}
 #endif
       };

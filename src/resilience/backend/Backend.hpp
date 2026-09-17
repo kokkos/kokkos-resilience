@@ -44,3 +44,7 @@
 #ifdef KR_ENABLE_VELOC_BACKEND
 #include "VelocBackend.hpp"
 #endif
+
+#ifdef KR_ENABLE_FENIX_BACKEND
+#include "FenixBackend.hpp"
+#endif

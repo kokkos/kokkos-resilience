@@ -23,6 +23,11 @@ if (KR_ENABLE_VELOC_BACKEND)
    find_dependency(veloc REQUIRED)
 endif()
 
+if (KR_ENABLE_FENIX_BACKEND)
+    set(fenix_DIR @fenix_DIR@)
+    find_dependency(fenix REQUIRED)
+endif()
+
 if (KR_ENABLE_DATA_SPACES)
    set(Boost_DIR @Boost_DIR@)
    find_dependency(Boost REQUIRED)

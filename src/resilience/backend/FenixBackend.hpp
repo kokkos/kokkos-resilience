@@ -38,26 +38,72 @@
  *
  * Questions? Contact Christian R. Trott (crtrott@sandia.gov)
  */
+#ifndef INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
+#define INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
 
-#include <gtest/gtest.h>
+#include <string>
+#include <unordered_set>
+
+#include <mpi.h>
+
 #include <Kokkos_Core.hpp>
-#include <resilience/Resilience.hpp>
 
-int
-main( int argc, char **argv )
-{
-  ::testing::InitGoogleTest( &argc, argv );
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND) || defined(KR_ENABLE_FENIX_BACKEND)
-  MPI_Init( &argc, &argv );
-#endif
+#include "resilience/registration/Registration.hpp"
 
-  Kokkos::initialize( argc, argv );
-  auto ret = RUN_ALL_TESTS();
-  Kokkos::finalize();
+namespace KokkosResilience {
 
-#if defined(KR_ENABLE_HDF5_PARALLEL) || defined(KR_ENABLE_VELOC_BACKEND) || defined(KR_ENABLE_FENIX_BACKEND)
-  MPI_Finalize();
-#endif
-  
-  return ret;
-}
+class ContextBase;
+
+class FenixMemoryBackend {
+ public:
+  FenixMemoryBackend(ContextBase& ctx, MPI_Comm mpi_comm);
+
+  ~FenixMemoryBackend();
+
+  FenixMemoryBackend(const FenixMemoryBackend&) = delete;
+
+  FenixMemoryBackend& operator=(const FenixMemoryBackend&) = delete;
+
+  FenixMemoryBackend(FenixMemoryBackend&&) noexcept = default;
+
+  FenixMemoryBackend& operator=(FenixMemoryBackend&&) = default;
+
+  void checkpoint(const std::string& label, int version, const std::unordered_set<Registration>& members);
+
+  void restart(const std::string& label, int version, std::unordered_set<Registration>& members);
+
+  int latest_version(const std::string& label) const noexcept;
+
+  bool restart_available(const std::string& label, int version);
+
+  void clear_checkpoints();
+
+  void reset();
+
+  void register_alias(Registration& member, const std::string& alias);
+
+ private:
+  ContextBase* m_context;
+
+  MPI_Comm m_mpi_comm;
+
+  mutable std::unordered_map<std::string, int> m_latest_version;
+  std::unordered_map<std::string, Registration> m_alias_map;
+
+  // we keep a record of which groups have been created
+  std::unordered_set<int> m_group_ids;
+
+  // we store the version as an extra member in each checkpoint
+  constexpr static int member_id_of_version = 19;
+
+  // for each member, we assign
+  //     member_id = member_id_offset + 2 * static_cast<int>(member_hash) + 1
+  // to store the actual data, and
+  //     member_id = member_id_offset + 2 * static_cast<int>(member_hash)
+  // to store the size of the serialized data
+  constexpr static int member_id_offset = 20;
+};
+
+}  // namespace KokkosResilience
+
+#endif  // INC_RESILIENCE_FENIX_FENIXBACKEND_HPP
