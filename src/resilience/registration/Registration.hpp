@@ -65,9 +65,8 @@ namespace KokkosResilience::Impl::Registration
 {
   class Registration;
 
-  class Base {
+  class Base : public std::enable_shared_from_this< Base > {
   public:
-    Base() = delete;
     virtual ~Base() = default;
 
     const bool serialize(std::ostream& out);
@@ -82,11 +81,22 @@ namespace KokkosResilience::Impl::Registration
 
     const std::string name;
 
+    std::shared_ptr< Base > get_ptr()
+    {
+      return shared_from_this();
+    }
+
+    std::shared_ptr< const Base > get_ptr() const
+    {
+      return shared_from_this();
+    }
+
   protected:
+
     explicit Base(const std::string member_name);
   };
-  
-  
+
+
   //Helper for explicitly listing data that a checkpoint region should also use
   template<typename T>
   struct Info {
@@ -99,7 +109,7 @@ namespace KokkosResilience::Impl::Registration
   //The default handler for unknown data types
   template<typename T>
   class Simple;
-  
+
   template<typename T, typename ImplT = Simple<T>>
   struct Factory {
     static auto build(ContextBase& ctx, T& member, const std::string& label) {
@@ -125,10 +135,10 @@ namespace KokkosResilience::Impl::Registration
     template<typename T>
     Registration(ContextBase& ctx, T& member)
       : base( Factory<T>::build(ctx, member) ) {}
- 
+
     //For members explicitly specified by the user, just unpack
     template<typename T>
-    Registration(ContextBase& ctx, Info<T>& info) 
+    Registration(ContextBase& ctx, Info<T>& info)
       : base( Factory<T>::build(ctx, info.member, info.label) ) {}
 
     //Create using custom (de)serialize functions

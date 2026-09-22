@@ -42,6 +42,7 @@
 #ifndef _INC_RESILIENCE_REGISTRATION_VIEWHOLDER_HPP
 #define _INC_RESILIENCE_REGISTRATION_VIEWHOLDER_HPP
 
+#include <memory>
 #include "Registration.hpp"
 #include "resilience/view_hooks/ViewHolder.hpp"
 #include "resilience/context/Context.hpp"
@@ -58,30 +59,30 @@ namespace KokkosResilience::Impl::Registration {
     ) : Base(view->label()), m_view(view), m_ctx(ctx) {};
 
     const serializer_t serializer() const override{
-      return [&, this](std::ostream& stream){
-        size_t buffer_size = 
-          need_buffer ? m_view->data_type_size()*m_view->size() : 0;
-        char* buf = m_ctx.get_scratch_buffer(buffer_size);
-    
-        m_view->serialize(stream, buf);
+      return [self = std::static_pointer_cast< const ViewHolder >( get_ptr() )](std::ostream& stream){
+        size_t buffer_size =
+          self->need_buffer ? self->m_view->data_type_size() * self->m_view->size() : 0;
+        char* buf = self->m_ctx.get_scratch_buffer(buffer_size);
+
+        self->m_view->serialize(stream, buf);
         return stream.good();
       };
     }
 
     const deserializer_t deserializer() const override{
-      return [&, this](std::istream& stream){
-        size_t buffer_size = 
-          need_buffer ? m_view->data_type_size()*m_view->size() : 0;
-        char* buf = m_ctx.get_scratch_buffer(buffer_size);
-    
-        m_view->deserialize(stream, buf);
+      return [self = std::static_pointer_cast< const ViewHolder >( get_ptr() )](std::istream& stream){
+        size_t buffer_size =
+          self->need_buffer ? self->m_view->data_type_size() * self->m_view->size() : 0;
+        char* buf = self->m_ctx.get_scratch_buffer(buffer_size);
+
+        self->m_view->deserialize(stream, buf);
         return stream.good();
       };
     }
 
     const bool is_same_reference(const Registration& other_reg) const override{
       auto other = dynamic_cast<ViewHolder*>(other_reg.get());
-      
+
       if(!other){
         fprintf(stderr,
           "KokkosResilience: Warning, member name %s is shared by more than 1"
@@ -89,7 +90,7 @@ namespace KokkosResilience::Impl::Registration {
         );
         return false;
       }
-    
+
       // This currently assumes the two views are equal or subviews (ie no name
       //  collisions), and that a larger data() pointer implies a subview (ie
       //  we can deal well with subviews of subviews, but not two different
@@ -101,7 +102,7 @@ namespace KokkosResilience::Impl::Registration {
   private:
     const KokkosResilience::ViewHolder m_view;
 
-    const bool need_buffer = 
+    const bool need_buffer =
     #ifdef KR_ENABLE_MAGISTRATE
         false;
     #else
