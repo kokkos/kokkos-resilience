@@ -2,6 +2,8 @@
 
 set -x
 
-cmake --preset ci
-cmake --build --preset ci
-ctest --preset ci
+export LSAN_OPTIONS=suppressions=/opt/src/kokkos-resilience/ci/lsan.supp
+
+cmake --preset $@
+cmake --build --preset $@
+ctest --preset $@

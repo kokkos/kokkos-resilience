@@ -61,13 +61,22 @@
         "shuffile_ROOT": "/opt/view/gcc-11.4.0/shuffile/0.4.0/",
         "er_ROOT": "/opt/view/gcc-11.4.0/er/0.5.0/",
         "axl_ROOT": "/opt/view/gcc-11.4.0/axl/0.9.0/",
-        "veloc_ROOT": "/opt/view/gcc-11.4.0/veloc/1.7/",
+        "veloc_ROOT": "/opt/view/gcc-11.4.0/veloc/main/",
         "KR_ENABLE_TESTS": "ON",
         "KR_ENABLE_EXAMPLES": "ON",
         "KR_ALL_WARNINGS": "ON",
         "KR_WARNINGS_AS_ERRORS": "ON",
         "KR_ENABLE_EXEC_SPACES": "ON",
         "KR_ENABLE_OPENMP_EXEC_SPACE": "ON"
+      }
+    },
+    {
+      "name": "ci-debug-asan",
+      "inherits": "ci",
+      "binaryDir": "/opt/build/kr-ci-debug-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address"
       }
     }
   ],
@@ -76,12 +85,27 @@
       "name": "ci",
       "configurePreset": "ci",
       "jobs": 4
+    },
+    {
+      "name": "ci-debug-asan",
+      "configurePreset": "ci-debug-asan",
+      "jobs": 4
     }
   ],
   "testPresets": [
     {
       "name": "ci",
       "configurePreset": "ci",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "ci-debug-asan",
+      "configurePreset": "ci-debug-asan",
       "output": {
         "outputOnFailure": true
       },
