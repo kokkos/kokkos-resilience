@@ -100,19 +100,19 @@ namespace KokkosResilience
     VELOC_SAFE_CALL(veloc_client->checkpoint_wait());
 
     bool success = VELOC_SAFE_CALL(veloc_client->checkpoint_begin(label, version));
-    
+
     if(success){
-      std::set<int> ids = protect_members(members);
+      std::set<int> ids = protect_members(label, members);
       success = VELOC_SAFE_CALL(
         veloc_client->checkpoint_mem(VELOC_CKPT_SOME, ids)
       );
-      unprotect_members(ids);
+      unprotect_members(label, ids);
     }
 
     success = VELOC_SAFE_CALL(veloc_client->checkpoint_end(success));
     if(success) m_latest_version[label] = version;
   }
-    
+
   bool
   VeloCMemoryBackend::restart_available( const std::string &label, int version )
   {
@@ -141,11 +141,11 @@ namespace KokkosResilience
     bool success = VELOC_SAFE_CALL(veloc_client->restart_begin(label, version));
 
     if(success){
-      std::set<int> ids = protect_members(members);
+      std::set<int> ids = protect_members(label, members);
       success = VELOC_SAFE_CALL(
         veloc_client->recover_mem(VELOC_RECOVER_SOME, ids)
       );
-      unprotect_members(ids);
+      unprotect_members(label, ids);
     }
 
     VELOC_SAFE_CALL( veloc_client->restart_end( success ) );
@@ -162,16 +162,17 @@ namespace KokkosResilience
   }
 
   int
-  VeloCMemoryBackend::protect_member( Registration member )
+  VeloCMemoryBackend::protect_member( const std::string &label, Registration member )
   {
     auto alias = m_alias_map.find(member->name);
     if(alias != m_alias_map.end()){
-      return protect_member(alias->second);
+      return protect_member(label, alias->second);
     }
-    
+
     int id = member.hash();
     bool inserted = veloc_client->mem_protect(
-      id, member->serializer(), member->deserializer()
+      id, member->serializer(), member->deserializer(),
+      label
     );
     if(!inserted) fprintf(stderr,
       "WARNING KokkosResilience:VeloC memory region %d already existed. "
@@ -182,20 +183,22 @@ namespace KokkosResilience
   }
 
   std::set<int>
-  VeloCMemoryBackend::protect_members(std::unordered_set<Registration>& members)
+  VeloCMemoryBackend::protect_members(const std::string &label, std::unordered_set<Registration>& members)
   {
     std::set<int> ids;
     for ( auto && member : members ) {
-      ids.insert(protect_member(member));
+      ids.insert(protect_member(label, member));
     }
     return ids;
   }
 
   void
-  VeloCMemoryBackend::unprotect_members(const std::set<int>& ids)
+  VeloCMemoryBackend::unprotect_members(const std::string &label, const std::set<int>& ids)
   {
     for(auto& id : ids){
-      veloc_client->mem_unprotect(id);
+      auto res = veloc_client->mem_unprotect(id, label);
+      if ( !res )
+        fprintf(stderr, "WARNING: tried to unprotect memory hash %d that did not exist!", id );
     }
   }
 
@@ -205,7 +208,7 @@ namespace KokkosResilience
     m_alias_map.try_emplace(alias, member);
   }
 
-  VeloCFileBackend::VeloCFileBackend(ContextBase& context, MPI_Comm mpi_comm) 
+  VeloCFileBackend::VeloCFileBackend(ContextBase& context, MPI_Comm mpi_comm)
     : m_context(&context), m_mpi_comm(mpi_comm) {
     const auto &vconf = m_context->config()["backends"]["veloc"]["config"].as< std::string >();
     veloc_client = veloc::get_client(m_mpi_comm, vconf);

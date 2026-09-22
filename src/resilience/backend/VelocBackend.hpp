@@ -91,9 +91,9 @@ namespace KokkosResilience
     void register_alias( Registration& member, const std::string &alias );
 
   private:
-    int protect_member(Registration member);
-    std::set<int> protect_members(std::unordered_set<Registration>& members);
-    void unprotect_members(const std::set<int>& ids);
+    int protect_member(const std::string &label, Registration member);
+    std::set<int> protect_members(const std::string &label, std::unordered_set<Registration>& members);
+    void unprotect_members(const std::string &label, const std::set<int>& ids);
 
     ContextBase *m_context;
     MPI_Comm m_mpi_comm;
@@ -121,7 +121,7 @@ namespace KokkosResilience
                   std::unordered_set<Registration> &members );
 
     veloc::client_t *veloc_client;
-    
+
     ContextBase *m_context;
     MPI_Comm m_mpi_comm;
   };
