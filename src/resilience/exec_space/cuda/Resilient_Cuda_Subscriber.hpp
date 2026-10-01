@@ -65,6 +65,10 @@
 #include "Resilient_Cuda_Error_Injector.hpp"
 #include "Resilient_Types.hpp"
 
+//DEBUG
+#include <typeindex>
+#include <functional>
+
 /*--------------------------------------------------------------------------
  ******************** ERROR MESSAGE GENERATION *****************************
  --------------------------------------------------------------------------*/
@@ -284,24 +288,37 @@ struct ResilientDuplicatesSubscriber {
   // Creating map for duplicates: used for duplicate resolution per-kernel
   // Creating cache map of duplicates: used for tracking duplicates between kernels so that they are initialzied
   // only once. Re-initialize copies to be like original view only if original not in cache map
-  using key_type = void *;  // key_type should be data() pointer
-  inline static std::unordered_map<key_type, CombineDuplicatesBase *> duplicates_map;
-  inline static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase> > duplicates_cache;
+  using key_type = std::pair<void*, std::type_index>;  // key_type should be data() pointer // modified to include memory trait data
+  
+  // Hash for data-memory trait pairs
+  struct KeyTypeHash {
+    template <class Pointer, class Traits>
+    std::size_t operator () (const std::pair<Pointer, Traits> &key) const {
+      auto hashp = std::hash<Pointer>{}(key.first);
+      auto hasht = std::hash<Traits>{}(key.second);
+      return hashp ^ (hasht << 1);
+    }
+  };
+  
+  inline static std::unordered_map<key_type, CombineDuplicatesBase*, KeyTypeHash> duplicates_map;
+  inline static std::unordered_map<key_type, std::unique_ptr<CombineDuplicatesBase>, KeyTypeHash> duplicates_cache;
 
   template<typename View>
   static CombineDuplicates<View> *
   get_duplicate_for( const View &original) {
     bool inserted = false;
-    auto pos = duplicates_cache.find(original.data());
+    auto search_key = std::make_pair(original.data(), std::type_index(typeid(typename View::traits::memory_traits)));
+    auto pos = duplicates_cache.find(search_key);
 
     // True if got to end of cache and view wasn't found
     if (pos == duplicates_cache.end()) {
       // Insert view into cache map and flag
       inserted = true;
-      pos = duplicates_cache.emplace(std::piecewise_construct,
-                                     std::forward_as_tuple(original.data()),
-                                     std::forward_as_tuple(
-                                             std::make_unique<CombineDuplicates<View> >())).first;
+      //pos = duplicates_cache.emplace(std::piecewise_construct,
+      //                               std::forward_as_tuple(original.data()),
+      //                               std::forward_as_tuple(
+      //                                       std::make_unique<CombineDuplicates<View> >())).first;
+      pos = duplicates_cache.emplace(search_key,std::make_unique<CombineDuplicates<View>>()).first;
     }
 
     auto &res = *static_cast< CombineDuplicates<View> * >( pos->second.get());
@@ -321,11 +338,14 @@ struct ResilientDuplicatesSubscriber {
     if (inserted || extents_resized) {
       res.original = original;
 
+      //std::cout << "From Resilience: res type from inserted loop" << typeid(res.original).name() << std::endl;
+
       // Reinitialize self to be like other (same dimensions, etc)
       for (int i = 0; i < 2; ++i) {
-          set_duplicate_view(res.copy[i], original, i);
-      }
+        set_duplicate_view(res.copy[i], original, i);
+        //std::cout << "From Resilience: res.copy[" << i <<"] type from inserted loop" << typeid(res.copy[i]).name() << std::endl;
 
+      }
     }
     return &res;
   }
@@ -338,8 +358,19 @@ struct ResilientDuplicatesSubscriber {
     auto err = cudaGetLastError();
     if (err != cudaSuccess)
       std::cout << "error:" << cudaGetErrorString(err);
+//DEBUG
+    //using MemoryTraits = typename View::traits::memory_traits;
+    //std::cout << "From Resilience: Memory Trait (original) is " << typeid(MemoryTraits).name() << std::endl;
 
-    duplicate = View(Kokkos::view_alloc(label_ss.str(),Kokkos::WithoutInitializing), original.layout());
+    //New View should have same memory traits as previous view
+    //using OriginalTraits = typename View::traits::memory_traits;
+    duplicate = View(Kokkos::view_alloc(label_ss.str(), Kokkos::WithoutInitializing), 
+		     original.layout()); 
+		     //original.span(),
+		     //OriginalTraits());
+
+    //std::cout << "From Resilience: Memory Trait (duplicate) is " << typeid(typename std::decay_t<decltype(duplicate)>::traits::memory_traits).name() << std::endl;
+    //static_assert(std::is_same_v<MemoryTraits,typename std::decay_t<decltype(duplicate)>::traits::memory_traits>, "MemoryTraits were not preserived!");
   }
 
   template<typename View>
@@ -357,42 +388,40 @@ struct ResilientDuplicatesSubscriber {
 
         // This won't be triggered if the entry already exists
         auto *combiner = get_duplicate_for(other);
-        auto res = duplicates_map.emplace(std::piecewise_construct,
-                                          std::forward_as_tuple(other.data()),
-                                          std::forward_as_tuple(combiner));
-        auto &c = dynamic_cast< CombineDuplicates< View > & > (*res.first->second);
+
+	auto map_key = std::make_pair(other.data(), std::type_index(typeid(typename View::traits::memory_traits)));
+//        auto res = duplicates_map.emplace(std::piecewise_construct,
+//                                          std::forward_as_tuple(other.data()),
+//                                          std::forward_as_tuple(combiner));
+        auto res = duplicates_map.emplace(map_key, combiner);
+//DEBUG
+        if (res.first->second == nullptr){
+	  std::cerr << "ERROR: nullptr in duplicates_map" << std::endl;
+	}
+	//std::cout << "Actual type: " << typeid(*res.first->second).name() << std::endl;
+	//std::cout << "Expected type: " << typeid(CombineDuplicates<View>).name() << std::endl;
+
+
+	//Changed from dynamic_cast to static_cast, change back if runtime issues
+	auto &c = static_cast< CombineDuplicates< View > & > (*res.first->second);
+
+
 
         // The first copy constructor in a parallel_for for the given view
         if (res.second) {
-	  //std::cout << "First entry to copy constructor for this view. Copying for state 1" << std::endl;	   assert(resilient_duplicate_counter == 1);
           c.duplicate_count = 0;
-          //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count<<"]="<<c.already_copied[c.duplicate_count]<<std::endl;
           c.already_copied[c.duplicate_count]=true;
           self = c.copy[c.duplicate_count++];
-          //std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count - 1 << "****" << std::endl;
 	  Kokkos::deep_copy(Kokkos::Cuda(), self, other);
-          //std::cout << "This is the end of the first-time constructor after Kokkos::deep_copy" <<std::endl;
-          //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count - 1 <<"]="<<c.already_copied[c.duplicate_count - 1]<<std::endl <<std::endl;
 	}
 	else if(resilient_duplicate_counter==2 & !c.already_copied[c.duplicate_count]){
           assert(resilient_duplicate_counter == 2);		
 	  c.duplicate_count = 1;
-	  //std::cout << "Now in the duplicate_count else branch" <<std::endl;
-//	}
-
-          //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count<<"]="<<c.already_copied[c.duplicate_count]<<std::endl;
-//        if (!c.already_copied[c.duplicate_count]){
-          //self = c.copy[c.duplicate_count];
-	
           c.already_copied[c.duplicate_count]=true;	
 	  self = c.copy[c.duplicate_count++];
-          //std::cout << "*****In copy constructor, self has now been set to copy c.duplicate_count=" << c.duplicate_count - 1 << "****" << std::endl;      
-          //TODO: Check logic here
-	  //c.already_copied[c.duplicate_count]=true;
-          // Copy all data, every time
+        
+	  // Copy all data, every time
           Kokkos::deep_copy(Kokkos::Cuda(),self, other);
-          //std::cout << "This is the end of the second constructor after Kokkos::deep_copy" <<std::endl;
-	  //std::cout << "c_duplicate_count = "<<c.duplicate_count<< " and already_copied["<<c.duplicate_count - 1 <<"]="<<c.already_copied[c.duplicate_count - 1]<<std::endl <<std::endl;
         }
 
       }
